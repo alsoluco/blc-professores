@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="BLC">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>BLC · Professores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--panel:rgba(255,255,255,.035);--panel-2:rgba(255,255,255,.06);--line:rgba(255,255,255,.14);--fg:#fff;--text:rgba(255,255,255,.78);--muted:rgba(255,255,255,.58);--green:#00ff00;--cyan:#00ffff;--font:'Montserrat','Segoe UI',system-ui,-apple-system,Arial,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);background-image:radial-gradient(ellipse 80% 40% at 85% 0%,rgba(0,255,0,.10),transparent 70%),radial-gradient(ellipse 60% 30% at 0% 55%,rgba(0,255,255,.05),transparent 70%);background-repeat:no-repeat;color:var(--text);font-family:var(--font);font-weight:300;font-size:15px;line-height:1.65;letter-spacing:.02em;padding:0 18px 110px}
+.wrap{max-width:640px;margin:0 auto;padding-top:22px;display:flex;flex-direction:column;gap:30px}
+h1,h2,h3,h4{font-family:var(--font);text-transform:uppercase;margin:0;color:var(--fg);overflow-wrap:anywhere}
+h1{font-weight:200;font-size:clamp(1.5rem,7vw,2.4rem);line-height:1.2;letter-spacing:.1em}
+h2{font-weight:200;font-size:clamp(1.25rem,5.6vw,1.7rem);line-height:1.25;letter-spacing:.1em}
+h2 em{font-style:normal;font-weight:300;color:var(--green)}
+h3{font-weight:300;font-size:1.05rem;letter-spacing:.12em}
+p{margin:0}
+.eyebrow{font-weight:500;text-transform:uppercase;letter-spacing:.24em;font-size:.68rem;color:var(--green)}
+.eyebrow.cy{color:var(--cyan)}
+.muted{color:var(--muted)}
+.small{font-size:.82rem}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{display:flex;flex-direction:column;gap:5px;width:26px}
+.mark i{display:block;height:2px}.mark i:nth-child(1){background:var(--cyan)}.mark i:nth-child(2){background:var(--green)}.mark i:nth-child(3){background:#fff}
+.brand b{font-weight:200;font-size:1.7rem;letter-spacing:.32em;color:var(--fg);line-height:1}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.who{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font);font-weight:400;font-size:.74rem;text-transform:uppercase;letter-spacing:.16em;text-decoration:none;padding:14px 22px;border-radius:0;background:transparent;color:var(--fg);border:1px solid rgba(255,255,255,.28);cursor:pointer;line-height:1.3;text-align:center}
+.btn:hover{border-color:var(--green);color:var(--green)}
+.btn-green{background:var(--green);color:#000;border-color:var(--green);font-weight:600;box-shadow:0 0 28px rgba(0,255,0,.25)}
+.btn-green:hover{background:#33ff33;color:#000;border-color:#33ff33}
+.btn-line{border-color:var(--green);color:var(--green)}
+.btn-sm{padding:9px 14px;font-size:.64rem}
+.btn[disabled]{opacity:.5;cursor:default}
+.card{border:1px solid var(--line);background:var(--panel);padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card.hot{border-color:var(--green);box-shadow:0 0 24px rgba(0,255,0,.10)}
+.card.cy{border-color:var(--cyan)}
+label{font-weight:500;text-transform:uppercase;letter-spacing:.16em;font-size:.66rem;color:var(--cyan);display:block;margin-bottom:6px}
+input[type=text],input[type=email],input[type=password],input[type=search],input[type=date],select,textarea{width:100%;font-family:var(--font);font-weight:300;font-size:16px;letter-spacing:.02em;color:var(--fg);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.22);border-radius:0;padding:13px 14px;outline:none}
+textarea{min-height:120px;resize:vertical;line-height:1.55}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--green) 50%),linear-gradient(135deg,var(--green) 50%,transparent 50%);background-position:calc(100% - 20px) 55%,calc(100% - 14px) 55%;background-size:6px 6px;background-repeat:no-repeat}
+select option{background:#111;color:#fff}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
+.chk{display:flex;gap:12px;align-items:flex-start;border:1px dashed rgba(255,255,255,.28);padding:12px 14px;cursor:pointer}
+.chk input{width:20px;height:20px;accent-color:#00ff00;margin-top:2px;flex:none}
+.chk.on{border-color:var(--cyan);background:rgba(0,255,255,.06)}
+.chk b{font-weight:500;color:var(--fg);text-transform:uppercase;letter-spacing:.1em;font-size:.76rem;display:block}
+.err{border:1px solid #ff5a5a;color:#ffb3b3;padding:10px 14px;font-size:.85rem}
+.ok{border:1px solid var(--green);color:var(--green);padding:10px 14px;font-size:.85rem}
+.list{display:flex;flex-direction:column;gap:8px}
+.pick{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;width:100%;background:var(--panel);border:1px solid var(--line);color:var(--fg);font-family:var(--font);font-size:.92rem;font-weight:300;padding:14px 16px;cursor:pointer;letter-spacing:.04em}
+.pick:hover{border-color:var(--green)}
+.pick span.a{color:var(--green)}
+.tag{display:inline-block;font-weight:500;text-transform:uppercase;letter-spacing:.16em;font-size:.58rem;padding:3px 8px;border:1px solid var(--cyan);color:var(--cyan);white-space:nowrap}
+.tag.g{border-color:var(--green);color:var(--green)}
+.tag.w{border-color:#fff;color:#fff}
+.kv{display:grid;grid-template-columns:1fr;gap:10px}
+.kv div{min-width:0}
+.kv small{display:block;font-weight:500;text-transform:uppercase;letter-spacing:.16em;font-size:.6rem;color:var(--cyan);margin-bottom:1px}
+.kv span{color:var(--fg);overflow-wrap:anywhere;white-space:pre-wrap}
+.kv span.none{color:rgba(255,255,255,.35)}
+@media(min-width:520px){.kv.two{grid-template-columns:1fr 1fr}}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.hist{border-left:2px solid var(--line);padding:2px 0 2px 14px;display:flex;flex-direction:column;gap:6px}
+.hist.pri{border-left-color:var(--cyan)}
+.hist .meta{font-size:.74rem;color:var(--muted);letter-spacing:.06em}
+.hist .txt{color:var(--fg);white-space:pre-wrap;overflow-wrap:anywhere}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tabs button{flex:1;min-width:110px}
+.tabs .on{border-color:var(--green);color:var(--green)}
+.back{background:none;border:0;color:var(--muted);font-family:var(--font);font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;cursor:pointer;padding:0;text-align:left}
+.back:hover{color:var(--green)}
+.spin{color:var(--muted);text-align:center;padding:30px 0}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50}
+.dlg{background:#050505;border:1px solid var(--green);box-shadow:0 0 36px rgba(0,255,0,.18);max-width:420px;width:100%;padding:22px 20px;display:flex;flex-direction:column;gap:14px}
+.dlg p{color:var(--fg)}
+.msg{border-left:2px solid var(--line);padding:2px 0 8px 12px;display:flex;flex-direction:column;gap:5px}
+.msg.mine{border-left-color:var(--green)}
+.msg.pri{border-left-color:var(--cyan)}
+.msg .meta{font-size:.74rem;color:var(--muted);letter-spacing:.05em}
+.msg .txt{color:var(--fg);white-space:pre-wrap;overflow-wrap:anywhere}
+.quote{border-left:2px solid var(--cyan);padding:2px 0 2px 10px;font-size:.78rem;color:var(--muted);overflow-wrap:anywhere}
+.chip{font-family:var(--font);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:var(--fg);border:1px solid rgba(255,255,255,.28);padding:8px 12px;cursor:pointer}
+.chip.on{border-color:var(--green);color:var(--green);background:rgba(0,255,0,.07)}
+.chk .small{display:block;text-transform:none;letter-spacing:.02em;font-weight:300}
+.lnk{background:none;border:0;padding:4px 0;color:var(--cyan);font-family:var(--font);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.bar{height:6px;background:rgba(255,255,255,.1)}.bar i{display:block;height:100%;background:var(--green)}
+#nav{position:fixed;left:0;right:0;bottom:0;display:none;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(0,0,0,.96);border-top:1px solid var(--line);z-index:40}
+#nav>div{max-width:640px;margin:0 auto;display:flex;gap:8px}
+#nav .btn{flex:1 1 0;min-width:0;padding:11px 6px;font-size:.6rem;letter-spacing:.12em;line-height:1.25;min-height:44px}
+#nav .btn.nv-new{flex:1.4 1 0}
+#nav .btn.on{border-color:var(--green);color:var(--green)}
+@media(max-width:400px){#nav .btn{font-size:.54rem;letter-spacing:.07em;padding:10px 3px}}
+.thread{display:flex;flex-direction:column;gap:8px}.replies{display:flex;flex-direction:column;gap:8px;margin-left:14px;padding-left:12px;border-left:2px solid var(--green)}.replies .card{padding:12px}.more{align-self:flex-start}
+.rp{border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vis{font-size:.74rem;color:var(--muted);letter-spacing:.04em}
+footer{text-align:center;color:var(--muted);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;padding-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="spin">Carregando…</div></div>
+<div id="nav"></div>
+<script>
+var S = { token: null, nome: '', perfil: '', email: '', atletas: [], alertas: [], tipos: [], todos: false, aba2: 'msg', fix: {}, vi: {}, limite: 40, troca: false, telaMural: false };
+var API_URL = 'COLE_AQUI_O_LINK_DO_APPS_SCRIPT';
+try { var t0 = localStorage.getItem('blc_t'); if (t0) { S.token = t0; S.nome = localStorage.getItem('blc_n') || ''; S.perfil = localStorage.getItem('blc_p') || ''; S.email = localStorage.getItem('blc_e') || ''; } } catch (e) {}
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function $(id) { return document.getElementById(id); }
+var timers = [];
+function pararTimers() { timers.forEach(clearInterval); timers = []; }
+function app(html, semNav) { pararTimers(); S.telaMural = false; S.rp = null; $('app').innerHTML = html; window.scrollTo(0, 0); desenhaNav(!semNav && !!S.token && !S.troca); }
+function desenhaNav(on) {
+  var n = $('nav'); if (!n) return;
+  if (!on) { n.style.display = 'none'; return; }
+  n.style.display = 'block';
+  function b(k, t, fn, extra) { return '<button class="btn' + (S.aba2 === k ? ' on' : '') + '" onclick="' + fn + '">' + t + (extra || '') + '</button>'; }
+  n.innerHTML = '<div>' + b('msg', 'Mensagens', 'mural()', badge(S.mural ? S.mural.paraMimTotal : 0)) + b('atl', 'Atletas', 'atletas()') +
+    '<button class="btn btn-green nv-new" onclick="novaMsg()">+ Nova mensagem</button>' +
+    (S.perfil === 'Admin' ? b('pnl', 'Painel', 'verPainel()') : '') + '</div>';
+}
+
+function dlg(msg, opts) {
+  opts = opts || {};
+  return new Promise(function (resolve) {
+    var o = document.createElement('div');
+    o.className = 'ov';
+    o.innerHTML = '<div class="dlg"><p>' + esc(msg) + '</p>' + (opts.input ? '<input id="dlgi" type="text" placeholder="' + esc(opts.input) + '">' : '') +
+      '<div class="row">' + (opts.cancel === false ? '' : '<button class="btn btn-sm" id="dlgn">Cancelar</button>') + '<button class="btn btn-sm btn-green" id="dlgy">' + esc(opts.ok || 'OK') + '</button></div></div>';
+    document.body.appendChild(o);
+    function fim(v) { document.body.removeChild(o); resolve(v); }
+    o.querySelector('#dlgy').onclick = function () { fim(opts.input ? o.querySelector('#dlgi').value : true); };
+    if (o.querySelector('#dlgn')) o.querySelector('#dlgn').onclick = function () { fim(opts.input ? null : false); };
+  });
+}
+function aviso(msg) { return dlg(msg, { cancel: false }); }
+
+function call(action, payload) {
+  return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: action, t: S.token, p: payload || {} }), redirect: 'follow' })
+    .then(function (resp) { return resp.text(); })
+    .then(function (txt) {
+      var r; try { r = JSON.parse(txt); } catch (e) { throw new Error('Resposta inválida do servidor.'); }
+      if (!r.ok) {
+        if (r.erro === 'SESSAO') { sair(true); throw new Error('Sessão expirada. Entre de novo.'); }
+        throw new Error(r.erro || 'Erro.');
+      }
+      return r;
+    }, function () { throw new Error('Sem conexão com o servidor. Verifique a internet e tente de novo.'); });
+}
+
+function head(right) {
+  return '<div class="top"><div class="brand"><div class="mark"><i></i><i></i><i></i></div><b>BLC</b></div>' + (right || '') + '</div>';
+}
+function userBar() {
+  return '<div class="who"><span class="small muted">' + esc(S.nome) + '</span><button class="btn btn-sm" onclick="sair()">Sair</button></div>';
+}
+
+/* ---------- login ---------- */
+function telaLogin(msg) {
+  app(head() +
+    '<div><div class="eyebrow">Comunicação interna</div><h1>Professores <em style="font-style:normal;color:var(--green)">BLC</em></h1></div>' +
+    '<form class="card" id="f" autocomplete="on">' +
+    (msg ? '<div class="err">' + esc(msg) + '</div>' : '') +
+    '<div><label for="em">E-mail</label><input id="em" type="email" autocomplete="username" inputmode="email" required></div>' +
+    '<div><label for="pw">Senha</label><input id="pw" type="password" autocomplete="current-password" required></div>' +
+    '<button class="btn btn-green" id="bt" type="submit">Entrar</button>' +
+    '<button type="button" class="lnk" onclick="telaEsqueci()">Esqueci minha senha</button></form>' +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+  $('f').onsubmit = function (e) {
+    e.preventDefault();
+    $('bt').disabled = true; $('bt').textContent = 'Entrando…';
+    call('login', { email: $('em').value, senha: $('pw').value }).then(function (r) {
+      S.token = r.token; S.nome = r.nome; S.perfil = r.perfil; S.email = String($('em').value).trim().toLowerCase();
+      try { localStorage.setItem('blc_t', r.token); localStorage.setItem('blc_n', r.nome); localStorage.setItem('blc_p', r.perfil); localStorage.setItem('blc_e', S.email); } catch (e) {}
+      if (r.trocarSenha) telaTroca(); else inicio();
+    }).catch(function (er) { telaLogin(er.message); });
+  };
+}
+
+function telaEsqueci(msg, ok) {
+  app(head() +
+    '<div><div class="eyebrow">Senha</div><h2>Esqueci minha <em>senha</em></h2><p class="muted" style="margin-top:8px">Digite o e-mail cadastrado. Enviamos uma senha temporária para ele, e no próximo acesso você cria uma senha nova.</p></div>' +
+    '<form class="card" id="f">' + (msg ? '<div class="' + (ok ? 'ok' : 'err') + '">' + esc(msg) + '</div>' : '') +
+    '<div><label for="em">E-mail</label><input id="em" type="email" autocomplete="username" inputmode="email" required></div>' +
+    '<button class="btn btn-green" id="bt" type="submit">Enviar senha temporária</button>' +
+    '<button type="button" class="lnk" onclick="telaLogin()">← Voltar ao login</button></form>');
+  $('f').onsubmit = function (e) {
+    e.preventDefault();
+    $('bt').disabled = true; $('bt').textContent = 'Enviando…';
+    call('esqueci', { email: $('em').value }).then(function (r) { telaEsqueci(r.msg, true); }).catch(function (er) { telaEsqueci(er.message); });
+  };
+}
+
+function telaTroca(msg) {
+  S.troca = true;
+  app(head() +
+    '<div><div class="eyebrow">Primeiro acesso</div><h2>Crie a sua <em>senha</em></h2><p class="muted" style="margin-top:8px">A senha padrão só vale uma vez. Escolha uma senha que só você saiba (mínimo 6 caracteres).</p></div>' +
+    '<form class="card" id="f">' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') +
+    '<div><label for="n1">Nova senha</label><input id="n1" type="password" autocomplete="new-password" required></div>' +
+    '<div><label for="n2">Repita a nova senha</label><input id="n2" type="password" autocomplete="new-password" required></div>' +
+    '<button class="btn btn-green" id="bt" type="submit">Salvar senha</button></form>');
+  $('f').onsubmit = function (e) {
+    e.preventDefault();
+    if ($('n1').value !== $('n2').value) { telaTroca('As senhas não conferem.'); return; }
+    $('bt').disabled = true;
+    call('trocarSenha', { nova: $('n1').value }).then(function () { S.troca = false; inicio(); }).catch(function (er) { telaTroca(er.message); });
+  };
+}
+
+function sair(silencioso) {
+  if (S.token && !silencioso) { try { call('logout'); } catch (e) {} }
+  S.token = null; S.nome = ''; S.perfil = ''; S.email = ''; S.troca = false; S.mural = null;
+  try { ['blc_t', 'blc_n', 'blc_p', 'blc_e'].forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {}
+  telaLogin(silencioso ? 'Sessão expirada. Entre de novo.' : '');
+}
+
+/* ---------- mural (tela inicial) ---------- */
+function inicio() { mural(); }
+
+function mural() {
+  S.aba2 = 'msg'; S.atual = null; S.fix = {}; S.vi = {}; S.limite = 40; S.sigMural = '';
+  app(head(userBar()) + '<div class="spin">Carregando mensagens…</div>');
+  S.telaMural = true;
+  carregaMural(true);
+}
+function carregaMural(primeira) {
+  call('mural').then(function (r) {
+    if (!S.telaMural) return;
+    S.mural = r; S.membros = r.membros;
+    var sig = r.total + ':' + r.paraMimTotal + ':' + r.itens.map(function (m) { return m.id + m.vistoPor.length + (m.resolvido ? 'r' : ''); }).join(',');
+    if (!primeira && (S.rp || sig === S.sigMural)) { desenhaNav(true); return; }
+    S.sigMural = sig;
+    desenhaMural(primeira);
+  }).catch(function (e) { if (primeira && S.token) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inicio()">Tentar de novo</button>'); });
+}
+
+/* ---------- conversas: a mensagem raiz e as respostas agrupadas ---------- */
+function fios(lista) {
+  var por = {}, ordem = [], idx = {};
+  lista.forEach(function (m) { idx[m.id] = m; });
+  function raizDe(m) {
+    var n = 0;
+    while (n++ < 30 && m.resposta && idx[m.resposta.id]) m = idx[m.resposta.id];
+    return m.id;
+  }
+  lista.forEach(function (m) {
+    var k = raizDe(m);
+    if (!por[k]) { por[k] = { id: k, itens: [] }; ordem.push(por[k]); }
+    por[k].itens.push(m);
+  });
+  ordem.forEach(function (t) {
+    t.itens.sort(function (a, b) { return a.ts - b.ts; });
+    var r = null;
+    t.itens.forEach(function (m) { if (m.id === t.id) r = m; });
+    t.raiz = r || t.itens[0];
+    t.filhos = t.itens.filter(function (m) { return m !== t.raiz; });
+    t.ts = t.itens[t.itens.length - 1].ts;
+  });
+  ordem.sort(function (a, b) { return b.ts - a.ts; });
+  return ordem;
+}
+function fioHtml(t, hotFn, opts) {
+  opts = opts || {};
+  var topo = muralCard(t.raiz, hotFn(t.raiz), opts);
+  if (!t.filhos.length) return topo;
+  S.abertos = S.abertos || {};
+  var f = t.filhos, vis = f, escondidas = 0;
+  if (f.length > 3 && !S.abertos[t.id]) {
+    vis = f.filter(function (m, i) { return i >= f.length - 3 || (m.paraMim && !S.fix[m.id]); });
+    escondidas = f.length - vis.length;
+  }
+  var fo = { semAtleta: true, filha: true };
+  return '<div class="thread">' + topo + '<div class="replies">' +
+    (escondidas ? '<button class="btn btn-sm more" onclick="fioAbre(\'' + esc(t.id) + '\')">Ver todas as ' + f.length + ' respostas</button>' : '') +
+    (S.abertos[t.id] && f.length > 3 ? '<button class="btn btn-sm more" onclick="fioAbre(\'' + esc(t.id) + '\')">Mostrar só as 3 últimas</button>' : '') +
+    vis.map(function (m) { return muralCard(m, hotFn(m), fo); }).join('') + '</div></div>';
+}
+function fioAbre(id) {
+  S.abertos = S.abertos || {};
+  S.abertos[id] = !S.abertos[id];
+  if (S.atual && S.ficha) desenhaAtleta(S.ficha); else desenhaMural();
+}
+function secaoMural(titulo, cls, lista, hot) {
+  if (!lista.length) return '';
+  return '<section><div class="eyebrow ' + cls + '" style="margin-bottom:10px">' + titulo + ' · ' + lista.length + '</div><div class="list">' +
+    lista.map(function (t) { return fioHtml(t, function (m) { return hot && (m.paraMim || S.fix[m.id]); }); }).join('') + '</div></section>';
+}
+function desenhaMural() {
+  var r = S.mural, y = window.scrollY;
+  var meus = function (m) { return m.paraMim || S.fix[m.id]; };
+  var ts = fios(r.itens);
+  var fm = S.filtro || 'todas';
+  var dirMim = function (m) { return m.email !== S.email && m.mencoes.indexOf(S.email) >= 0; };
+  var dirEq = function (m) { return m.email !== S.email && !m.mencoes.length; };
+  var nMim = ts.filter(function (t) { return t.itens.some(dirMim); }).length;
+  var nEq = ts.filter(function (t) { return t.itens.some(dirEq); }).length;
+  var nTodas = ts.length;
+  if (fm === 'mim') ts = ts.filter(function (t) { return t.itens.some(dirMim); });
+  if (fm === 'equipe') ts = ts.filter(function (t) { return t.itens.some(dirEq); });
+  var g1 = ts.filter(function (t) { return t.itens.some(meus); });
+  var g2 = ts.filter(function (t) { return g1.indexOf(t) < 0 && t.itens.some(function (m) { return m.prioridade && !m.resolvido; }); });
+  var g3 = ts.filter(function (t) { return g1.indexOf(t) < 0 && g2.indexOf(t) < 0; });
+  var mostra = g3.slice(0, S.limite);
+  S.lookup = {};
+  app(head(userBar()) + '<div><div class="eyebrow">Olá, ' + esc(S.nome.split(' ')[0]) + '</div><h2>Mensagens da <em>equipe</em></h2></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    [['todas', 'Todas', nTodas], ['mim', 'Direcionadas a mim', nMim], ['equipe', 'Para toda a equipe', nEq]].map(function (o) {
+      return '<button class="chip' + (fm === o[0] ? ' on' : '') + '" onclick="S.filtro=\'' + o[0] + '\';desenhaMural()">' + o[1] + ' · ' + o[2] + '</button>';
+    }).join('') + '</div>' +
+    (fm === 'mim' ? '<div class="small muted">Só as mensagens em que você foi marcado.</div>' : '') +
+    (fm === 'equipe' ? '<div class="small muted">Mensagens sem ninguém marcado: valem para todos os professores.</div>' : '') +
+    (fm !== 'todas' && !ts.length ? '<div class="card"><div class="muted">Nada por aqui por enquanto.</div></div>' : '') +
+    secaoMural('Para você', '', g1, true) + secaoMural('Prioridades em aberto', 'cy', g2, false) +
+    (mostra.length ? '<section><div class="eyebrow" style="margin-bottom:10px">Recentes</div><div class="list">' + mostra.map(function (t) { return fioHtml(t, function () { return false; }); }).join('') + '</div>' +
+      (g3.length > mostra.length ? '<button class="btn btn-sm" style="margin-top:12px" onclick="S.limite+=40;desenhaMural()">Ver mais antigas</button>' : '') + '</section>' : '') +
+    (r.itens.length ? '' : '<div class="card"><div class="muted">Ainda não há mensagens. Toque em “+ Nova mensagem” para escrever a primeira.</div></div>') +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+  S.telaMural = true;
+  window.scrollTo(0, y);
+  timers.push(setInterval(function () { if (document.visibilityState === 'visible') carregaMural(false); }, 45000));
+  observaVistos();
+}
+
+function muralCard(m, hot, opts) {
+  opts = opts || {};
+  S.lookup = S.lookup || {}; S.lookup[m.id] = m;
+  var minha = m.email === S.email;
+  var aberta = m.prioridade && !m.resolvido;
+  var vis = '';
+  if (m.req && m.req.length) {
+    vis = '<div class="vis">' + (m.vistoPor.length ? 'Visto por ' + m.vistoPor.map(function (v) { return esc(v.nome) + ' ' + esc(v.quando); }).join(' · ') : 'Ninguém viu ainda') +
+      (m.faltam.length ? ' · <span style="color:var(--cyan)">Ainda não viu: ' + m.faltam.map(esc).join(', ') + '</span>' : '') + '</div>';
+  }
+  return '<div class="card' + (hot ? ' hot' : '') + (aberta && !hot ? ' cy' : '') + '" data-id="' + esc(m.id) + '"' + (m.naoVi && !S.vi[m.id] ? ' data-need="1"' : '') + '>' +
+    '<div class="row" style="justify-content:space-between;align-items:center"><span class="small muted">' + esc(m.quando) + '</span><span class="tags">' +
+    (m.prioridade ? '<span class="tag">Prioridade' + (m.resolvido ? ' · resolvida' : '') + '</span>' : '') + '<span class="tag' + (m.tipo === 'Atleta retornando' ? ' g' : ' w') + '">' + esc(m.tipo) + '</span></span></div>' +
+    (opts.semAtleta || opts.filha ? '' : '<h3>' + esc(m.atleta) + '</h3>') + '<div class="small muted">' + esc(minha ? 'Você' : m.professor) + '</div>' +
+    (m.resposta && !opts.filha ? '<div class="quote">↪ ' + esc(m.resposta.professor) + ': ' + esc(m.resposta.texto) + '</div>' : '') +
+    (m.mencoes.length && m.email !== 'sistema@blc' ? '<div class="small" style="color:var(--green)">Para: ' + m.mencoes.map(function (e) { return esc(nomeEmail(e)); }).join(', ') + '</div>' : '') +
+    '<div style="color:var(--fg);white-space:pre-wrap;overflow-wrap:anywhere">' + esc(m.texto) + '</div>' + vis +
+    (m.resolvido ? '<div class="vis">Resolvida em ' + esc(m.resolvido.quando) + ' por ' + esc(m.resolvido.professor) + (m.resolvido.nota ? ': ' + esc(m.resolvido.nota) : '') + '</div>' : '') +
+    '<div class="row"><button class="btn btn-sm btn-line" onclick="responder(\'' + esc(m.id) + '\')">Responder</button>' +
+    (!opts.semAtleta && !opts.filha && m.atletaId ? '<button class="btn btn-sm' + (m.email === 'sistema@blc' ? ' btn-green' : '') + '" onclick="abrir(\'' + esc(m.atletaId) + '\')">Abrir atleta</button>' : '') +
+    (!opts.semAtleta && !opts.filha && !m.atletaId && m.atletasLista && m.atletasLista.length > 1 ? m.atletasLista.map(function (a) { return '<button class="btn btn-sm" onclick="abrir(\'' + esc(a.id) + '\')">' + esc(a.nome.split(' ')[0]) + '</button>'; }).join('') : '') +
+    (aberta ? '<button class="btn btn-sm" onclick="resolver(\'' + esc(m.id) + '\')">Marcar como resolvido</button>' : '') + '</div>' +
+    '<div id="rp_' + esc(m.id) + '"></div></div>';
+}
+
+/* resposta direta no próprio cartão */
+function responder(id) {
+  var m = (S.lookup || {})[id]; if (!m) return;
+  var mesmo = S.rp && S.rp.id === id;
+  if (S.rp) { var velho = $('rp_' + S.rp.id); if (velho) velho.innerHTML = ''; S.rp = null; }
+  if (mesmo) return;
+  S.rp = { id: id, marc: {} };
+  if (m.email && m.email !== S.email) S.rp.marc[m.email] = 1;
+  $('rp_' + id).innerHTML = '<div class="rp"><div class="small muted">Respondendo a ' + esc(m.professor) + '. Quem estiver marcado recebe aviso por e-mail.</div><div class="row" id="rpc"></div>' +
+    '<textarea id="rpt" style="min-height:80px" placeholder="Escreva a resposta"></textarea><div id="rpm"></div>' +
+    '<div class="row"><button class="btn btn-sm btn-green" id="rps" onclick="enviaResp()">Enviar resposta</button><button class="btn btn-sm" onclick="responder(\'' + esc(id) + '\')">Cancelar</button></div></div>';
+  ligaChips('rpc', S.rp.marc);
+  $('rpt').focus();
+}
+function enviaResp() {
+  var rp = S.rp; if (!rp) return;
+  var m = S.lookup[rp.id]; if (!m) return;
+  $('rps').disabled = true; $('rps').textContent = 'Enviando…';
+  call('chatEnviar', { canal: m.canal || m.atletaId || 'GERAL', texto: $('rpt').value, respondeA: m.id, mencoes: Object.keys(rp.marc), prioridade: false }).then(function () {
+    S.rp = null; recarrega();
+  }).catch(function (er) { $('rpm').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; $('rps').disabled = false; $('rps').textContent = 'Enviar resposta'; });
+}
+function recarrega() { if (S.atual) abrir(S.atual); else mural(); }
+
+/* "Visto": a mensagem em que o professor foi marcado conta como vista quando aparece na tela dele */
+function observaVistos() {
+  var els = Array.prototype.filter.call(document.querySelectorAll('[data-need="1"]'), function (e) { return !S.vi[e.getAttribute('data-id')]; });
+  if (!els.length) return;
+  var pend = {}, tm = null;
+  function envia() {
+    var ids = Object.keys(pend); pend = {}; tm = null;
+    if (ids.length) call('muralVisto', { ids: ids }).catch(function () {});
+  }
+  function marca(id) {
+    if (S.vi[id]) return;
+    S.vi[id] = 1; pend[id] = 1;
+    var it = (S.lookup || {})[id];
+    if (it && it.paraMim) {
+      S.fix[id] = 1;
+      if (S.mural) S.mural.paraMimTotal = Math.max(0, S.mural.paraMimTotal - 1);
+    }
+    desenhaNav(true);
+    if (!tm) tm = setTimeout(envia, 1200);
+  }
+  if (!('IntersectionObserver' in window)) { els.forEach(function (e) { marca(e.getAttribute('data-id')); }); return; }
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (en) {
+      if (en.isIntersecting && document.visibilityState === 'visible') { io.unobserve(en.target); marca(en.target.getAttribute('data-id')); }
+    });
+  }, { threshold: 0.25 });
+  els.forEach(function (e) { io.observe(e); });
+}
+
+/* ---------- atletas (busca) ---------- */
+function atletas() {
+  S.aba2 = 'atl'; S.atual = null;
+  app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
+  call('inicio', { todos: S.todos }).then(function (r) {
+    S.atletas = r.atletas; S.alertas = r.alertas; S.tipos = r.tipos;
+    desenhaAtletas();
+  }).catch(function (e) { if (S.token) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="atletas()">Tentar de novo</button>'); });
+}
+
+function desenhaAtletas() {
+  app(head(userBar()) +
+    '<div><div class="eyebrow">Atletas</div><h2>Escolha o <em>atleta</em></h2></div>' +
+    '<div class="card hot"><div><label for="q">Nome do atleta</label><input id="q" type="search" placeholder="Digite para buscar" autocomplete="off"></div>' +
+    '<div id="res" class="list"></div>' +
+    '<label class="chk" style="margin:0;text-transform:none;letter-spacing:.02em"><input type="checkbox" id="tod"' + (S.todos ? ' checked' : '') + '><span class="small">Mostrar também atletas inativos (por exemplo, quem está retornando)</span></label></div>' +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+  $('q').oninput = lista;
+  if ($('tod')) $('tod').onchange = function () { S.todos = $('tod').checked; atletas(); };
+  lista();
+}
+
+function norm(s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+function lista() {
+  var q = norm($('q').value.trim());
+  var l = S.atletas.filter(function (a) { return !q || norm(a.nome).indexOf(q) >= 0; });
+  var tot = l.length;
+  l = l.slice(0, 40);
+  $('res').innerHTML = (l.map(function (a) {
+    return '<button class="pick" onclick="abrir(\'' + esc(a.id) + '\')"><span>' + esc(a.nome) + '</span><span>' +
+      (a.alerta ? '<span class="tag">Prioridade</span> ' : '') + (a.status === 'Inativo' ? '<span class="tag w">Inativo</span> ' : '') + '<span class="a">›</span></span></button>';
+  }).join('') || '<div class="muted small">Nenhum atleta encontrado.</div>') +
+    (tot > 40 ? '<div class="muted small">Mostrando 40 de ' + tot + '. Digite mais letras para filtrar.</div>' : '');
+}
+
+function resolver(id) {
+  dlg('Marcar esta prioridade como resolvida? Você pode deixar uma nota.', { input: 'Nota de resolução (opcional)', ok: 'Resolver' }).then(function (nota) {
+    if (nota === null) return;
+    call('resolver', { id: id, nota: nota }).then(function () { if (S.atual) abrir(S.atual); else inicio(); }).catch(function (e) { aviso(e.message); });
+  });
+}
+
+/* ---------- ficha do atleta ---------- */
+function digits(s) { return String(s || '').replace(/[^0-9]/g, ''); }
+function tel(s) { var d = digits(s); if (!d) return ''; return String(s).charAt(0) === '+' ? d : (d.length <= 11 ? '55' + d : d); }
+function val(v) { return v ? '<span>' + esc(v) + '</span>' : '<span class="none">—</span>'; }
+function kv(l, v) { return '<div><small>' + esc(l) + '</small>' + val(v) + '</div>'; }
+function foneBtns(f) {
+  var t = tel(f); if (!t) return '';
+  return '<div class="row"><a class="btn btn-sm btn-line" href="tel:+' + t + '">Ligar</a><a class="btn btn-sm" target="_blank" rel="noopener" href="https://wa.me/' + t + '">WhatsApp</a></div>';
+}
+
+function abrir(id) {
+  S.atual = id;
+  app(head(userBar()) + '<div class="spin">Abrindo ficha…</div>');
+  call('atleta', { id: id }).then(function (r) { desenhaAtleta(r); }).catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inicio()">Voltar</button>'); });
+}
+
+function histItem(h, mostraAtleta) {
+  return '<div class="hist' + (h.prioridade ? ' pri' : '') + '"><div class="meta">' + esc(h.quando) + ' · ' + esc(h.professor) + ' · ' + esc(h.tipo) +
+    (h.prioridade ? ' · <span style="color:var(--cyan)">PRIORIDADE' + (h.resolvido ? ' (resolvida)' : '') + '</span>' : '') + '</div>' +
+    (mostraAtleta ? '<div style="color:var(--fg)">' + esc(h.atleta) + '</div>' : '') +
+    '<div class="txt">' + esc(h.texto) + '</div>' +
+    (h.resolvido ? '<div class="meta">Resolvida em ' + esc(h.resolvido.quando) + ' por ' + esc(h.resolvido.professor) + (h.resolvido.nota ? ': ' + esc(h.resolvido.nota) : '') + '</div>' : '') + '</div>';
+}
+
+function desenhaAtleta(r) {
+  var f = r.ficha;
+  S.tipos = r.tipos || S.tipos; if (r.membros) S.membros = r.membros;
+  S.lookup = {};
+  var tl = r.linha || [];
+  S.ficha = r;
+  var tf = fios(tl);
+  var abertos = tf.filter(function (t) { return t.itens.some(function (m) { return m.prioridade && !m.resolvido; }); });
+  var resto = tf.filter(function (t) { return abertos.indexOf(t) < 0; });
+  var nf = function () { return false; };
+  var sem = f['Contato emergência'] === 'Sem contato';
+  var atencao = f['PAR-Q positivo'] || f['Alergia/doença'] || f['Limitação física'];
+  var opts = ['Conversa', 'Atleta retornando'].concat(S.tipos).map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('');
+  app(head(userBar()) +
+    '<button class="back" onclick="atletas()">← Outro atleta</button>' +
+    '<div><div class="eyebrow">' + (f['Idade'] ? esc(f['Idade']) + ' anos' : 'Atleta') + (f['Status'] === 'Inativo' ? ' · Inativo' : '') + '</div><h2>' + esc(f['Nome']) + '</h2></div>' +
+
+    '<div class="card cy"><div class="eyebrow cy">Contato de emergência</div>' +
+    (sem ? '<div class="muted">Sem contato de emergência cadastrado.</div>' :
+      '<div class="kv two">' + kv('Nome', f['Contato emergência']) + kv('Telefone', f['Telefone emergência']) + '</div>' + foneBtns(f['Telefone emergência'])) + '</div>' +
+
+    (abertos.length ? '<section><div class="eyebrow cy" style="margin-bottom:10px">Prioridades em aberto · ' + abertos.length + '</div><div class="list">' + abertos.map(function (t) { return fioHtml(t, nf, { semAtleta: true }); }).join('') + '</div></section>' : '') +
+
+    '<div class="card"><div class="eyebrow">Saúde</div>' +
+    (atencao ? '<div><span class="tag">Atenção</span></div>' : '') +
+    '<div class="kv">' + kv('PAR-Q: respostas "Sim"', f['PAR-Q positivo'] || 'Nenhuma') + kv('Limitação física', f['Limitação física']) + kv('Alergia / doença', f['Alergia/doença']) + kv('Observações de saúde', f['Obs. saúde']) +
+    '<div class="kv two">' + kv('Último exame físico', f['Último exame']) + kv('Federação', f['Federação']) + '</div></div></div>' +
+
+    '<form class="card hot" id="fi"><div class="eyebrow">Nova mensagem sobre este atleta</div>' +
+    '<div id="msg"></div>' +
+    '<div><label for="tp">Tipo</label><select id="tp">' + opts + '</select></div>' +
+    '<div><label>Marcar colegas</label><div class="row" id="fchips"></div></div>' +
+    '<div><label for="tx">Mensagem</label><textarea id="tx" placeholder="Conversa, observação ou intervenção realizada com o atleta"></textarea></div>' +
+    '<label class="chk" id="pc"><input type="checkbox" id="pr"><span><b>Marcar como prioridade</b><span class="small muted">Aparece em destaque para todos os professores até ser resolvida.</span></span></label>' +
+    '<button class="btn btn-green" id="bs" type="submit">Enviar</button>' +
+    '<p class="small muted">Todos os professores veem este registro no mural e na ficha; quem você marcar recebe aviso por e-mail. Data, hora e o seu nome são gravados automaticamente. Registros não podem ser editados nem apagados; para corrigir, faça um novo registro.</p></form>' +
+
+    '<section><div class="eyebrow" style="margin-bottom:10px">Histórico do atleta · ' + tl.length + '</div>' +
+    (resto.length ? '<div class="list">' + resto.map(function (t) { return fioHtml(t, nf, { semAtleta: true }); }).join('') + '</div>' : '<div class="card"><div class="muted small">Nenhum registro ainda.</div></div>') + '</section>' +
+
+    '<div class="card"><div class="eyebrow">Treino e provas</div><div class="kv">' +
+    kv('Objetivo', f['Objetivo']) + kv('Provas', f['Provas']) + kv('Tipo de prova', f['Tipo de prova']) +
+    '<div class="kv two">' + kv('Modalidades', f['Modalidades']) + kv('Treina com o grupo', f['Treina com grupo']) + kv('Melhor modalidade', f['Melhor modalidade']) + kv('Pior modalidade', f['Pior modalidade']) + '</div>' +
+    kv('Comentários do atleta', f['Comentários']) + '</div></div>' +
+
+    '<div class="card"><div class="eyebrow">Contato</div><div class="kv two">' + kv('Telefone', f['Telefone']) + kv('E-mail', f['E-mail']) + kv('Instagram', f['Instagram']) + kv('Nascimento', f['Nascimento']) + kv('Camisa', f['Camisa']) + kv('Autoriza imagem', f['Autoriza imagem']) + '</div>' + foneBtns(f['Telefone']) + '</div>' +
+
+    '<div class="card"><div class="eyebrow">Presença nos treinos da equipe</div>' +
+    (r.presencas.length ? r.presencas.slice(0, 15).map(function (p) { return '<div class="hist"><div class="meta">' + esc(p.data) + ' · início ' + esc(p.inicio) + '</div><div class="txt">' + esc(p.local) + ' · ' + esc(p.duracao) + ' min' + (p.modalidade ? ' · ' + esc(p.modalidade) : '') + '</div></div>'; }).join('') :
+      '<div class="muted small">Ainda sem presenças importadas. Elas aparecem aqui quando os arquivos FIT forem processados.</div>') + '</div>' +
+    (S.perfil === 'Admin' ? '<button class="btn btn-sm" onclick="statusAtleta(\'' + esc(f['ID']) + '\',' + (f['Status'] === 'Inativo') + ')">' + (f['Status'] === 'Inativo' ? 'Reativar atleta' : 'Marcar atleta como inativo') + '</button>' : '') +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+
+  S.fm = {}; ligaChips('fchips', S.fm);
+  $('pr').onchange = function () { $('pc').className = 'chk' + ($('pr').checked ? ' on' : ''); };
+  $('fi').onsubmit = function (e) {
+    e.preventDefault();
+    var tp = $('tp').value, txt = $('tx').value, men = Object.keys(S.fm), pr = $('pr').checked;
+    $('bs').disabled = true; $('bs').textContent = 'Enviando…';
+    var p = (tp === 'Conversa' || tp === 'Atleta retornando') ? call('chatEnviar', { atletas: [f['ID']], tipo: tp, texto: txt, mencoes: men, prioridade: pr })
+                              : call('registrar', { atletaId: f['ID'], tipo: tp, texto: txt, mencoes: men, prioridade: pr });
+    p.then(function () { abrir(f['ID']); }).catch(function (er) { $('msg').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; $('bs').disabled = false; $('bs').textContent = 'Enviar'; });
+  };
+  observaVistos();
+}
+
+function statusAtleta(id, ativar) {
+  call('statusAtleta', { id: id, ativo: ativar }).then(function () { abrir(id); }).catch(function (e) { aviso(e.message); });
+}
+
+/* ---------- marcar colegas e nova mensagem ---------- */
+function ligaChips(elId, obj) {
+  var box = $(elId); if (!box) return;
+  box.innerHTML = (S.membros || []).filter(function (m) { return m.nome !== S.nome; }).map(function (m) {
+    return '<button type="button" class="chip' + (obj[m.email] ? ' on' : '') + '" data-e="' + esc(m.email) + '">' + esc(m.nome.split(' ')[0]) + '</button>';
+  }).join('') || '<span class="small muted">—</span>';
+  Array.prototype.forEach.call(box.querySelectorAll('.chip'), function (b) {
+    b.onclick = function () {
+      var e = b.getAttribute('data-e');
+      if (obj[e]) { delete obj[e]; b.className = 'chip'; } else { obj[e] = 1; b.className = 'chip on'; }
+    };
+  });
+}
+
+function novaMsg() {
+  S.aba2 = 'nova';
+  S.nm = { atl: [], marc: {} };
+  var passos = [call('inicio', { todos: true }).then(function (r) { S.atletasTodos = r.atletas; S.tipos = r.tipos; })];
+  if (!S.membros) passos.push(call('membros').then(function (r) { S.membros = r.membros; }));
+  Promise.all(passos).then(desenhaNova).catch(function (e) { aviso(e.message); });
+}
+function desenhaNova() {
+  app(head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Equipe</div><h2>Nova <em>mensagem</em></h2></div>' +
+    '<form class="card hot" id="fn"><div id="nmsg"></div>' +
+    '<div><label for="nq">Sobre quais atletas? (opcional)</label><div id="nsel"></div><input id="nq" type="search" placeholder="Digite o nome para buscar (inclui inativos) ou deixe em branco para a equipe toda" autocomplete="off"><div id="nres" class="list" style="margin-top:8px"></div></div>' +
+    '<div><label for="ntp">Tipo</label><select id="ntp"></select><div id="nhint" class="small muted" style="margin-top:6px"></div></div>' +
+    '<div><label>Marcar colegas</label><div class="row" id="nchips"></div><p class="small muted" style="margin-top:6px">Todos veem a mensagem. Quem você marcar recebe também um aviso por e-mail.</p></div>' +
+    '<div><label for="nt">Mensagem</label><textarea id="nt" placeholder="Escreva a mensagem"></textarea></div>' +
+    '<label class="chk" id="npc"><input type="checkbox" id="np"><span><b>Prioridade</b><span class="small muted">Fica em destaque para todos até ser resolvida. Sem ninguém marcado, todos recebem e-mail.</span></span></label>' +
+    '<button class="btn btn-green" id="ns" type="submit">Enviar</button></form>');
+  ligaChips('nchips', S.nm.marc);
+  desenhaTipos();
+  $('ntp').onchange = dicaTipo;
+  $('nq').oninput = function () {
+    var q = norm($('nq').value.trim());
+    if (!q) { $('nres').innerHTML = ''; return; }
+    $('nres').innerHTML = (S.atletasTodos || []).filter(function (a) { return S.nm.atl.indexOf(a.id) < 0 && norm(a.nome).indexOf(q) >= 0; }).slice(0, 8).map(function (a) {
+      return '<button type="button" class="pick" data-a="' + esc(a.id) + '"><span>' + esc(a.nome) + '</span><span>' + (a.status === 'Inativo' ? '<span class="tag w">Inativo</span> ' : '') + '<span class="a">+</span></span></button>';
+    }).join('') || '<div class="muted small">Nenhum atleta encontrado.</div>';
+    Array.prototype.forEach.call($('nres').querySelectorAll('.pick'), function (b) {
+      b.onclick = function () { S.nm.atl.push(b.getAttribute('data-a')); $('nq').value = ''; $('nres').innerHTML = ''; desenhaTipos(); };
+    });
+  };
+  $('np').onchange = function () { $('npc').className = 'chk' + ($('np').checked ? ' on' : ''); };
+  $('fn').onsubmit = function (e) {
+    e.preventDefault();
+    var tp = $('ntp').value, txt = $('nt').value, men = Object.keys(S.nm.marc), pr = $('np').checked;
+    $('ns').disabled = true; $('ns').textContent = 'Enviando…';
+    var p = (tp === 'Conversa' || tp === 'Atleta retornando') ? call('chatEnviar', { atletas: S.nm.atl, tipo: tp, texto: txt, mencoes: men, prioridade: pr })
+                              : call('registrar', { atletaId: S.nm.atl[0], tipo: tp, texto: txt, mencoes: men, prioridade: pr });
+    p.then(function () { mural(); }).catch(function (er) { $('nmsg').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; $('ns').disabled = false; $('ns').textContent = 'Enviar'; });
+  };
+}
+function tiraAtleta(id) { S.nm.atl = S.nm.atl.filter(function (x) { return x !== id; }); desenhaTipos(); }
+function dicaTipo() {
+  $('nhint').textContent = $('ntp').value === 'Atleta retornando' ? 'Todos os professores recebem aviso por e-mail. Se o atleta estiver inativo, ele volta para a lista de ativos.' : '';
+}
+function desenhaTipos() {
+  var sel = S.nm.atl.map(function (id) { return (S.atletasTodos || []).filter(function (x) { return x.id === id; })[0]; }).filter(Boolean);
+  $('nsel').innerHTML = sel.length ? '<div class="row" style="margin-bottom:8px;align-items:center">' + sel.map(function (a) {
+    return '<span class="tag g">' + esc(a.nome) + (a.status === 'Inativo' ? ' · inativo' : '') + ' <button type="button" class="lnk" style="padding:0 0 0 6px" aria-label="Tirar ' + esc(a.nome) + '" onclick="tiraAtleta(\'' + esc(a.id) + '\')">✕</button></span>';
+  }).join('') + '</div>' : '';
+  var atual = $('ntp').value;
+  var tipos = ['Conversa'];
+  if (sel.length >= 1) tipos.push('Atleta retornando');
+  if (sel.length === 1) tipos = tipos.concat(S.tipos);
+  $('ntp').innerHTML = tipos.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('');
+  if (tipos.indexOf(atual) >= 0) $('ntp').value = atual;
+  dicaTipo();
+}
+
+/* ---------- chat da equipe ---------- */
+function badge(n) { return n ? ' <span class="tag g">' + n + '</span>' : ''; }
+function minTxt(m) {
+  if (m === null || m === undefined) return '—';
+  if (m < 60) return m + ' min';
+  if (m < 1440) return Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
+  return Math.round(m / 1440) + ' d';
+}
+function nomeEmail(e) {
+  var m = (S.membros || []).filter(function (x) { return x.email === e; })[0];
+  return m ? m.nome.split(' ')[0] : e;
+}
+
+/* ---------- painel de engajamento (head coach) ---------- */
+function isoDia(d) { var p = function (n) { return (n < 10 ? '0' : '') + n; }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+function painelEng() {
+  var hoje = new Date(), ini = new Date(hoje.getTime() - 29 * 86400000);
+  app(head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Painel</h2></div>' + painelTabs('eng') +
+    '<form class="card" id="fe"><div class="row"><div style="flex:1;min-width:130px"><label for="ed">De</label><input id="ed" type="date" value="' + isoDia(ini) + '"></div>' +
+    '<div style="flex:1;min-width:130px"><label for="eu">Até</label><input id="eu" type="date" value="' + isoDia(hoje) + '"></div></div>' +
+    '<button class="btn btn-green" type="submit">Atualizar</button>' +
+    '<button class="btn btn-sm btn-line" type="button" onclick="atualizaRel()">Atualizar relatório na planilha</button>' +
+    '<p class="small muted">A aba “Relatorio” da planilha traz, por professor e por mês: vezes que abriu o app (total e média por semana), mensagens escritas e recebidas, marcações vistas e os dias da semana em que mais abre. É atualizada sozinha todo dia; o botão força agora.</p></form><div id="er"><div class="spin">Carregando…</div></div>');
+  $('fe').onsubmit = function (e) { e.preventDefault(); carregaEng(); };
+  carregaEng();
+}
+function atualizaRel() { call('relatorio').then(function (r) { aviso('Relatório atualizado na aba “Relatorio” da planilha (' + r.linhas + ' linhas).'); }).catch(function (e) { aviso(e.message); }); }
+function linha(l, v) { return '<div><small>' + esc(l) + '</small><span>' + esc(v) + '</span></div>'; }
+function carregaEng() {
+  $('er').innerHTML = '<div class="spin">Carregando…</div>';
+  call('chatPainel', { de: $('ed').value, ate: $('eu').value }).then(function (r) {
+    var mx = Math.max.apply(null, r.professores.map(function (p) { return p.enviadas + p.intervencoes; }).concat([1]));
+    $('er').innerHTML = '<div class="eyebrow">' + r.totalMensagens + ' mensagem(ns) no período</div><div class="list">' + r.professores.map(function (p) {
+      var at = p.enviadas + p.intervencoes;
+      return '<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(p.nome) + '</h3><span class="tag' + (p.perfil === 'Admin' ? ' w' : ' g') + '">' + esc(p.perfil) + '</span></div>' +
+        '<div class="bar"><i style="width:' + Math.round(100 * at / mx) + '%"></i></div><div class="small muted">' + at + ' interação(ões): ' + p.enviadas + ' no chat + ' + p.intervencoes + ' intervenção(ões)</div>' +
+        '<div class="kv two">' + linha('Mensagens no geral', p.geral) + linha('Mensagens em atletas', p.emAtletas) + linha('Respostas dadas', p.respostas) + linha('Atletas atendidos', p.atletas) +
+        linha('Dias ativos', p.diasAtivos) + linha('Prioridades abertas/resolvidas', p.prioridades + ' / ' + p.resolvidas) +
+        linha('Marcações e prioridades (recebidas / vistas / respondidas)', p.mencoesRecebidas + ' / ' + p.mencoesLidas + ' / ' + p.mencoesRespondidas) +
+        linha('Tempo médio até ver', minTxt(p.minLer)) + linha('Tempo médio para responder', minTxt(p.minResponder)) + '</div>' +
+        '<div class="small muted">Último acesso: ' + (esc(p.acesso) || 'nunca') + '</div></div>';
+    }).join('') + '</div>' +
+      '<div class="card"><div class="eyebrow">Atletas sem nenhum registro no período · ' + r.semRegistro.total + '</div>' +
+      (r.semRegistro.total ? '<div class="small" style="color:var(--fg)">' + r.semRegistro.nomes.map(esc).join(' · ') + (r.semRegistro.total > r.semRegistro.nomes.length ? ' …' : '') + '</div>' : '<div class="small muted">Todos os atletas ativos tiveram registro.</div>') + '</div>';
+  }).catch(function (e) { $('er').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+}
+/* ---------- presença dos professores (só head coach) ---------- */
+function dataBr(iso) { var p = String(iso).split('-'); return p[2] + '/' + p[1]; }
+/* Índice de envolvimento: pesos e metas (a soma dos pesos é 100). Ajuste aqui se quiser mudar a conta. */
+var PESO = { comp: 30, pont: 30, leit: 10, esc: 20, acc: 20 };
+var META_ESC_SEMANA = 2;   // mensagens/registros escritos por semana = 100% de escrita
+var META_ACESSO_SEMANA = 3; // abrir o app em pelo menos 3 dias por semana = 100% de acesso
+var BANDAS = [[80, 'Muito bom', 'g'], [60, 'Bom', 'g'], [40, 'Precisa melhorar', ''], [0, 'Atenção', 'w']];
+var PV = { de: '', ate: '', sel: null, d: null, envs: [] };
+function lim01(x) { return Math.max(0, Math.min(1, x)); }
+function banda(n) { for (var i = 0; i < BANDAS.length; i++) if (n >= BANDAS[i][0]) return BANDAS[i]; return BANDAS[3]; }
+function indiceEnv(pr, ev, dias) {
+  var c = [];
+  if (pr && pr.previstos) {
+    c.push({ k: 'Comparecimento', p: PESO.comp, v: pr.registrados / pr.previstos });
+    c.push({ k: 'Pontualidade', p: PESO.pont, v: pr.registrados ? pr.no_horario / pr.registrados : null });
+  }
+  c.push({ k: 'Leitura', p: PESO.leit, v: ev.devidas ? ev.vistas / ev.devidas : null });
+  c.push({ k: 'Escrita', p: PESO.esc, v: lim01(ev.escritas / (META_ESC_SEMANA * dias / 7)) });
+  c.push({ k: 'Acesso ao app', p: PESO.acc, v: lim01(ev.diasAbriu / (META_ACESSO_SEMANA * dias / 7)) });
+  var soma = 0, tot = 0;
+  c.forEach(function (x) { if (x.v !== null) { soma += x.p * x.v; tot += x.p; } });
+  return { nota: tot ? Math.round(100 * soma / tot) : null, comp: c, tot: tot };
+}
+/* Recalcula a presença do professor só com os dias do período escolhido. Atraso = minutos que passaram da tolerância. */
+function atrasoEf(x, ref) { return x.atraso; }
+function limHora(ref, tol) { var b = ref.split(':'), t = +b[0] * 60 + +b[1] + tol; return ('0' + Math.floor(t / 60)).slice(-2) + ':' + ('0' + (t % 60)).slice(-2); }
+function presPeriodo(pr) {
+  var out = { previstos: 0, registrados: 0, no_horario: 0, exc: 0, locais: [] };
+  pr.locais.forEach(function (l) {
+    var tol = l.tol_min || PV.d.tolerancia_min;
+    var dias = l.dias.filter(function (x) { return x.data >= PV.de && x.data <= PV.ate; });
+    var reg = dias.filter(function (x) { return !x.sem_dado; });
+    var nh = reg.filter(function (x) { return atrasoEf(x, l.ref) <= tol; }).length;
+    var exc = reg.reduce(function (a, x) { return a + Math.max(0, atrasoEf(x, l.ref) - tol); }, 0);
+    var at = reg.reduce(function (a, x) { return a + x.ativo; }, 0);
+    out.locais.push({ l: l, tol: tol, dias: dias, previstos: dias.length, registrados: reg.length, no_horario: nh, exc: exc, ativo: reg.length ? at / reg.length : null });
+    out.previstos += dias.length; out.registrados += reg.length; out.no_horario += nh; out.exc += exc;
+  });
+  return out;
+}
+function feedbackEnv(ag, ev, dias, ix) {
+  var c = {}, f = [];
+  ix.comp.forEach(function (x) { c[x.k] = x.v; });
+  function pc(v) { return Math.round(100 * v) + '%'; }
+  function add(v, txt, ok, mel) { f.push(v >= 0.85 ? { s: 'bom', t: txt } : (v >= 0.6 ? { s: 'ok', t: txt + ok } : { s: 'mel', t: txt + mel })); }
+  if (c['Comparecimento'] != null) add(c['Comparecimento'], 'Esteve em ' + ag.registrados + ' de ' + ag.previstos + ' treinos previstos (' + pc(c['Comparecimento']) + ').',
+    ' Dá para chegar mais perto de 100%.', ' Se houve falta combinada ou problema com o relógio, vale conversar: o índice só enxerga o que o arquivo do treino registrou.');
+  if (c['Pontualidade'] != null) {
+    var atras = ag.registrados - ag.no_horario;
+    add(c['Pontualidade'], 'Começou no horário em ' + ag.no_horario + ' de ' + ag.registrados + ' treinos (' + pc(c['Pontualidade']) + ').', '',
+      (atras ? ' Quando atrasou, foi em média ' + Math.round(ag.exc / atras) + ' min além da tolerância.' : '') + ' Começar o treino até o limite de cada local resolve a maior parte.');
+  }
+  if (c['Leitura'] != null) add(c['Leitura'], 'Leu ' + ev.vistas + ' de ' + ev.devidas + ' mensagens da equipe (' + pc(c['Leitura']) + ').', ' Dá para melhorar.', ' Abrir o mural todo dia evita deixar prioridades paradas.');
+  add(c['Escrita'], 'Escreveu ' + ev.escritas + ' registro(s); a meta do período é ' + Math.max(1, Math.round(META_ESC_SEMANA * dias / 7)) + '.', ' Dá para escrever um pouco mais.',
+    ' Registrar o que observa nos treinos e nos atletas ajuda os colegas e o histórico.');
+  add(c['Acesso ao app'], 'Abriu o app em ' + ev.diasAbriu + ' de ' + dias + ' dias (meta: ' + Math.max(1, Math.round(META_ACESSO_SEMANA * dias / 7)) + ', ou seja, ' + META_ACESSO_SEMANA + ' por semana).', ' Dá para abrir com mais frequência.',
+    ' Abrir o app todo dia, antes ou depois do treino, mantém tudo em dia.');
+  if (ev.medianaMin !== null && ev.medianaMin !== undefined) {
+    if (ev.medianaMin <= 240) f.push({ s: 'bom', t: 'Costuma ver as mensagens em ' + minTxt(ev.medianaMin) + '.' });
+    else if (ev.medianaMin > 1440) f.push({ s: 'mel', t: 'Costuma levar ' + minTxt(ev.medianaMin) + ' para ver uma mensagem; prioridades ficam esperando.' });
+  }
+  var melhor = null;
+  ix.comp.forEach(function (x) { if (x.v !== null) { var g = 100 * x.p * (1 - x.v) / ix.tot; if (!melhor || g > melhor.g) melhor = { k: x.k, g: g }; } });
+  var resumo = melhor && melhor.g >= 3 ? 'Onde mais ganha pontos: ' + melhor.k + ' (até +' + Math.round(melhor.g) + ' no índice).' : 'Sem ponto fraco relevante neste período.';
+  return { itens: f, resumo: resumo };
+}
+function diasPeriodo() {
+  var hoje = isoDia(new Date()), fim = PV.ate > hoje ? hoje : PV.ate;
+  return Math.max(1, Math.round((new Date(fim + 'T00:00:00') - new Date(PV.de + 'T00:00:00')) / 86400000) + 1);
+}
+function cabPres() {
+  return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Presença e <em>envolvimento</em></h2></div>' + painelTabs('pres');
+}
+function painelPres() {
+  app(cabPres() + '<div class="spin">Carregando…</div>');
+  call('presenca').then(function (r) {
+    if (r.vazio) { app(cabPres() + '<div class="card"><div class="muted">Ainda não há dados de presença. Eles aparecem aqui depois que os arquivos FIT forem processados.</div></div>'); return; }
+    PV.d = r.dados; PV.sel = null; PV.de = r.dados.janela.de; PV.ate = r.dados.janela.ate;
+    return pvCarrega();
+  }).catch(function (e) { app(cabPres() + '<div class="err">' + esc(e.message) + '</div>'); });
+}
+function pvCarrega() {
+  return call('envolvimento', { de: PV.de, ate: PV.ate }).then(function (ev) {
+    PV.envs = ev.professores.filter(function (e) { return e.perfil !== 'Admin'; });
+    desenhaPres();
+  });
+}
+function pvAplica() {
+  var de = $('pvd').value, ate = $('pvu').value;
+  if (!de || !ate || de > ate) { aviso('Escolha um período válido: a data inicial não pode ser depois da final.'); return; }
+  PV.de = de; PV.ate = ate;
+  pvCarrega().catch(function (e) { aviso(e.message); });
+}
+function pvPeriodo(n) {
+  var j = PV.d.janela;
+  PV.ate = j.ate;
+  if (!n) PV.de = j.de;
+  else { var d = new Date(j.ate + 'T00:00:00'); d.setDate(d.getDate() - (n - 1)); PV.de = isoDia(d) < j.de ? j.de : isoDia(d); }
+  pvCarrega().catch(function (e) { aviso(e.message); });
+}
+function pvSel(k) { PV.sel = k || null; desenhaPres(); }
+function pvPorEmail() {
+  var m = {};
+  PV.d.professores.forEach(function (p) { if (p.email) m[p.email] = p; });
+  return m;
+}
+function cardProf(e, porEmail, dias) {
+  var prRaw = porEmail[e.email] || null;
+  var ag = prRaw ? presPeriodo(prRaw) : null;
+  var ix = indiceEnv(ag, e, dias);
+  var bd = ix.nota === null ? null : banda(ix.nota);
+  var fb = feedbackEnv(ag || { registrados: 0, previstos: 0, no_horario: 0, exc: 0 }, e, dias, ix);
+  function pct(a, b) { return b ? Math.round(100 * a / b) + '%' : '—'; }
+  var rows = '';
+  if (ag && ag.previstos) {
+    rows += linha('Treinos com ele presente', ag.registrados + ' de ' + ag.previstos + ' (' + pct(ag.registrados, ag.previstos) + ')') +
+      linha('Começou no horário', ag.registrados ? ag.no_horario + ' de ' + ag.registrados + ' (' + pct(ag.no_horario, ag.registrados) + ')' : '—') +
+      linha('Atraso médio (além da tolerância)', ag.registrados ? String(Math.round(10 * ag.exc / ag.registrados) / 10).replace('.', ',') + ' min' : '—');
+  }
+  rows += linha('Escreveu no app', e.escritas + ' (' + e.respostas + ' respostas)') +
+    linha('Leu o que era para ler', e.devidas ? e.vistas + ' de ' + e.devidas + ' (' + pct(e.vistas, e.devidas) + ')' : '—') +
+    linha('Tempo típico para ler', minTxt(e.medianaMin)) +
+    linha('Dias que abriu o app', e.diasAbriu + ' de ' + dias);
+  var aviso1 = !prRaw ? 'Sem grade de treinos nem arquivos FIT cadastrados: o índice usa só o app.' : (!ag.previstos ? 'Nenhum treino previsto nos arquivos para este período: o índice usa só o app.' : '');
+  var sim = { bom: ['Bom', 'g'], ok: ['Atenção', ''], mel: ['Melhorar', 'w'] };
+  var fbH = fb.itens.map(function (x) {
+    return '<div class="hist' + (x.s === 'mel' ? ' pri' : '') + '"><div class="txt"><span class="tag ' + sim[x.s][1] + '">' + sim[x.s][0] + '</span> ' + esc(x.t) + '</div></div>';
+  }).join('');
+  var det = ag && ag.previstos ? ag.locais.filter(function (z) { return z.previstos; }).map(function (z) {
+    var l = z.l;
+    return '<div class="card"><div class="eyebrow cy">' + esc(l.local) + ' · ' + esc(l.modal) + ' · ' + l.dias_semana.map(esc).join('/') + ' · ref. ' + esc(l.ref) + ' · tolerância ' + z.tol + ' min</div>' +
+      '<div class="kv two">' + linha('Treinos com ele presente', z.registrados + ' de ' + z.previstos) + linha('Começou no horário', z.registrados ? z.no_horario + ' de ' + z.registrados : '—') +
+      linha('Atraso médio (além da tolerância)', z.registrados ? String(Math.round(10 * z.exc / z.registrados) / 10).replace('.', ',') + ' min' : '—') +
+      linha('Tempo médio com os atletas', z.ativo === null ? '—' : Math.round(z.ativo) + ' min') + '</div>' +
+      '<div class="list">' + z.dias.map(function (x) {
+        if (x.sem_dado) return '<div class="hist"><div class="meta">' + dataBr(x.data) + ' · ' + esc(x.dow) + '</div><div class="txt muted">sem dado</div></div>';
+        var ae = atrasoEf(x, l.ref), ok = ae <= z.tol, ex = Math.round(ae - z.tol);
+        return '<div class="hist' + (ok ? '' : ' pri') + '"><div class="meta">' + dataBr(x.data) + ' · ' + esc(x.dow) + '</div><div class="txt">' + 'Começou às ' + esc(x.inicio) + ' ' +
+          (ok ? '<span class="tag g">no horário</span>' : '<span class="tag">' + ex + ' min de atraso</span>') +
+          '<div class="small muted">' + 'limite ' + limHora(l.ref, z.tol) + ' (' + esc(l.ref) + ' + ' + z.tol + ' min)' + (x.chegada ? ' · a chegada (' + esc(x.chegada) + ') não entra na conta' : '') + ' · ' + Math.round(x.ativo) + ' min com os atletas</div>' +
+          (x.obs && !x.chegada ? '<div class="small muted">' + esc(x.obs) + '</div>' : '') + '</div></div>';
+      }).join('') + '</div></div>';
+  }).join('') : '';
+  return '<section class="list"><div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(e.nome) + '</h3>' +
+    '<span class="tag ' + (bd ? bd[2] : 'w') + '">Índice ' + (ix.nota === null ? '—' : ix.nota) + (bd ? ' · ' + bd[1] : '') + '</span></div>' +
+    '<div class="bar"><i style="width:' + (ix.nota || 0) + '%"></i></div>' +
+    (aviso1 ? '<div class="small muted">' + aviso1 + '</div>' : '') +
+    '<div class="kv two">' + rows + '</div>' +
+    '<div class="small muted">' + ix.comp.map(function (x) { return esc(x.k) + ' ' + (x.v === null ? '—' : Math.round(100 * x.v)); }).join(' · ') + '</div>' +
+    '<div class="eyebrow" style="margin-top:6px">Feedback</div><div class="small" style="color:var(--fg)">' + esc(fb.resumo) + '</div><div class="list">' + fbH + '</div></div>' + det + '</section>';
+}
+function desenhaPres() {
+  var d = PV.d, dias = diasPeriodo(), porEmail = pvPorEmail(), j = d.janela;
+  var ctrl = '<div class="card"><div class="eyebrow">Período</div><div class="row"><div style="flex:1;min-width:130px"><label for="pvd">De</label><input id="pvd" type="date" value="' + PV.de + '"></div>' +
+    '<div style="flex:1;min-width:130px"><label for="pvu">Até</label><input id="pvu" type="date" value="' + PV.ate + '"></div></div>' +
+    '<div class="row"><button class="btn btn-sm btn-green" onclick="pvAplica()">Aplicar período</button>' +
+    '<button class="chip" onclick="pvPeriodo(0)">Todo o período</button><button class="chip" onclick="pvPeriodo(7)">Últimos 7 dias</button><button class="chip" onclick="pvPeriodo(14)">Últimos 14 dias</button></div>' +
+    '<div class="small muted">Arquivos de treino de ' + dataBr(j.de) + ' a ' + dataBr(j.ate) + ' (atualizados em ' + esc(d.gerado_em) + '). Fora desse intervalo só o uso do app entra na conta. O que vale é a hora em que o treino começou (relógio ligado no ponto), não a hora da chegada.</div></div>';
+  var pick = '<div class="card hot"><div class="eyebrow">Quem mostrar</div><div class="small muted">Nada aparece antes de você escolher. Escolha um professor para mostrar só a análise dele.</div><div class="row">' +
+    PV.envs.map(function (e) { return '<button class="chip' + (PV.sel === e.email ? ' on' : '') + '" onclick="pvSel(\'' + esc(e.email) + '\')">' + esc(e.nome.split(' ')[0]) + '</button>'; }).join('') +
+    '<button class="chip' + (PV.sel === 'todos' ? ' on' : '') + '" onclick="pvSel(\'todos\')">Todos</button>' +
+    (PV.sel ? '<button class="chip" onclick="pvSel(null)">Ocultar</button>' : '') + '</div></div>';
+  var res = '';
+  if (PV.sel) {
+    var lista = PV.envs.filter(function (e) { return PV.sel === 'todos' || e.email === PV.sel; });
+    res = '<div class="eyebrow">' + dataBr(PV.de) + ' a ' + dataBr(PV.ate) + ' · ' + dias + ' dia(s)</div>' + lista.map(function (e) { return cardProf(e, porEmail, dias); }).join('') +
+      '<div class="card"><div class="eyebrow">Como ler o índice</div><div class="small muted">' +
+      '80 a 100: muito bom. 60 a 79: bom, com alguns pontos a melhorar. 40 a 59: precisa melhorar. Abaixo de 40: atenção. ' +
+      'Cada item vai de 0 a 100 e entra com um peso (total 100): comparecimento ' + PESO.comp + ' (treinos com o professor ÷ treinos previstos), pontualidade ' + PESO.pont +
+      ' (treinos no horário ÷ treinos com ele presente; tolerância de ' + d.tolerancia_min + ' min na corrida e ' + d.tolerancia_ciclismo + ' min no ciclismo; só o que passa da tolerância é atraso), ' +
+      'leitura ' + PESO.leit + ' (mensagens lidas ÷ mensagens que deveria ler), escrita ' + PESO.esc + ' (100 = ' + META_ESC_SEMANA + ' mensagens ou registros por semana) e acesso ao app ' + PESO.acc +
+      ' (100 = abrir o app em pelo menos ' + META_ACESSO_SEMANA + ' dias por semana). Se faltar um dado, aquele item sai da conta e os demais se reajustam. ' +
+      'É um termômetro para conversar, não uma nota definitiva: “sem dado” quer dizer que não há arquivo do treino, não que o professor faltou.</div></div>';
+  }
+  app(cabPres() + ctrl + pick + res + '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+}
+function painelTabs(aba) {
+  function b(k, t) { return '<button class="btn btn-sm' + (aba === k ? ' on' : '') + '" onclick="painel(\'' + k + '\')">' + t + '</button>'; }
+  return '<div class="tabs">' + b('hist', 'Histórico') + b('eng', 'Engajamento') + b('pres', 'Presença') + b('prof', 'Professores') + '</div>';
+}
+
+/* ---------- painel do head coach ---------- */
+function verPainel() { S.aba2 = 'pnl'; painel('hist'); }
+
+function painel(aba) {
+  S.aba = aba; S.aba2 = 'pnl';
+  if (aba === 'eng') { painelEng(); return; }
+  if (aba === 'pres') { painelPres(); return; }
+  var tabs = painelTabs(aba);
+  if (aba === 'prof') {
+    app(head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Painel</h2></div>' + tabs + '<div class="spin">Carregando…</div>');
+    call('professores').then(function (r) {
+      app(head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Painel</h2></div>' + tabs +
+        '<div class="list">' + r.lista.map(function (p) {
+          return '<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(p.nome) + '</h3>' + (p.ativo ? '<span class="tag g">Ativo</span>' : '<span class="tag w">Desativado</span>') + '</div>' +
+            '<div class="small muted">' + esc(p.email) + ' · ' + esc(p.perfil) + '</div>' +
+            '<div class="small muted">Último acesso: ' + (esc(p.acesso) || 'nunca') + (p.trocar ? ' · aguardando troca de senha' : '') + '</div>' +
+            '<div class="row"><button class="btn btn-sm" onclick="ativaProf(\'' + esc(p.email) + '\',' + (!p.ativo) + ')">' + (p.ativo ? 'Desativar' : 'Reativar') + '</button>' +
+            '<button class="btn btn-sm btn-line" onclick="resetProf(\'' + esc(p.email) + '\')">Resetar senha</button></div></div>';
+        }).join('') + '</div>' +
+        '<form class="card hot" id="np"><div class="eyebrow">Novo professor</div><div id="nm"></div><div><label for="pn">Nome</label><input id="pn" type="text"></div><div><label for="pe">E-mail</label><input id="pe" type="email"></div>' +
+        '<button class="btn btn-green" type="submit">Cadastrar</button><p class="small muted">Senha inicial: 123456. No primeiro acesso o professor cria a própria senha.</p></form>');
+      $('np').onsubmit = function (e) {
+        e.preventDefault();
+        call('novoProfessor', { nome: $('pn').value, email: $('pe').value }).then(function () { painel('prof'); }).catch(function (er) { $('nm').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; });
+      };
+    }).catch(function (e) { aviso(e.message); });
+    return;
+  }
+  app(head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Painel</h2></div>' + tabs +
+    '<form class="card" id="fh"><div><label for="hp">Professor (e-mail)</label><input id="hp" type="text" placeholder="todos"></div>' +
+    '<div><label for="ha">Atleta</label><input id="ha" type="text" placeholder="todos"></div>' +
+    '<div class="row"><div style="flex:1;min-width:130px"><label for="hd">De</label><input id="hd" type="date"></div><div style="flex:1;min-width:130px"><label for="hu">Até</label><input id="hu" type="date"></div></div>' +
+    '<label class="chk" style="margin:0"><input type="checkbox" id="hx"><span class="small">Só prioridades</span></label>' +
+    '<button class="btn btn-green" type="submit">Filtrar</button></form><div id="hr"><div class="spin">Carregando…</div></div>');
+  $('fh').onsubmit = function (e) { e.preventDefault(); carregaHist(); };
+  carregaHist();
+}
+function carregaHist() {
+  $('hr').innerHTML = '<div class="spin">Carregando…</div>';
+  call('historico', { professor: $('hp').value.trim(), atleta: $('ha').value.trim(), de: $('hd').value, ate: $('hu').value, soPrioridade: $('hx').checked }).then(function (r) {
+    $('hr').innerHTML = '<div class="card"><div class="eyebrow">' + r.total + ' registro(s)' + (r.total > 300 ? ' · mostrando os 300 mais recentes' : '') + '</div>' +
+      (r.itens.length ? r.itens.map(function (h) { return histItem(h, true); }).join('') : '<div class="muted small">Nada encontrado.</div>') + '</div>';
+  }).catch(function (e) { $('hr').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+}
+function ativaProf(email, ativo) { call('ativarProfessor', { email: email, ativo: ativo }).then(function () { painel('prof'); }).catch(function (e) { aviso(e.message); }); }
+function resetProf(email) {
+  dlg('Resetar a senha deste professor para 123456? Ele terá de criar uma nova no próximo acesso.', { ok: 'Resetar' }).then(function (sim) {
+    if (!sim) return;
+    call('resetarSenha', { email: email }).then(function () { painel('prof'); return aviso('Senha resetada para 123456.'); }).catch(function (e) { aviso(e.message); });
+  });
+}
+
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState !== 'visible' || !S.token) return;
+  call('abriu').catch(function () {});
+  if (S.telaMural) carregaMural(false);
+});
+if (S.token) { call('abriu').catch(function () {}); inicio(); } else telaLogin();
+if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); }); }
+</script>
+</body>
+</html>

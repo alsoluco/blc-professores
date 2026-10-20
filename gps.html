@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLC · Teste de localização</title>
+<style>body{margin:0;background:#000;color:#fff;font:300 16px/1.6 Montserrat,system-ui,sans-serif;padding:24px}
+h1{font-weight:200;letter-spacing:.12em;text-transform:uppercase;font-size:1.3rem}
+button{background:#00ff00;color:#000;border:0;font:600 .9rem system-ui;letter-spacing:.14em;text-transform:uppercase;padding:16px 22px;cursor:pointer;width:100%}
+pre{white-space:pre-wrap;border:1px solid rgba(255,255,255,.2);padding:14px;color:#00ffff}</style></head>
+<body><h1>Teste de localização</h1>
+<p>Toque no botão, permita a localização e me envie o que aparecer abaixo.</p>
+<button id="b">Ver minha localização</button><pre id="o">Aguardando…</pre>
+<script>
+document.getElementById('b').onclick=function(){
+  var o=document.getElementById('o'); o.textContent='Buscando… (pode levar até 20 s)';
+  if(!navigator.geolocation){o.textContent='Este navegador não oferece localização.';return}
+  navigator.geolocation.getCurrentPosition(function(p){
+    o.textContent='OK\nLatitude: '+p.coords.latitude.toFixed(6)+'\nLongitude: '+p.coords.longitude.toFixed(6)+'\nPrecisão: ±'+Math.round(p.coords.accuracy)+' m\nHora do aparelho: '+new Date(p.timestamp).toLocaleString('pt-BR')+'\nInstalado como app: '+((window.matchMedia('(display-mode: standalone)').matches||navigator.standalone)?'sim':'não');
+  },function(e){
+    o.textContent='Não foi possível ('+e.code+'): '+({1:'permissão negada. Em Ajustes, libere a localização para este navegador/app.',2:'sinal de localização indisponível.',3:'tempo esgotado.'}[e.code]||e.message);
+  },{enableHighAccuracy:true,timeout:20000,maximumAge:0});
+};
+</script></body></html>
