@@ -114,7 +114,7 @@ footer{text-align:center;color:var(--muted);font-size:.68rem;letter-spacing:.16e
 <div id="nav"></div>
 <script>
 var S = { token: null, nome: '', perfil: '', email: '', atletas: [], alertas: [], tipos: [], todos: false, aba2: 'msg', fix: {}, vi: {}, limite: 40, troca: false, telaMural: false };
-var API_URL = 'COLE_AQUI_O_LINK_DO_APPS_SCRIPT';
+var API_URL = 'https://script.google.com/macros/s/AKfycbxOuRyzjdQlgKXVNYe5nawePStDPTUTBtOr4p2gD69tuUmZq8lct15tpcwomj8dAZctcw/exec';
 try { var t0 = localStorage.getItem('blc_t'); if (t0) { S.token = t0; S.nome = localStorage.getItem('blc_n') || ''; S.perfil = localStorage.getItem('blc_p') || ''; S.email = localStorage.getItem('blc_e') || ''; } } catch (e) {}
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
