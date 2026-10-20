@@ -415,7 +415,7 @@ function observaVistos() {
 function atletas() {
   S.aba2 = 'atl'; S.atual = null;
   app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
-  call('inicio', { todos: S.todos }).then(function (r) {
+  call('inicio', { todos: true }).then(function (r) {
     S.atletas = r.atletas; S.alertas = r.alertas; S.tipos = r.tipos;
     desenhaAtletas();
   }).catch(function (e) { if (S.token) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="atletas()">Tentar de novo</button>'); });
@@ -426,17 +426,25 @@ function desenhaAtletas() {
     '<div><div class="eyebrow">Atletas</div><h2>Escolha o <em>atleta</em></h2></div>' +
     '<div class="card hot"><div><label for="q">Nome do atleta</label><input id="q" type="search" placeholder="Digite para buscar" autocomplete="off"></div>' +
     '<div id="res" class="list"></div>' +
-    '<label class="chk" style="margin:0;text-transform:none;letter-spacing:.02em"><input type="checkbox" id="tod"' + (S.todos ? ' checked' : '') + '><span class="small">Mostrar também atletas inativos (por exemplo, quem está retornando)</span></label></div>' +
+    '<div class="row" style="gap:6px;flex-wrap:wrap">' + [['ativos','Ativos'],['inativos','Inativos'],['todos','Todos']].map(function (f) {
+      return '<button type="button" class="btn btn-sm' + ((S.filtro || 'ativos') === f[0] ? ' btn-green' : '') + '" onclick="S.filtro=\'' + f[0] + '\';desenhaAtletas()">' + f[1] + '</button>'; }).join('') + '</div>' +
+    (S.perfil === 'Admin' ? '<button type="button" class="btn btn-sm" onclick="importarForm()">Cadastrar atletas que faltam (formulário)</button>' : '') + '</div>' +
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
   $('q').oninput = lista;
-  if ($('tod')) $('tod').onchange = function () { S.todos = $('tod').checked; atletas(); };
   lista();
 }
 
+function importarForm() {
+  dlg('Cadastrar todos os respondentes do formulário que ainda não estão no app? Quem respondeu desde 01/04/2026 entra como ativo; os mais antigos entram como inativos.', { ok: 'Cadastrar' }).then(function (v) {
+    if (!v) return;
+    call('importarForm', {}).then(function (r) { aviso(r.novos + ' atletas cadastrados (' + r.ativos + ' ativos, ' + r.inativos + ' inativos).'); atletas(); }).catch(function (e) { aviso(e.message); });
+  });
+}
 function norm(s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 function lista() {
   var q = norm($('q').value.trim());
-  var l = S.atletas.filter(function (a) { return !q || norm(a.nome).indexOf(q) >= 0; });
+  var fl = S.filtro || 'ativos';
+  var l = S.atletas.filter(function (a) { return (fl === 'todos' || (fl === 'inativos') === (a.status === 'Inativo')) && (!q || norm(a.nome).indexOf(q) >= 0); });
   var tot = l.length;
   l = l.slice(0, 40);
   $('res').innerHTML = (l.map(function (a) {
