@@ -161,6 +161,7 @@ function menuAtualiza() {
   var provas = it('Provas da BLC', 'listaProvas()', /^prova/.test(S.aba2 || ''));
   o.innerHTML = '<div class="dbg" onclick="menuFecha()"></div><nav class="dpn" aria-label="Menu">' +
     '<div class="dtop"><div class="brand"><div class="mark"><i></i><i></i><i></i></div><b>BLC</b></div><button type="button" class="btn btn-sm" onclick="menuFecha()" aria-label="Fechar menu">Fechar</button></div>' +
+    '<button type="button" class="btn btn-green" onclick="menuFecha();cheguei()">\ud83d\udccd Cheguei</button>' +
     it('Mensagens', 'mural()', S.aba2 === 'msg', badge(S.mural ? S.mural.paraMimTotal : 0)) +
     it('Atletas', 'atletas()', S.aba2 === 'atl') +
     '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
@@ -896,6 +897,42 @@ function painelTabs(aba) {
 /* ---------- painel do head coach ---------- */
 
 /* ---------- provas da BLC (lista) ---------- */
+/* ---------- Cheguei: presen\u00e7a por localiza\u00e7\u00e3o ---------- */
+function cheguei() {
+  S.aba2 = 'cheguei';
+  function lista(r) {
+    var tit = r.admin ? '\u00daltimos 7 dias (todos os professores)' : 'Suas chegadas de hoje';
+    return '<div class="small muted" style="margin-top:8px">' + tit + '</div><div class="list">' + (r.itens.length ? r.itens.map(function (i) {
+      return '<div class="card"><div class="top"><b>' + (r.admin ? esc(i.professor) + ' \u00b7 ' : '') + esc(i.local) + '</b><span class="tag ' + (i.dentro ? 'g' : '') + '">' + (i.dentro ? 'No local' : 'Fora do local') + '</span></div>' +
+        '<div class="small muted">' + esc(i.quando) + (i.dentro ? '' : ' \u00b7 a ' + esc(i.distancia) + ' m') + '</div></div>';
+    }).join('') : '<div class="muted small">Nenhuma chegada registrada.</div>') + '</div>';
+  }
+  app(head(userBar()) + '<div><div class="eyebrow">Presen\u00e7a</div><h2>Cheguei <em>no treino</em></h2></div>' +
+    '<div class="small muted">Toque no bot\u00e3o quando chegar ao local (Lagoa, Posto 6 ou APCC). O app l\u00ea a localiza\u00e7\u00e3o do celular e registra data, hora e local. Se voc\u00ea estiver a mais de 150 m, a chegada \u00e9 registrada como "fora do local".</div>' +
+    '<button type="button" class="btn btn-green" id="chgb" onclick="chegueiEnvia()">Cheguei</button><div id="chgm"></div><div id="chgl"><div class="spin">Carregando\u2026</div></div>' +
+    '<footer>BLC Assessoria Esportiva \u00b7 Rio de Janeiro</footer>');
+  call('chegadas', { dias: 7 }).then(function (r) { if ($('chgl')) $('chgl').innerHTML = lista(r); S.chgLista = lista; })
+    .catch(function (e) { if ($('chgl')) $('chgl').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+}
+function chegueiEnvia() {
+  var b = $('chgb'), m = $('chgm');
+  if (!navigator.geolocation) { aviso('Este aparelho n\u00e3o permite ler a localiza\u00e7\u00e3o.'); return; }
+  b.disabled = true; m.innerHTML = '<div class="spin">Pegando a sua localiza\u00e7\u00e3o\u2026</div>';
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    call('cheguei', { lat: pos.coords.latitude, lng: pos.coords.longitude, precisao: pos.coords.accuracy }).then(function (r) {
+      b.disabled = false;
+      m.innerHTML = '<div class="card"><b>' + (r.dentro ? 'Chegada registrada' : 'Registrada como fora do local') + '</b><div class="small muted">' + esc(r.local) + ' \u00b7 ' + esc(r.quando) + (r.dentro ? '' : ' \u00b7 voc\u00ea est\u00e1 a ' + esc(r.distancia) + ' m') + '</div></div>';
+      cheguei2();
+    }).catch(function (e) { b.disabled = false; m.innerHTML = ''; aviso(e.message); });
+  }, function (err) {
+    b.disabled = false; m.innerHTML = '';
+    aviso(err && err.code === 1 ? 'A localiza\u00e7\u00e3o est\u00e1 bloqueada. Permita o acesso \u00e0 localiza\u00e7\u00e3o para este app nas configura\u00e7\u00f5es do celular e tente de novo.' : 'N\u00e3o consegui pegar a localiza\u00e7\u00e3o. V\u00e1 para um lugar aberto e tente de novo.');
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+}
+function cheguei2() {
+  call('chegadas', { dias: 7 }).then(function (r) { if ($('chgl') && S.chgLista) $('chgl').innerHTML = S.chgLista(r); }).catch(function () {});
+}
+
 function listaProvas() {
   S.aba2 = 'provas'; S.atual = null; S.insc = null;
   function desenha() {
