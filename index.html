@@ -966,7 +966,7 @@ function cvFone(t) { var d = String(t || '').replace(/\D/g, ''); if (d.length < 
 function cvAtl(id) { return S.cv.atletas.filter(function (a) { return a.id === id; })[0]; }
 function desenhaConvidar() {
   var r = S.cv;
-  var txt = $('cvt') ? $('cvt').value : cvTextoPadrao(r.prova);
+  var txt = $('cvt') ? $('cvt').value : '';
   app(head(userBar()) + '<button class="back" onclick="inscritos(\'' + esc(r.prova.id) + '\')">← Inscritos</button>' +
     '<div><div class="eyebrow">Convite</div><h2>' + esc(r.prova.nome) + ' <em>' + esc(r.prova.data) + '</em></h2></div>' +
     '<div class="card"><div class="small muted">Atletas ativos que ainda não preencheram o formulário. Busque pelo nome e toque para selecionar.</div>' +
@@ -974,8 +974,10 @@ function desenhaConvidar() {
     '<div class="tags"><button type="button" class="btn btn-sm" onclick="cvTodosVer()">Mostrar todos</button><button type="button" class="btn btn-sm" onclick="S.cvSel={};cvLista()">Limpar seleção</button></div>' +
     '<div class="list" id="cvres"></div></div>' +
     '<div class="card"><div class="eyebrow cy" id="cvsn"></div><div class="list" id="cvsel"></div></div>' +
-    '<div class="card"><label for="cvt">Mensagem (e-mail e WhatsApp)</label><textarea id="cvt" rows="6" maxlength="1500">' + esc(txt) + '</textarea>' +
-    '<div class="small muted">No e-mail, o link do formulário entra no fim e a mensagem começa com "Olá, nome". No WhatsApp, o texto e o link já vão prontos na conversa.</div>' +
+    '<div class="card"><div class="eyebrow cy">Mensagem do convite</div><div class="small" style="border-left:2px solid var(--green);padding-left:12px">' + esc(cvTextoPadrao(r.prova)) + '</div>' +
+    '<div class="small muted">Esse convite sempre vai no e-mail e no WhatsApp, com o link do formulário. Se quiser, acrescente um recado:</div>' +
+    '<textarea id="cvt" rows="3" maxlength="600" placeholder="Recado extra (opcional)">' + esc(txt) + '</textarea>' +
+    '<div class="eyebrow cy" id="cvpara"></div><div class="small" id="cvparal"></div>' +
     '<button type="button" class="btn btn-green" id="cvb" onclick="cvEnvia()"></button></div>');
   cvLista();
 }
@@ -999,16 +1001,27 @@ function cvLista() {
 }
 function cvTodosVer() { S.cvAll = !S.cvAll; $('cvq').value = ''; cvLista(); }
 function cvToggle(id) { if (S.cvSel[id]) delete S.cvSel[id]; else S.cvSel[id] = 1; cvLista(); }
+function cvMsg() { var x = ($('cvt').value || '').trim(); return cvTextoPadrao(S.cv.prova) + (x ? '\n\n' + x : ''); }
 function cvZap(id) {
   var a = cvAtl(id); if (!a) return;
-  var t = ($('cvt').value || '').trim(), link = S.cv.prova.link;
+  var t = cvMsg(), link = S.cv.prova.link;
   var msg = 'Olá, ' + String(a.nome).split(' ')[0] + '! ' + t + (t.indexOf(link) < 0 ? '\n\nFormulário de inscrição: ' + link : '');
   window.open('https://wa.me/' + cvFone(a.telefone) + '?text=' + encodeURIComponent(msg), '_blank');
 }
 function cvComEmail() { return Object.keys(S.cvSel).filter(function (id) { var a = cvAtl(id); return a && a.email; }); }
-function cvConta() { var n = cvComEmail().length, b = $('cvb'); if (b) { b.textContent = n ? 'Enviar e-mail para ' + n + (n === 1 ? ' atleta' : ' atletas') : 'Selecione atletas com e-mail'; b.disabled = !n; } }
+function cvConta() {
+  var com = cvComEmail(), tot = Object.keys(S.cvSel).length, b = $('cvb');
+  var nomes = function (l) { return l.map(function (id) { var a = cvAtl(id); return a ? esc(a.nome) : ''; }).join(', '); };
+  var sem = Object.keys(S.cvSel).filter(function (id) { return com.indexOf(id) < 0; });
+  if ($('cvpara')) {
+    $('cvpara').textContent = tot ? 'O e-mail vai para (' + com.length + ')' : 'Nenhum atleta selecionado';
+    $('cvparal').innerHTML = (com.length ? nomes(com) : (tot ? '' : 'Busque e toque nos nomes acima para selecionar.')) +
+      (sem.length ? '<div class="muted" style="margin-top:6px">Sem e-mail (use o ícone do WhatsApp): ' + nomes(sem) + '</div>' : '');
+  }
+  if (b) { b.textContent = com.length ? 'Enviar e-mail para ' + com.length + (com.length === 1 ? ' atleta' : ' atletas') : (tot ? 'Os selecionados não têm e-mail' : 'Selecione atletas para enviar'); b.disabled = !com.length; }
+}
 function cvEnvia() {
-  var ids = cvComEmail(), texto = $('cvt').value, sem = Object.keys(S.cvSel).length - ids.length;
+  var ids = cvComEmail(), texto = cvMsg(), sem = Object.keys(S.cvSel).length - ids.length;
   if (!ids.length) return;
   dlg('Enviar este e-mail para ' + ids.length + (ids.length === 1 ? ' atleta' : ' atletas') + '?' + (sem ? ' (' + sem + ' sem e-mail não recebe.)' : '') + ' O envio não pode ser desfeito.', { ok: 'Enviar' }).then(function (v) {
     if (!v) return;
