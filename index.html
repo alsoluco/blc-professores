@@ -902,6 +902,7 @@ function listaProvas() {
     var pv = S.provas || [];
     var html = head(userBar()) + '<div><div class="eyebrow">Calend\u00e1rio</div><h2>Provas <em>da BLC</em></h2></div>' +
       '<div class="small muted">Toque numa prova para ver quem j\u00e1 est\u00e1 inscrito e, se voc\u00ea \u00e9 o head coach, incluir ou convidar atletas.</div>' +
+      (S.perfil === 'Admin' ? '<button type="button" class="btn btn-green" onclick="provaForm()">+ Incluir prova</button>' : '') +
       '<div class="list">' + (pv.map(function (p) {
         var forms = p.modo === 'forms';
         return '<div class="card insrow" style="cursor:pointer" onclick="inscritos(\'' + esc(p.id) + '\')"><div class="top"><b>' + esc(p.nome) + '</b><span class="tag g">' + esc(String(p.data)) + '</span></div>' +
@@ -912,6 +913,28 @@ function listaProvas() {
     if (S.aba2 === 'provas') app(html);
   }
   if (S.provas === undefined || S.provasFrescas !== true) { desenha(); carregaProvas(function () { S.provasFrescas = true; desenha(); }); } else desenha();
+}
+
+function provaForm() {
+  S.aba2 = 'provas';
+  function f(id, rot, ph, tipo) { return '<label class="small muted" for="' + id + '">' + rot + '</label><input id="' + id + '" type="' + (tipo || 'text') + '" placeholder="' + ph + '" autocomplete="off">'; }
+  app(head(userBar()) + '<button class="back" onclick="listaProvas()">\u2190 Provas da BLC</button><div><div class="eyebrow">Calend\u00e1rio</div><h2>Incluir <em>prova</em></h2></div>' +
+    '<div class="card">' + f('pfn', 'Nome da prova', 'Ex.: Maratona de Floripa') + f('pfd', 'Data', 'dd/mm/aaaa (ou 27 a 30/05/2027)') + f('pfl', 'Local (opcional)', 'Cidade, dist\u00e2ncias...') +
+    f('pfk', 'Link da prova (opcional)', 'https://...', 'url') + f('pfi', 'Como se inscrever (opcional)', 'Ex.: Pelo site, com o cupom BLC10') +
+    '<div class="small muted">A prova entra com lista manual: depois voc\u00ea inclui os atletas inscritos e pode convidar os demais.</div>' +
+    '<button type="button" class="btn btn-green" id="pfb" onclick="provaSalva()">Salvar prova</button></div>');
+}
+function provaSalva() {
+  var b = $('pfb'); b.disabled = true;
+  call('provaAdd', { nome: $('pfn').value, data: $('pfd').value, local: $('pfl').value, link: $('pfk').value, inscricao: $('pfi').value })
+    .then(function (r) { S.provasFrescas = false; carregaProvas(function () { inscritos(r.id); }); })
+    .catch(function (e) { b.disabled = false; aviso(e.message); });
+}
+function provaOculta(id) {
+  dlg('Tirar esta prova da lista? Os dados continuam na planilha.', { cancel: true }).then(function (ok) {
+    if (!ok) return;
+    call('provaRem', { id: id }).then(function () { S.provasFrescas = false; carregaProvas(listaProvas); }).catch(function (e) { aviso(e.message); });
+  });
 }
 
 /* ---------- inscritos em provas ---------- */
@@ -980,7 +1003,7 @@ function desenhaPart() {
     (p.local ? '<div class="small muted">' + esc(p.local) + '</div>' : '') +
     (p.inscricao ? '<div class="small muted">Inscrição: ' + esc(p.inscricao) + '</div>' : '') +
     (p.linkProva ? '<div><a class="lnk" href="' + esc(p.linkProva) + '" target="_blank" rel="noopener">Abrir página da prova</a></div>' : '') +
-    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(p.id) + '\')">Convidar quem ainda não vai participar</button>' : '') + '</div>' +
+    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(p.id) + '\')">Convidar quem ainda não vai participar</button> <button type="button" class="btn btn-sm" onclick="provaOculta(\'' + esc(p.id) + '\')">Tirar da lista</button>' : '') + '</div>' +
     (r.admin ? '<div class="card"><div class="eyebrow cy">Adicionar participante</div><div class="small muted">Busque o atleta pelo nome e toque para incluir na lista desta prova.</div>' +
       '<input id="ptq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="ptBusca()"><div class="list" id="ptres"></div></div>' : '') +
     '<div class="list">' + (r.participantes.map(function (x) {
