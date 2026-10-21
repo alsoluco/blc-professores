@@ -904,7 +904,7 @@ function inscritos(id) {
   var pv = S.provas || [];
   var p = pv.filter(function (x) { return x.id === id; })[0] || pv[0];
   if (!p) { app(head(userBar()) + '<div><div class="eyebrow">Provas</div><h2>Inscritos</h2></div><div class="card"><div class="muted">Nenhuma prova aberta no momento.</div></div>'); return; }
-  S.aba2 = 'prova' + p.id; S.atual = null; S.fp = S.fp || 'todos';
+  S.aba2 = 'prova' + p.id; S.atual = null; S.fp = S.fp || 'todos'; S.insc = null;
   app(head(userBar()) + '<div class="spin">Carregando inscritos…</div>');
   carregaInscritos(p.id, true);
 }
@@ -912,6 +912,7 @@ function carregaInscritos(id, primeira) {
   call('inscritos', { id: id }).then(function (r) {
     if (S.aba2 !== 'prova' + id) return;
     S.insc = r;
+    if (r.participantes) { desenhaPart(); if (r.admin && !S.ptAtl) ptCarrega(); return; }
     desenhaInscritos(primeira);
     if (r.pendentes > 0 && !r.ocrDesligado) setTimeout(function () { if (S.aba2 === 'prova' + id) carregaInscritos(id, false); }, 600);
   }).catch(function (e) { if (S.aba2 === 'prova' + id) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Tentar de novo</button>'); });
@@ -951,6 +952,52 @@ function desenhaInscritos(primeira) {
   if (primeira) app(html); else { var y = window.scrollY; $('app').innerHTML = html; window.scrollTo(0, y); }
 }
 
+/* ---------- provas com lista manual (sem formulário) ---------- */
+function ptCarrega() {
+  call('inicio', { todos: true }).then(function (r) { S.ptAtl = r.atletas || []; if (S.insc && S.insc.participantes && $('ptq')) ptBusca(); }).catch(function () {});
+}
+function desenhaPart() {
+  var r = S.insc, p = r.prova, n = r.participantes.length;
+  var html = head(userBar()) +
+    '<div><div class="eyebrow">Participantes</div><h2>' + esc(p.nome) + ' <em>' + esc(p.data) + '</em></h2></div>' +
+    '<div class="card"><div class="tags"><span class="tag g">' + n + (n === 1 ? ' participante' : ' participantes') + '</span></div>' +
+    (p.local ? '<div class="small muted">' + esc(p.local) + '</div>' : '') +
+    (p.inscricao ? '<div class="small muted">Inscrição: ' + esc(p.inscricao) + '</div>' : '') +
+    (p.linkProva ? '<div><a class="lnk" href="' + esc(p.linkProva) + '" target="_blank" rel="noopener">Abrir página da prova</a></div>' : '') +
+    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(p.id) + '\')">Convidar quem ainda não vai participar</button>' : '') + '</div>' +
+    (r.admin ? '<div class="card"><div class="eyebrow cy">Adicionar participante</div><div class="small muted">Busque o atleta pelo nome e toque para incluir na lista desta prova.</div>' +
+      '<input id="ptq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="ptBusca()"><div class="list" id="ptres"></div></div>' : '') +
+    '<div class="list">' + (r.participantes.map(function (x) {
+      return '<div class="card insrow"><div class="top"><b>' + esc(x.nome) + '</b>' + (r.admin ? '<button type="button" class="btn btn-sm" onclick="ptRem(\'' + esc(x.id) + '\')">Remover</button>' : '') + '</div>' +
+        '<div class="small muted">Incluído em ' + esc(x.quando) + '.</div></div>';
+    }).join('') || '<div class="muted small">Ninguém na lista ainda.</div>') + '</div>' +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>';
+  app(html);
+  if (r.admin) ptBusca();
+}
+function ptBusca() {
+  var o = $('ptres'); if (!o) return;
+  var q = cvNorm($('ptq') ? $('ptq').value : '').trim();
+  if (!q) { o.innerHTML = '<div class="muted small">' + (S.ptAtl ? 'Digite o nome para buscar.' : 'Carregando atletas…') + '</div>'; return; }
+  var ja = {}; S.insc.participantes.forEach(function (x) { ja[x.id] = 1; });
+  var res = (S.ptAtl || []).filter(function (a) { return !ja[a.id] && cvNorm(a.nome).indexOf(q) >= 0; });
+  var tot = res.length; res = res.slice(0, 20);
+  o.innerHTML = res.map(function (a) {
+    return '<div class="chk cvr" onclick="ptAdd(\'' + esc(a.id) + '\')"><span><b>+ ' + esc(a.nome) + '</b>' + (a.status === 'Inativo' ? '<span class="small">atleta inativo</span>' : '') + '</span></div>';
+  }).join('') + (tot > 20 ? '<div class="muted small">Mostrando 20 de ' + tot + '. Digite mais letras.</div>' : '') || '<div class="muted small">Nenhum atleta encontrado (ou já está na lista).</div>';
+}
+function ptAdd(id) {
+  var pid = S.insc.prova.id;
+  call('partAdd', { id: pid, ids: [id] }).then(function () { inscritos(pid); }).catch(function (e) { aviso(e.message); });
+}
+function ptRem(id) {
+  var a = S.insc.participantes.filter(function (x) { return x.id === id; })[0], pid = S.insc.prova.id;
+  dlg('Remover ' + (a ? a.nome : 'este atleta') + ' da lista desta prova?', { ok: 'Remover' }).then(function (v) {
+    if (!v) return;
+    call('partRem', { id: pid, atletaId: id }).then(function () { inscritos(pid); }).catch(function (e) { aviso(e.message); });
+  });
+}
+
 /* ---------- convite por e-mail (head coach) ---------- */
 function convidar(id) {
   app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
@@ -959,7 +1006,8 @@ function convidar(id) {
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Voltar</button>'); });
 }
 function cvTextoPadrao(p) {
-  return 'Estão abertas as inscrições para o ' + p.nome + ', no dia ' + p.data + '. Para se inscrever, preencha o formulário e anexe o comprovante de pagamento até ' + p.prazo + '. Quem não anexar o comprovante até o prazo fica sem a inscrição confirmada.';
+  if (p.modo === 'forms') return 'Estão abertas as inscrições para o ' + p.nome + ', no dia ' + p.data + '. Para se inscrever, preencha o formulário e anexe o comprovante de pagamento até ' + p.prazo + '. Quem não anexar o comprovante até o prazo fica sem a inscrição confirmada.';
+  return 'Você está convidado(a) a participar do ' + p.nome + ', no dia ' + p.data + (p.local ? ' (' + p.local + ')' : '') + '. Faça a sua inscrição e venha com a equipe BLC!' + (p.inscricao ? ' Inscrição: ' + p.inscricao + '.' : '');
 }
 function cvNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 function cvFone(t) { var d = String(t || '').replace(/\D/g, ''); if (d.length < 10) return ''; if (d.length <= 11) d = '55' + d; return d; }
@@ -969,13 +1017,13 @@ function desenhaConvidar() {
   var txt = $('cvt') ? $('cvt').value : '';
   app(head(userBar()) + '<button class="back" onclick="inscritos(\'' + esc(r.prova.id) + '\')">← Inscritos</button>' +
     '<div><div class="eyebrow">Convite</div><h2>' + esc(r.prova.nome) + ' <em>' + esc(r.prova.data) + '</em></h2></div>' +
-    '<div class="card"><div class="small muted">Atletas ativos que ainda não preencheram o formulário. Busque pelo nome e toque para selecionar.</div>' +
+    '<div class="card"><div class="small muted">Atletas ativos que ainda não estão na lista desta prova. Busque pelo nome e toque para selecionar.</div>' +
     '<input id="cvq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="cvLista()">' +
     '<div class="tags"><button type="button" class="btn btn-sm" onclick="cvTodosVer()">Mostrar todos</button><button type="button" class="btn btn-sm" onclick="S.cvSel={};cvLista()">Limpar seleção</button></div>' +
     '<div class="list" id="cvres"></div></div>' +
     '<div class="card"><div class="eyebrow cy" id="cvsn"></div><div class="list" id="cvsel"></div></div>' +
     '<div class="card"><div class="eyebrow cy">Mensagem do convite</div><div class="small" style="border-left:2px solid var(--green);padding-left:12px">' + esc(cvTextoPadrao(r.prova)) + '</div>' +
-    '<div class="small muted">Esse convite sempre vai no e-mail e no WhatsApp, com o link do formulário. Se quiser, acrescente um recado:</div>' +
+    '<div class="small muted">Esse convite sempre vai no e-mail e no WhatsApp, com o link da inscrição. Se quiser, acrescente um recado:</div>' +
     '<textarea id="cvt" rows="3" maxlength="600" placeholder="Recado extra (opcional)">' + esc(txt) + '</textarea>' +
     '<div class="eyebrow cy" id="cvpara"></div><div class="small" id="cvparal"></div>' +
     '<button type="button" class="btn btn-green" id="cvb" onclick="cvEnvia()"></button></div>');
