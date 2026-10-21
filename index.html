@@ -107,6 +107,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
 .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .vis{font-size:.74rem;color:var(--muted);letter-spacing:.04em}
 footer{text-align:center;color:var(--muted);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;padding-top:10px}
+
+.brandbtn{background:none;border:0;padding:6px 0;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.brandbtn:focus-visible{outline:2px solid var(--cyan);outline-offset:4px}
+.drw{position:fixed;inset:0;z-index:60}
+.dbg{position:absolute;inset:0;background:rgba(0,0,0,.65)}
+.dpn{position:absolute;top:0;bottom:0;left:0;width:min(82vw,320px);background:#000;border-right:1px solid var(--line);padding:22px 18px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;overflow-y:auto;animation:dsl .18s ease-out}
+@keyframes dsl{from{transform:translateX(-100%)}to{transform:none}}
+.dit{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid var(--line);color:var(--fg);font-family:var(--font);font-weight:300;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;padding:14px 14px;cursor:pointer;min-height:48px}
+.dit.on{border-color:var(--green);color:var(--green)}
+.dsec{font-weight:500;text-transform:uppercase;letter-spacing:.22em;font-size:.6rem;color:var(--muted);margin-top:10px}
+.dpn .dtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tag.r{border-color:#ff5a5a;color:#ffb3b3}
+.insrow{display:flex;flex-direction:column;gap:8px}
 </style>
 </head>
 <body>
@@ -123,13 +136,40 @@ var timers = [];
 function pararTimers() { timers.forEach(clearInterval); timers = []; }
 function app(html, semNav) { pararTimers(); S.telaMural = false; S.rp = null; $('app').innerHTML = html; window.scrollTo(0, 0); desenhaNav(!semNav && !!S.token && !S.troca); }
 function desenhaNav(on) {
-  var n = $('nav'); if (!n) return;
-  if (!on) { n.style.display = 'none'; return; }
-  n.style.display = 'block';
-  function b(k, t, fn, extra) { return '<button class="btn' + (S.aba2 === k ? ' on' : '') + '" onclick="' + fn + '">' + t + (extra || '') + '</button>'; }
-  n.innerHTML = '<div>' + b('msg', 'Mensagens', 'mural()', badge(S.mural ? S.mural.paraMimTotal : 0)) + b('atl', 'Atletas', 'atletas()') +
-    '<button class="btn btn-green nv-new" onclick="novaMsg()">+ Nova mensagem</button>' +
-    (S.perfil === 'Admin' ? b('pnl', 'Painel', 'verPainel()') : '') + '</div>';
+  var n = $('nav'); if (n) n.style.display = 'none';
+  if (on && S.provas === undefined && !S.provasCarregando) carregaProvas();
+}
+function carregaProvas(depois) {
+  S.provasCarregando = true;
+  call('provas').then(function (r) { S.provas = r.provas || []; S.provasCarregando = false; if (depois) depois(); })
+    .catch(function () { S.provasCarregando = false; if (S.provas === undefined) S.provas = []; if (depois) depois(); });
+}
+
+/* ---------- menu lateral ---------- */
+function menuAbre() {
+  if ($('drw')) return;
+  if (S.provas === undefined) carregaProvas(menuAtualiza);
+  var o = document.createElement('div'); o.id = 'drw'; o.className = 'drw';
+  document.body.appendChild(o);
+  menuAtualiza();
+}
+function menuFecha() { var o = $('drw'); if (o) document.body.removeChild(o); }
+function menuAtualiza() {
+  var o = $('drw'); if (!o) return;
+  function it(txt, fn, on, extra) { return '<button type="button" class="dit' + (on ? ' on' : '') + '" onclick="menuFecha();' + fn + '"><span>' + txt + '</span>' + (extra || '') + '</button>'; }
+  var pv = S.provas || [];
+  var provas = pv.length
+    ? '<div class="dsec">Inscritos em provas</div>' + pv.map(function (p) { return it(esc(p.nome) + ' · ' + esc(String(p.data).slice(0, 5)), "inscritos('" + esc(p.id) + "')", S.aba2 === 'prova' + p.id); }).join('')
+    : '<div class="dsec">Inscritos em provas</div><div class="small muted">' + (S.provas === undefined ? 'Carregando…' : 'Nenhuma prova aberta.') + '</div>';
+  o.innerHTML = '<div class="dbg" onclick="menuFecha()"></div><nav class="dpn" aria-label="Menu">' +
+    '<div class="dtop"><div class="brand"><div class="mark"><i></i><i></i><i></i></div><b>BLC</b></div><button type="button" class="btn btn-sm" onclick="menuFecha()" aria-label="Fechar menu">Fechar</button></div>' +
+    it('Mensagens', 'mural()', S.aba2 === 'msg', badge(S.mural ? S.mural.paraMimTotal : 0)) +
+    it('Atletas', 'atletas()', S.aba2 === 'atl') +
+    '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
+    provas +
+    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') : '') +
+    '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
+    '</nav>';
 }
 
 function dlg(msg, opts) {
@@ -161,7 +201,9 @@ function call(action, payload) {
 }
 
 function head(right) {
-  return '<div class="top"><div class="brand"><div class="mark"><i></i><i></i><i></i></div><b>BLC</b></div>' + (right || '') + '</div>';
+  var logado = !!S.token && !S.troca;
+  var marca = '<div class="mark"><i></i><i></i><i></i></div><b>BLC</b>';
+  return '<div class="top">' + (logado ? '<button type="button" class="brand brandbtn" onclick="menuAbre()" aria-label="Abrir menu">' + marca + '</button>' : '<div class="brand">' + marca + '</div>') + (right || '') + '</div>';
 }
 function userBar() {
   return '<div class="who"><span class="small muted">' + esc(S.nome) + '</span><button class="btn btn-sm" onclick="sair()">Sair</button></div>';
@@ -854,6 +896,100 @@ function painelTabs(aba) {
 }
 
 /* ---------- painel do head coach ---------- */
+
+/* ---------- inscritos em provas ---------- */
+function brl(n) { return 'R$ ' + Number(n).toFixed(2).replace('.', ','); }
+function inscritos(id) {
+  var pv = S.provas || [];
+  var p = pv.filter(function (x) { return x.id === id; })[0] || pv[0];
+  if (!p) { app(head(userBar()) + '<div><div class="eyebrow">Provas</div><h2>Inscritos</h2></div><div class="card"><div class="muted">Nenhuma prova aberta no momento.</div></div>'); return; }
+  S.aba2 = 'prova' + p.id; S.atual = null; S.fp = S.fp || 'todos';
+  app(head(userBar()) + '<div class="spin">Carregando inscritos…</div>');
+  carregaInscritos(p.id, true);
+}
+function carregaInscritos(id, primeira) {
+  call('inscritos', { id: id }).then(function (r) {
+    if (S.aba2 !== 'prova' + id) return;
+    S.insc = r;
+    desenhaInscritos(primeira);
+    if (r.pendentes > 0 && !r.ocrDesligado) setTimeout(function () { if (S.aba2 === 'prova' + id) carregaInscritos(id, false); }, 600);
+  }).catch(function (e) { if (S.aba2 === 'prova' + id) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Tentar de novo</button>'); });
+}
+function statusTag(x) {
+  var m = { ok: ['g', 'Valor confere'], diferente: ['r', 'Valor diferente'], ilegivel: ['w', 'Não consegui ler'], sem: ['r', 'Sem comprovante'],
+    semvalor: ['w', 'Categoria sem valor'], conferindo: ['', 'Conferindo…'], desligado: ['w', 'Conferência desligada'] }[x.status] || ['w', x.status];
+  return '<span class="tag ' + m[0] + '">' + m[1] + '</span>';
+}
+function detalheValor(x) {
+  if (x.status === 'ok') return 'Comprovante de ' + brl(x.esperado) + ', igual ao valor da categoria.';
+  if (x.status === 'diferente') return 'Esperado ' + brl(x.esperado) + ' (' + x.categoria + '). No comprovante: ' + x.lidos.slice(0, 3).map(brl).join(' · ') + '.';
+  if (x.status === 'ilegivel') return 'Esperado ' + brl(x.esperado) + '. Abra a imagem e confira à mão.';
+  if (x.status === 'sem') return 'O formulário foi enviado sem anexo.';
+  if (x.status === 'semvalor') return 'Defina o valor de "' + x.categoria + '" na aba Provas da planilha.';
+  return x.esperado ? 'Esperado ' + brl(x.esperado) + '.' : '';
+}
+function desenhaInscritos(primeira) {
+  var r = S.insc, t = r.totais, f = S.fp || 'todos';
+  var lista = r.itens.filter(function (x) { return f === 'todos' || (f === 'ok' ? x.status === 'ok' : x.status !== 'ok'); });
+  function ch(k, txt) { return '<button type="button" class="btn btn-sm' + (f === k ? ' btn-green' : '') + '" onclick="S.fp=\'' + k + '\';desenhaInscritos(false)">' + txt + '</button>'; }
+  var html = head(userBar()) +
+    '<div><div class="eyebrow">Inscritos</div><h2>' + esc(r.prova.nome) + ' <em>' + esc(r.prova.data) + '</em></h2></div>' +
+    '<div class="card"><div class="tags"><span class="tag g">' + t.inscritos + ' inscritos</span><span class="tag g">' + t.ok + ' com valor conferido</span>' +
+    (t.problema ? '<span class="tag r">' + t.problema + ' a conferir</span>' : '') + (t.pendentes ? '<span class="tag">' + t.pendentes + ' conferindo…</span>' : '') + '</div>' +
+    '<div class="small muted">Prazo: ' + esc(r.prova.prazo) + (r.encerrado ? ' · <b>encerrado</b>' : '') + '. O pagamento só vale pelo comprovante anexado no formulário.</div>' +
+    (r.ocrDesligado ? '<div class="err">A leitura automática dos comprovantes ainda não está ligada no script. Os nomes aparecem, mas o valor não é conferido.</div>' : '') +
+    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(r.prova.id) + '\')">Convidar quem ainda não se inscreveu</button>' : '') + '</div>' +
+    '<div class="tags">' + ch('todos', 'Todos') + ch('ok', 'Valor confere') + ch('rev', 'A conferir') + '</div>' +
+    '<div class="list">' + (lista.map(function (x) {
+      return '<div class="card insrow"><div class="top"><b>' + esc(x.nome) + '</b>' + statusTag(x) + '</div>' +
+        '<div class="tags"><span class="tag">' + esc(x.categoria || 'Sem categoria') + '</span>' + (x.camisa ? '<span class="tag w">Camisa ' + esc(x.camisa) + '</span>' : '') + (x.foraDoPrazo ? '<span class="tag r">Fora do prazo</span>' : '') + '</div>' +
+        '<div class="small muted">' + esc(detalheValor(x)) + ' Enviado em ' + esc(x.quando) + '.</div>' +
+        (x.arquivos.length ? '<div>' + x.arquivos.map(function (u, i) { return '<a class="lnk" href="' + esc(u) + '" target="_blank" rel="noopener">Abrir comprovante' + (x.arquivos.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join(' · ') + '</div>' : '') + '</div>';
+    }).join('') || '<div class="muted small">Ninguém nesta lista.</div>') + '</div>' +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>';
+  if (primeira) app(html); else { var y = window.scrollY; $('app').innerHTML = html; window.scrollTo(0, y); }
+}
+
+/* ---------- convite por e-mail (head coach) ---------- */
+function convidar(id) {
+  app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
+  S.aba2 = 'prova' + id;
+  call('conviteLista', { id: id }).then(function (r) { S.cv = r; S.cvSel = {}; desenhaConvidar(); })
+    .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Voltar</button>'); });
+}
+function cvTextoPadrao(p) {
+  return 'Estão abertas as inscrições para o ' + p.nome + ', no dia ' + p.data + '. Para se inscrever, preencha o formulário e anexe o comprovante de pagamento até ' + p.prazo + '. Quem não anexar o comprovante até o prazo fica sem a inscrição confirmada.';
+}
+function desenhaConvidar() {
+  var r = S.cv, sel = S.cvSel;
+  var txt = $('cvt') ? $('cvt').value : cvTextoPadrao(r.prova);
+  app(head(userBar()) + '<button class="back" onclick="inscritos(\'' + esc(r.prova.id) + '\')">← Inscritos</button>' +
+    '<div><div class="eyebrow">Convite por e-mail</div><h2>' + esc(r.prova.nome) + ' <em>' + esc(r.prova.data) + '</em></h2></div>' +
+    '<div class="card"><div class="small muted">Atletas ativos que ainda não preencheram o formulário. Marque quem vai receber.</div>' +
+    '<div class="tags"><button type="button" class="btn btn-sm" onclick="cvTodos(true)">Marcar todos</button><button type="button" class="btn btn-sm" onclick="cvTodos(false)">Limpar</button></div>' +
+    '<div class="list">' + (r.atletas.map(function (a) {
+      return '<label class="chk' + (sel[a.id] ? ' on' : '') + '"><input type="checkbox" ' + (sel[a.id] ? 'checked ' : '') + 'onchange="cvMarca(\'' + esc(a.id) + '\',this.checked)"><span><b>' + esc(a.nome) + '</b><span class="small">' + esc(a.email) + (a.convidado ? ' · já convidado em ' + esc(a.convidado) : '') + '</span></span></label>';
+    }).join('') || '<div class="muted small">Todos os atletas ativos já se inscreveram.</div>') + '</div></div>' +
+    '<div class="card"><label for="cvt">Mensagem do e-mail</label><textarea id="cvt" rows="6" maxlength="1500">' + esc(txt) + '</textarea>' +
+    '<div class="small muted">O link do formulário é acrescentado no fim do e-mail, e o e-mail começa com "Olá, nome".</div>' +
+    '<button type="button" class="btn btn-green" id="cvb" onclick="cvEnvia()"></button></div>');
+  cvConta();
+}
+function cvMarca(id, on) { if (on) S.cvSel[id] = 1; else delete S.cvSel[id]; cvConta(); }
+function cvTodos(on) { S.cvSel = {}; if (on) S.cv.atletas.forEach(function (a) { S.cvSel[a.id] = 1; }); desenhaConvidar(); }
+function cvConta() { var n = Object.keys(S.cvSel).length, b = $('cvb'); if (b) { b.textContent = n ? 'Enviar e-mail para ' + n + (n === 1 ? ' atleta' : ' atletas') : 'Marque os atletas'; b.disabled = !n; } }
+function cvEnvia() {
+  var ids = Object.keys(S.cvSel), texto = $('cvt').value;
+  if (!ids.length) return;
+  dlg('Enviar este e-mail para ' + ids.length + (ids.length === 1 ? ' atleta' : ' atletas') + '? O envio não pode ser desfeito.', { ok: 'Enviar' }).then(function (v) {
+    if (!v) return;
+    $('cvb').disabled = true; $('cvb').textContent = 'Enviando…';
+    call('conviteEnviar', { id: S.cv.prova.id, ids: ids, texto: texto }).then(function (r) {
+      aviso(r.enviados + ' e-mails enviados.' + (r.falhas.length ? ' Falhou para: ' + r.falhas.join(', ') + '.' : '')).then(function () { convidar(S.cv.prova.id); });
+    }).catch(function (e) { aviso(e.message); cvConta(); });
+  });
+}
+
 function verPainel() { S.aba2 = 'pnl'; painel('hist'); }
 
 function painel(aba) {
