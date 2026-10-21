@@ -923,7 +923,7 @@ function statusTag(x) {
 function detalheValor(x) {
   if (x.status === 'ok') return 'Comprovante de ' + brl(x.esperado) + ', igual ao valor da categoria.';
   if (x.status === 'diferente') return 'Esperado ' + brl(x.esperado) + ' (' + x.categoria + '). No comprovante: ' + x.lidos.slice(0, 3).map(brl).join(' · ') + '.';
-  if (x.status === 'ilegivel') return 'Esperado ' + brl(x.esperado) + '. Abra a imagem e confira à mão.';
+  if (x.status === 'ilegivel') return 'Esperado ' + brl(x.esperado) + '. Abra a imagem e confira à mão.' + (S.insc && S.insc.erroOcr ? ' (' + esc(S.insc.erroOcr) + ')' : '');
   if (x.status === 'sem') return 'O formulário foi enviado sem anexo.';
   if (x.status === 'semvalor') return 'Defina o valor de "' + x.categoria + '" na aba Provas da planilha.';
   return x.esperado ? 'Esperado ' + brl(x.esperado) + '.' : '';
@@ -937,7 +937,7 @@ function desenhaInscritos(primeira) {
     '<div class="card"><div class="tags"><span class="tag g">' + t.inscritos + ' inscritos</span><span class="tag g">' + t.ok + ' com valor conferido</span>' +
     (t.problema ? '<span class="tag r">' + t.problema + ' a conferir</span>' : '') + (t.pendentes ? '<span class="tag">' + t.pendentes + ' conferindo…</span>' : '') + '</div>' +
     '<div class="small muted">Prazo: ' + esc(r.prova.prazo) + (r.encerrado ? ' · <b>encerrado</b>' : '') + '. O pagamento só vale pelo comprovante anexado no formulário.</div>' +
-    (r.ocrDesligado ? '<div class="err">A leitura automática dos comprovantes ainda não está ligada no script. Os nomes aparecem, mas o valor não é conferido.</div>' : '') +
+    (r.erroOcr ? '<div class="err">Erro ao ler comprovante: ' + esc(r.erroOcr) + '</div>' : '') + (r.ocrDesligado ? '<div class="err">A leitura automática dos comprovantes ainda não está ligada no script. Os nomes aparecem, mas o valor não é conferido.</div>' : '') +
     (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(r.prova.id) + '\')">Convidar quem ainda não se inscreveu</button>' : '') + '</div>' +
     '<div class="tags">' + ch('todos', 'Todos') + ch('ok', 'Valor confere') + ch('rev', 'A conferir') + '</div>' +
     '<div class="list">' + (lista.map(function (x) {
