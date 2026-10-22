@@ -142,8 +142,8 @@ function desenhaNav(on) {
 }
 function carregaProvas(depois) {
   S.provasCarregando = true;
-  call('provas').then(function (r) { S.provas = r.provas || []; S.provasCarregando = false; if (depois) depois(); })
-    .catch(function () { S.provasCarregando = false; if (S.provas === undefined) S.provas = []; if (depois) depois(); });
+  call('provas').then(function (r) { S.provas = r.provas || []; S.provasErro = ''; S.provasCarregando = false; if (depois) depois(); })
+    .catch(function (e) { S.provasCarregando = false; S.provasErro = (e && e.message) || 'Erro.'; if (S.provas === undefined) S.provas = []; if (depois) depois(); });
 }
 
 /* ---------- menu lateral ---------- */
@@ -945,7 +945,7 @@ function listaProvas() {
         return '<div class="card insrow" style="cursor:pointer" onclick="inscritos(\'' + esc(p.id) + '\')"><div class="top"><b>' + esc(p.nome) + '</b><span class="tag g">' + esc(String(p.data)) + '</span></div>' +
           (p.local ? '<div class="small muted">' + esc(p.local) + '</div>' : '') +
           '<div class="tags"><span class="tag ' + (forms ? 'g' : '') + '">' + (forms ? 'Inscri\u00e7\u00e3o pela BLC (formul\u00e1rio)' : 'Lista manual') + '</span></div></div>';
-      }).join('') || '<div class="muted small">' + (S.provas === undefined ? 'Carregando\u2026' : 'Nenhuma prova cadastrada.') + '</div>') + '</div>' +
+      }).join('') || (S.provasErro ? '<div class="err">N\u00e3o consegui carregar as provas: ' + esc(S.provasErro) + '</div><button type="button" class="btn" onclick="S.provasFrescas=false;listaProvas()">Tentar de novo</button>' : '<div class="muted small">' + (S.provas === undefined ? 'Carregando\u2026' : 'Nenhuma prova cadastrada.') + '</div>')) + '</div>' +
       '<footer>BLC Assessoria Esportiva \u00b7 Rio de Janeiro</footer>';
     if (S.aba2 === 'provas') app(html);
   }
