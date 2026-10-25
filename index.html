@@ -140,6 +140,40 @@ function desenhaNav(on) {
   var n = $('nav'); if (n) n.style.display = 'none';
   if (on && S.provas === undefined && !S.provasCarregando) carregaProvas();
 }
+/* ---------- avisos no celular (push) e numero no icone ---------- */
+var FB = { config: null, vapid: '' };   /* preenchido com os dados publicos do projeto Firebase */
+function pushPronto() { return !!(FB.config && FB.vapid && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window); }
+function carregaScript(src) { return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+function pushToken() {
+  return carregaScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js')
+    .then(function () { return carregaScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js'); })
+    .then(function () { if (!firebase.apps.length) firebase.initializeApp(FB.config); return navigator.serviceWorker.ready; })
+    .then(function (reg) { return firebase.messaging().getToken({ vapidKey: FB.vapid, serviceWorkerRegistration: reg }); });
+}
+function pushAtiva() {
+  if (!pushPronto()) { aviso('Os avisos ainda n\u00e3o est\u00e3o dispon\u00edveis neste aparelho. No iPhone, instale o app na tela inicial (iOS 16.4 ou mais novo).'); return; }
+  Notification.requestPermission().then(function (p) {
+    if (p !== 'granted') { aviso('Sem a permiss\u00e3o, o celular n\u00e3o mostra os avisos. Libere as notifica\u00e7\u00f5es do app BLC nas configura\u00e7\u00f5es do celular.'); return; }
+    return pushToken().then(function (t) {
+      return call('pushRegistra', { token: t, aparelho: (navigator.userAgent || '').slice(0, 120) }).then(function () { try { localStorage.setItem('blc_pt', t); } catch (e) {} });
+    }).then(function () { return call('pushTeste'); }).then(function (r) {
+      aviso(r.erro ? 'Avisos ativados, mas o teste falhou: ' + r.erro : 'Avisos ativados. Voc\u00ea deve receber agora uma notifica\u00e7\u00e3o de teste.');
+    });
+  }).catch(function (e) { aviso('N\u00e3o consegui ativar os avisos: ' + ((e && e.message) || e)); });
+}
+function pushSilencioso() {
+  if (S.pushTentou || !S.token || !pushPronto() || Notification.permission !== 'granted') return;
+  S.pushTentou = true;
+  pushToken().then(function (t) {
+    var ant = ''; try { ant = localStorage.getItem('blc_pt') || ''; } catch (e) {}
+    if (ant === t) return;
+    return call('pushRegistra', { token: t, aparelho: (navigator.userAgent || '').slice(0, 120) }).then(function () { try { localStorage.setItem('blc_pt', t); } catch (e) {} });
+  }).catch(function () {});
+}
+function badgeIcone(n) {
+  try { if (n > 0 && navigator.setAppBadge) navigator.setAppBadge(n); else if (navigator.clearAppBadge) navigator.clearAppBadge(); } catch (e) {}
+}
+
 function carregaProvas(depois) {
   S.provasCarregando = true;
   call('provas').then(function (r) { S.provas = r.provas || []; S.provasErro = ''; S.provasCarregando = false; if (depois) depois(); })
@@ -162,6 +196,7 @@ function menuAtualiza() {
   o.innerHTML = '<div class="dbg" onclick="menuFecha()"></div><nav class="dpn" aria-label="Menu">' +
     '<div class="dtop"><div class="brand"><div class="mark"><i></i><i></i><i></i></div><b>BLC</b></div><button type="button" class="btn btn-sm" onclick="menuFecha()" aria-label="Fechar menu">Fechar</button></div>' +
     '<button type="button" class="btn btn-green" onclick="menuFecha();cheguei()">\ud83d\udccd Cheguei</button>' +
+    (pushPronto() && Notification.permission !== 'granted' ? '<button type="button" class="btn" onclick="menuFecha();pushAtiva()">\ud83d\udd14 Ativar avisos no celular</button>' : '') +
     it('Mensagens', 'mural()', S.aba2 === 'msg', badge(S.mural ? S.mural.paraMimTotal : 0)) +
     it('Atletas', 'atletas()', S.aba2 === 'atl') +
     '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
@@ -261,7 +296,8 @@ function telaTroca(msg) {
 }
 
 function sair(silencioso) {
-  if (S.token && !silencioso) { try { call('logout'); } catch (e) {} }
+  if (S.token && !silencioso) { try { var pt = ''; try { pt = localStorage.getItem('blc_pt') || ''; localStorage.removeItem('blc_pt'); } catch (e) {} call('logout', { pt: pt }); } catch (e) {} }
+  badgeIcone(0); S.pushTentou = false;
   S.token = null; S.nome = ''; S.perfil = ''; S.email = ''; S.troca = false; S.mural = null;
   try { ['blc_t', 'blc_n', 'blc_p', 'blc_e'].forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {}
   telaLogin(silencioso ? 'Sessão expirada. Entre de novo.' : '');
@@ -274,12 +310,14 @@ function mural() {
   S.aba2 = 'msg'; S.atual = null; S.fix = {}; S.vi = {}; S.limite = 40; S.sigMural = '';
   app(head(userBar()) + '<div class="spin">Carregando mensagens…</div>');
   S.telaMural = true;
+  pushSilencioso();
   carregaMural(true);
 }
 function carregaMural(primeira) {
   call('mural').then(function (r) {
     if (!S.telaMural) return;
     S.mural = r; S.membros = r.membros;
+    badgeIcone(r.paraMimTotal || 0);
     var sig = r.total + ':' + r.paraMimTotal + ':' + r.itens.map(function (m) { return m.id + m.vistoPor.length + (m.resolvido ? 'r' : ''); }).join(',');
     if (!primeira && (S.rp || sig === S.sigMural)) { desenhaNav(true); return; }
     S.sigMural = sig;
