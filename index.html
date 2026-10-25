@@ -201,6 +201,7 @@ function menuAtualiza() {
     it('Atletas', 'atletas()', S.aba2 === 'atl') +
     '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
     provas +
+    it('\ud83e\udde0 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
     (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') : '') +
     '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
     '</nav>';
@@ -1047,15 +1048,71 @@ function provaForm() {
   function f(id, rot, ph, tipo) { return '<label class="small muted" for="' + id + '">' + rot + '</label><input id="' + id + '" type="' + (tipo || 'text') + '" placeholder="' + ph + '" autocomplete="off">'; }
   app(head(userBar()) + '<button class="back" onclick="listaProvas()">\u2190 Provas da BLC</button><div><div class="eyebrow">Calend\u00e1rio</div><h2>Incluir <em>prova</em></h2></div>' +
     '<div class="card">' + f('pfn', 'Nome da prova', 'Ex.: Maratona de Floripa') + f('pfd', 'Data', 'dd/mm/aaaa (ou 27 a 30/05/2027)') + f('pfl', 'Local (opcional)', 'Cidade, dist\u00e2ncias...') +
-    f('pfk', 'Link da prova (opcional)', 'https://...', 'url') + f('pfi', 'Como se inscrever (opcional)', 'Ex.: Pelo site, com o cupom BLC10') +
-    '<div class="small muted">A prova entra com lista manual: depois voc\u00ea inclui os atletas inscritos e pode convidar os demais.</div>' +
+    f('pfk', 'Link da prova (opcional)', 'https://...', 'url') + f('pfi', 'Como se inscrever (opcional)', 'Ex.: Pelo site, com o cupom BLC10') + '</div>' +
+    '<div class="card"><div class="eyebrow cy">Inscri\u00e7\u00e3o pela BLC (opcional)</div>' +
+    '<div class="small muted">Se a inscri\u00e7\u00e3o \u00e9 por formul\u00e1rio, abra a planilha de respostas dele, copie o link do navegador e cole aqui. O app l\u00ea as respostas e, se o formul\u00e1rio tiver comprovante, confere o valor pago. Sem link, a prova fica com lista manual.</div>' +
+    f('pfp', 'Link da planilha de respostas', 'https://docs.google.com/spreadsheets/d/...', 'url') + f('pff', 'Link do formul\u00e1rio (para convidar atletas)', 'https://forms.gle/...', 'url') +
+    f('pfz', 'Prazo das inscri\u00e7\u00f5es', 'dd/mm/aaaa hh:mm (ex.: 23/10/2026 18:00)') + f('pfv', 'Valores por categoria (para conferir pagamento)', 'Adulto=275; Infantil=110') +
+    '<div class="small muted">Os valores s\u00f3 s\u00e3o usados se o formul\u00e1rio tiver comprovante. A categoria 60+ sem valor pr\u00f3prio fica com 50% do Adulto.</div>' +
     '<button type="button" class="btn btn-green" id="pfb" onclick="provaSalva()">Salvar prova</button></div>');
 }
 function provaSalva() {
   var b = $('pfb'); b.disabled = true;
-  call('provaAdd', { nome: $('pfn').value, data: $('pfd').value, local: $('pfl').value, link: $('pfk').value, inscricao: $('pfi').value })
-    .then(function (r) { S.provasFrescas = false; carregaProvas(function () { inscritos(r.id); }); })
+  call('provaAdd', { nome: $('pfn').value, data: $('pfd').value, local: $('pfl').value, link: $('pfk').value, inscricao: $('pfi').value,
+    planilha: $('pfp').value, form: $('pff').value, prazo: $('pfz').value, valores: $('pfv').value })
+    .then(function (r) {
+      S.provasFrescas = false;
+      var fim = function () { carregaProvas(function () { inscritos(r.id); }); };
+      if (r.respostas || (r.reconhecido && r.reconhecido.length)) aviso('Planilha lida: ' + r.respostas + ' resposta(s). Colunas reconhecidas: ' + r.reconhecido.join(', ') + '.').then(fim); else fim();
+    })
     .catch(function (e) { b.disabled = false; aviso(e.message); });
+}
+function provaConfigForm(id) {
+  var p = (S.provas || []).filter(function (x) { return x.id === id; })[0]; if (!p) return;
+  function f(i, rot, ph, v) { return '<label class="small muted" for="' + i + '">' + rot + '</label><input id="' + i + '" type="text" placeholder="' + ph + '" value="' + esc(v || '') + '" autocomplete="off">'; }
+  app(head(userBar()) + '<button class="back" onclick="inscritos(\'' + esc(id) + '\')">\u2190 ' + esc(p.nome) + '</button><div><div class="eyebrow">Configurar</div><h2>' + esc(p.nome) + '</h2></div>' +
+    '<div class="card"><div class="small muted">Deixe em branco o que n\u00e3o quiser mudar. Para trocar a planilha, cole o novo link.</div>' +
+    f('pcp', 'Link da planilha de respostas', 'Cole um novo link para trocar', '') + f('pcz', 'Prazo das inscri\u00e7\u00f5es', 'dd/mm/aaaa hh:mm', p.prazo) + f('pcv', 'Valores por categoria', 'Adulto=275; Infantil=110', '') +
+    '<button type="button" class="btn btn-green" id="pcb" onclick="provaConfigSalva(\'' + esc(id) + '\')">Salvar</button></div>');
+}
+function provaConfigSalva(id) {
+  var b = $('pcb'); b.disabled = true; var d = { id: id };
+  if ($('pcp').value.trim()) d.planilha = $('pcp').value;
+  d.prazo = $('pcz').value;
+  if ($('pcv').value.trim()) d.valores = $('pcv').value;
+  call('provaConfig', d).then(function (r) { S.provasFrescas = false; carregaProvas(function () { inscritos(id); }); })
+    .catch(function (e) { b.disabled = false; aviso(e.message); });
+}
+/* ---------- relat\u00f3rio em PDF das respostas ---------- */
+function pdfTxt(v) { return String(v == null ? '' : v).replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/[\u2013\u2014]/g, '-').replace(/[^\u0009\u000a\u0020-\u00ff]/g, ''); }
+function provaPdf(id) {
+  var b = $('pdfb'); if (b) { b.disabled = true; b.textContent = 'Gerando\u2026'; }
+  var fim = function () { var x = $('pdfb'); if (x) { x.disabled = false; x.textContent = 'Exportar PDF'; } };
+  Promise.all([call('provaRelatorio', { id: id }), window.jspdf && window.jspdf.jsPDF ? 1 : carregaScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')])
+    .then(function (x) { return (window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) ? x[0] : carregaScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js').then(function () { return x[0]; }); })
+    .then(function (r) {
+      var doc = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      var pr = r.prova, rs = r.resumo, W = doc.internal.pageSize.getWidth();
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.text(pdfTxt(pr.nome + (pr.data ? ' - ' + pr.data : '')), 10, 14);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(90);
+      doc.text(pdfTxt('Respostas dos atletas - BLC Assessoria Esportiva - gerado em ' + r.geradoEm), 10, 19);
+      var linhasRes = ['Total de respostas: ' + rs.total + (pr.prazo ? '   |   Prazo: ' + pr.prazo : '') + (rs.foraDoPrazo ? '   |   Fora do prazo: ' + rs.foraDoPrazo : '')];
+      linhasRes.push('Categorias: ' + (Object.keys(rs.categorias).map(function (k) { return k + ' ' + rs.categorias[k]; }).join('  |  ') || '-'));
+      if (Object.keys(rs.camisas).length) linhasRes.push('Camisas: ' + Object.keys(rs.camisas).sort().map(function (k) { return k + ' ' + rs.camisas[k]; }).join('  |  '));
+      if (r.temPagto) linhasRes.push('Pagamento: ' + rs.pagamento.ok + ' com valor conferido  |  ' + rs.pagamento.aConferir + ' a conferir  |  ' + rs.pagamento.semComp + ' sem comprovante');
+      doc.setTextColor(30); doc.setFontSize(9);
+      linhasRes.forEach(function (t, i) { doc.text(pdfTxt(t), 10, 26 + i * 4.6); });
+      doc.autoTable({ startY: 28 + linhasRes.length * 4.6, head: [r.cabecalhos.map(pdfTxt)], body: r.linhas.map(function (l) { return l.map(pdfTxt); }),
+        styles: { fontSize: 6.5, cellPadding: 1.2, overflow: 'linebreak', valign: 'top' }, headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 6.5 }, alternateRowStyles: { fillColor: [244, 246, 248] }, margin: { left: 10, right: 10, bottom: 12 },
+        columnStyles: (function () { var o = {}; o[r.indiceNome] = { fontStyle: 'bold' }; return o; })(),
+        didDrawPage: function () { doc.setFontSize(7); doc.setTextColor(120); doc.text(pdfTxt('Documento com dados pessoais - uso interno da BLC'), 10, doc.internal.pageSize.getHeight() - 6); doc.text('Pagina ' + doc.internal.getNumberOfPages(), W - 10, doc.internal.pageSize.getHeight() - 6, { align: 'right' }); } });
+      var nome = 'respostas-' + pdfTxt(pr.nome).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.pdf';
+      var blob = doc.output('blob'), file = null;
+      try { file = new File([blob], nome, { type: 'application/pdf' }); } catch (e) {}
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) { return navigator.share({ files: [file], title: pr.nome }).catch(function (e) { if (!e || e.name !== 'AbortError') doc.save(nome); }); }
+      doc.save(nome);
+    })
+    .then(fim).catch(function (e) { fim(); aviso((e && e.message) || 'N\u00e3o consegui gerar o PDF. Confira a internet e tente de novo.'); });
 }
 function provaOculta(id) {
   dlg('Tirar esta prova da lista? Os dados continuam na planilha.', { cancel: true }).then(function (ok) {
@@ -1085,7 +1142,9 @@ function carregaInscritos(id, primeira) {
 }
 function statusTag(x) {
   var m = { ok: ['g', 'Valor confere'], diferente: ['r', 'Valor diferente'], ilegivel: ['w', 'Não consegui ler'], sem: ['r', 'Sem comprovante'],
-    semvalor: ['w', 'Categoria sem valor'], conferindo: ['', 'Conferindo…'], desligado: ['w', 'Conferência desligada'] }[x.status] || ['w', x.status];
+    semvalor: ['w', 'Categoria sem valor'], conferindo: ['', 'Conferindo…'], desligado: ['w', 'Conferência desligada'], nc: null }[x.status];
+  if (m === null) return '';
+  m = m || ['w', x.status];
   return '<span class="tag ' + m[0] + '">' + m[1] + '</span>';
 }
 function detalheValor(x) {
@@ -1093,21 +1152,21 @@ function detalheValor(x) {
   if (x.status === 'diferente') return 'Esperado ' + brl(x.esperado) + ' (' + x.categoria + '). No comprovante: ' + x.lidos.slice(0, 3).map(brl).join(' · ') + '.';
   if (x.status === 'ilegivel') return 'Esperado ' + brl(x.esperado) + '. Abra a imagem e confira à mão.' + (S.insc && S.insc.erroOcr ? ' (' + esc(S.insc.erroOcr) + ')' : '');
   if (x.status === 'sem') return 'O formulário foi enviado sem anexo.';
-  if (x.status === 'semvalor') return 'Defina o valor de "' + x.categoria + '" na aba Provas da planilha.';
-  return x.esperado ? 'Esperado ' + brl(x.esperado) + '.' : '';
+  if (x.status === 'semvalor') return 'Defina o valor de "' + x.categoria + '" em Configurar prova.';
+  return x.esperado && x.status !== 'nc' ? 'Esperado ' + brl(x.esperado) + '.' : '';
 }
 function desenhaInscritos(primeira) {
-  var r = S.insc, t = r.totais, f = S.fp || 'todos';
+  var r = S.insc, t = r.totais, f = r.semPagto ? 'todos' : (S.fp || 'todos');
   var lista = r.itens.filter(function (x) { return f === 'todos' || (f === 'ok' ? x.status === 'ok' : x.status !== 'ok'); });
   function ch(k, txt) { return '<button type="button" class="btn btn-sm' + (f === k ? ' btn-green' : '') + '" onclick="S.fp=\'' + k + '\';desenhaInscritos(false)">' + txt + '</button>'; }
   var html = head(userBar()) + '<button class="back" onclick="listaProvas()">\u2190 Provas da BLC</button>' +
     '<div><div class="eyebrow">Inscritos</div><h2>' + esc(r.prova.nome) + ' <em>' + esc(r.prova.data) + '</em></h2></div>' +
-    '<div class="card"><div class="tags"><span class="tag g">' + t.inscritos + ' inscritos</span><span class="tag g">' + t.ok + ' com valor conferido</span>' +
+    '<div class="card"><div class="tags"><span class="tag g">' + t.inscritos + ' inscritos</span>' + (r.semPagto ? '' : '<span class="tag g">' + t.ok + ' com valor conferido</span>') +
     (t.problema ? '<span class="tag r">' + t.problema + ' a conferir</span>' : '') + (t.pendentes ? '<span class="tag">' + t.pendentes + ' conferindo…</span>' : '') + '</div>' +
-    '<div class="small muted">Prazo: ' + esc(r.prova.prazo) + (r.encerrado ? ' · <b>encerrado</b>' : '') + '. O pagamento só vale pelo comprovante anexado no formulário.</div>' +
+    '<div class="small muted">' + (r.prova.prazo ? 'Prazo: ' + esc(r.prova.prazo) + (r.encerrado ? ' · <b>encerrado</b>' : '') + '. ' : '') + (r.semPagto ? 'Este formulário não tem comprovante: só as respostas aparecem.' : 'O pagamento só vale pelo comprovante anexado no formulário.') + '</div>' +
     (r.erroOcr ? '<div class="err">Erro ao ler comprovante: ' + esc(r.erroOcr) + '</div>' : '') + (r.ocrDesligado ? '<div class="err">A leitura automática dos comprovantes ainda não está ligada no script. Os nomes aparecem, mas o valor não é conferido.</div>' : '') +
-    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(r.prova.id) + '\')">Convidar quem ainda não se inscreveu</button>' : '') + '</div>' +
-    '<div class="tags">' + ch('todos', 'Todos') + ch('ok', 'Valor confere') + ch('rev', 'A conferir') + '</div>' +
+    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(r.prova.id) + '\')">Convidar quem ainda não se inscreveu</button> <button type="button" class="btn btn-sm btn-green" id="pdfb" onclick="provaPdf(\'' + esc(r.prova.id) + '\')">Exportar PDF</button> <button type="button" class="btn btn-sm" onclick="provaConfigForm(\'' + esc(r.prova.id) + '\')">Configurar prova</button>' : '') + '</div>' +
+    (r.semPagto ? '' : '<div class="tags">' + ch('todos', 'Todos') + ch('ok', 'Valor confere') + ch('rev', 'A conferir') + '</div>') +
     '<div class="list">' + (lista.map(function (x) {
       return '<div class="card insrow"><div class="top"><b>' + esc(x.nome) + '</b>' + statusTag(x) + '</div>' +
         '<div class="tags"><span class="tag">' + esc(x.categoria || 'Sem categoria') + '</span>' + (x.camisa ? '<span class="tag w">Camisa ' + esc(x.camisa) + '</span>' : '') + (x.foraDoPrazo ? '<span class="tag r">Fora do prazo</span>' : '') + '</div>' +
@@ -1116,6 +1175,94 @@ function desenhaInscritos(primeira) {
     }).join('') || '<div class="muted small">Ninguém nesta lista.</div>') + '</div>' +
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>';
   if (primeira) app(html); else { var y = window.scrollY; $('app').innerHTML = html; window.scrollTo(0, y); }
+}
+
+/* ---------- insights semanais (IA) e condutas da equipe ---------- */
+var INS_AVISO = 'Insights gerados por IA a partir dos comentários da semana. São sugestões para discussão em grupo: nada aqui é decisão. A conduta só vale depois de combinada pela equipe e registrada.';
+function insightsTela(aba) {
+  S.aba2 = 'ins'; S.atual = null; S.itab = aba || S.itab || 'ins';
+  var h = function () {
+    return head(userBar()) + '<div><div class="eyebrow">Equipe</div><h2>Insights <em>e condutas</em></h2></div>' +
+      '<div class="tags"><button type="button" class="btn btn-sm' + (S.itab === 'ins' ? ' btn-green' : '') + '" onclick="insightsTela(\'ins\')">Insights da semana</button>' +
+      '<button type="button" class="btn btn-sm' + (S.itab === 'cond' ? ' btn-green' : '') + '" onclick="insightsTela(\'cond\')">Condutas da BLC</button></div>';
+  };
+  app(h() + '<div class="spin">Carregando…</div>');
+  if (S.itab === 'ins') {
+    call('insights').then(function (r) {
+      if (S.aba2 !== 'ins' || S.itab !== 'ins') return;
+      S.insD = r.semanas || [];
+      var corpo = S.insD.map(function (w, wi) {
+        var lista = (w.itens || []).map(function (x, xi) {
+          var cor = x.tipo === 'alerta' ? 'r' : (x.tipo === 'atencao' ? 'w' : 'g'), rot = x.tipo === 'alerta' ? 'Alerta' : (x.tipo === 'atencao' ? 'Atenção' : 'Padrão');
+          return '<div class="card"><div class="top"><b>' + esc(x.atleta || 'Equipe') + '</b><span class="tag ' + cor + '">' + rot + '</span></div>' +
+            '<div><b>' + esc(x.titulo) + '</b></div><div class="small muted">' + esc(x.porque) + '</div>' +
+            (x.condutas.length ? '<div class="small"><b>Condutas possíveis (sugestão da IA)</b><ul>' + x.condutas.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ul></div>' : '') +
+            (x.pergunta ? '<div class="small"><b>Para discutir:</b> ' + esc(x.pergunta) + '</div>' : '') +
+            '<div class="tags"><button type="button" class="btn btn-sm" onclick="condutaForm(' + wi + ',' + xi + ')">Registrar conduta decidida</button>' +
+            (x.atletaId ? '<button type="button" class="btn btn-sm" onclick="abrir(\'' + esc(x.atletaId) + '\')">Abrir ficha</button>' : '') + '</div></div>';
+        }).join('');
+        return '<div class="eyebrow cy" style="margin-top:14px">Semana de ' + esc(w.semana) + '</div>' + (w.erro ? '<div class="err">' + esc(w.erro) + '</div>' : '') +
+          (w.resumo ? '<div class="small muted">' + esc(w.resumo) + '</div>' : '') + (lista || (w.erro ? '' : '<div class="muted small">Sem insights nesta semana.</div>'));
+      }).join('') || '<div class="card"><div class="muted">Ainda não há insights. O primeiro aparece depois da rotina de domingo.</div></div>';
+      app(h() + '<div class="card"><div class="small"><b>⚠ ' + esc(INS_AVISO) + '</b></div></div>' + corpo + '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+    }).catch(function (e) { app(h() + '<div class="err">' + esc(e.message) + '</div>'); });
+  } else {
+    call('condutas').then(function (r) {
+      if (S.aba2 !== 'ins' || S.itab !== 'cond') return;
+      S.conD = r.itens || [];
+      app(h() + '<div class="card"><div class="small muted">Histórico do que a equipe decidiu. É a base do futuro manual de conduta e comportamento da BLC.</div>' +
+        '<button type="button" class="btn btn-green" onclick="condutaForm()">+ Registrar conduta</button>' +
+        '<input id="cdq" type="search" placeholder="Buscar por tema, atleta ou texto" autocomplete="off" oninput="condutaLista()"></div><div class="list" id="cdl"></div>' +
+        '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+      condutaLista();
+    }).catch(function (e) { app(h() + '<div class="err">' + esc(e.message) + '</div>'); });
+  }
+}
+function condutaLista() {
+  var o = $('cdl'); if (!o) return;
+  var q = cvNorm($('cdq') ? $('cdq').value : '').trim();
+  var l = (S.conD || []).filter(function (c) { return !q || cvNorm([c.tema, c.atleta, c.conduta, c.com, c.professor].join(' ')).indexOf(q) >= 0; });
+  o.innerHTML = l.map(function (c) {
+    return '<div class="card"><div class="top"><b>' + esc(c.tema) + '</b><span class="tag">' + esc(String(c.quando).slice(0, 10)) + '</span></div>' +
+      (c.atleta ? '<div class="tags"><span class="tag g">' + esc(c.atleta) + '</span></div>' : '') +
+      '<div style="white-space:pre-wrap">' + esc(c.conduta) + '</div>' +
+      '<div class="small muted">Registrado por ' + esc(c.professor) + (c.com ? ' · decidido com ' + esc(c.com) : '') + (c.origem ? ' · a partir do insight: ' + esc(c.origem) : '') + '</div></div>';
+  }).join('') || '<div class="muted small">' + (q ? 'Nada encontrado.' : 'Nenhuma conduta registrada ainda.') + '</div>';
+}
+function condutaForm(wi, xi) {
+  S.aba2 = 'ins'; S.cdAt = null; S.cdOr = null;
+  var x = (wi !== undefined && S.insD && S.insD[wi]) ? S.insD[wi].itens[xi] : null;
+  if (x) { S.cdOr = { semana: S.insD[wi].semana, origem: (x.titulo || '').slice(0, 200) }; if (x.atletaId) S.cdAt = { id: x.atletaId, nome: x.atleta }; }
+  if (S.ptAtl === undefined) { S.ptAtl = null; call('inicio', { todos: true }).then(function (r) { S.ptAtl = r.atletas || []; }).catch(function () {}); }
+  app(head(userBar()) + '<button class="back" onclick="insightsTela()">← Insights e condutas</button><div><div class="eyebrow">Equipe</div><h2>Registrar <em>conduta</em></h2></div>' +
+    '<div class="card">' + (x ? '<div class="small muted">A partir do insight: <b>' + esc(x.titulo) + '</b></div>' : '') +
+    '<label class="small muted" for="cdt">Tema ou caso</label><input id="cdt" type="text" placeholder="Ex.: Atleta volta de lesão sem avisar" value="' + esc(x ? x.titulo : '') + '" autocomplete="off">' +
+    '<label class="small muted" for="cdc">Conduta decidida pela equipe</label><textarea id="cdc" style="min-height:110px" placeholder="O que ficou combinado fazer nesse tipo de caso"></textarea>' +
+    '<label class="small muted" for="cdw">Decidido com (opcional)</label><input id="cdw" type="text" placeholder="Ex.: Beto, Caio, Beca" autocomplete="off">' +
+    '<label class="small muted">Atleta (opcional)</label><div id="cda"></div>' +
+    '<input id="cdb" type="search" placeholder="Buscar atleta pelo nome" autocomplete="off" oninput="condutaBusca()"><div class="list" id="cdr"></div>' +
+    '<button type="button" class="btn btn-green" id="cds" onclick="condutaSalva()">Salvar conduta</button></div>');
+  condutaAtleta();
+}
+function condutaAtleta() {
+  var o = $('cda'); if (!o) return;
+  o.innerHTML = S.cdAt ? '<span class="tag g">' + esc(S.cdAt.nome) + '</span> <button type="button" class="lnk" onclick="S.cdAt=null;condutaAtleta()">remover</button>' : '<span class="small muted">Nenhum atleta (conduta geral).</span>';
+}
+function condutaBusca() {
+  var o = $('cdr'); if (!o) return;
+  var q = cvNorm($('cdb').value).trim();
+  if (!q) { o.innerHTML = ''; return; }
+  var res = (S.ptAtl || []).filter(function (a) { return cvNorm(a.nome).indexOf(q) >= 0; }).slice(0, 10);
+  o.innerHTML = res.map(function (a) { return '<div class="chk cvr" onclick="condutaEscolhe(\'' + esc(a.id) + '\')"><span><b>' + esc(a.nome) + '</b></span></div>'; }).join('') || '<div class="muted small">' + (S.ptAtl ? 'Nada encontrado.' : 'Carregando atletas…') + '</div>';
+}
+function condutaEscolhe(id) {
+  var a = (S.ptAtl || []).filter(function (x) { return x.id === id; })[0]; if (!a) return;
+  S.cdAt = { id: a.id, nome: a.nome }; $('cdb').value = ''; $('cdr').innerHTML = ''; condutaAtleta();
+}
+function condutaSalva() {
+  var b = $('cds'); b.disabled = true;
+  call('condutaAdd', { tema: $('cdt').value, conduta: $('cdc').value, com: $('cdw').value, atletaId: S.cdAt ? S.cdAt.id : '', semana: S.cdOr ? S.cdOr.semana : '', origem: S.cdOr ? S.cdOr.origem : '' })
+    .then(function () { insightsTela('cond'); }).catch(function (e) { b.disabled = false; aviso(e.message); });
 }
 
 /* ---------- provas com lista manual (sem formulário) ---------- */
