@@ -1277,7 +1277,7 @@ function desenhaPart() {
     (p.local ? '<div class="small muted">' + esc(p.local) + '</div>' : '') +
     (p.inscricao ? '<div class="small muted">Inscrição: ' + esc(p.inscricao) + '</div>' : '') +
     (p.linkProva ? '<div><a class="lnk" href="' + esc(p.linkProva) + '" target="_blank" rel="noopener">Abrir página da prova</a></div>' : '') +
-    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(p.id) + '\')">Convidar quem ainda não vai participar</button> <button type="button" class="btn btn-sm" onclick="provaOculta(\'' + esc(p.id) + '\')">Tirar da lista</button>' : '') + '</div>' +
+    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(p.id) + '\')">Convidar quem ainda não vai participar</button> <button type="button" class="btn btn-sm" onclick="provaConfigForm(\'' + esc(p.id) + '\')">Ligar formulário de inscrição</button> <button type="button" class="btn btn-sm" onclick="provaOculta(\'' + esc(p.id) + '\')">Tirar da lista</button>' : '') + '</div>' +
     (r.admin ? '<div class="card"><div class="eyebrow cy">Adicionar participante</div><div class="small muted">Busque o atleta pelo nome e toque para incluir na lista desta prova.</div>' +
       '<input id="ptq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="ptBusca()"><div class="list" id="ptres"></div></div>' : '') +
     '<div class="list">' + (r.participantes.map(function (x) {
