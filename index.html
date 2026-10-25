@@ -426,6 +426,7 @@ function muralCard(m, hot, opts) {
     '<div class="row" style="justify-content:space-between;align-items:center"><span class="small muted">' + esc(m.quando) + '</span><span class="tags">' +
     (m.prioridade ? '<span class="tag">Prioridade' + (m.resolvido ? ' · resolvida' : '') + '</span>' : '') + '<span class="tag' + (m.tipo === 'Atleta retornando' ? ' g' : ' w') + '">' + esc(m.tipo) + '</span></span></div>' +
     (opts.semAtleta || opts.filha ? '' : '<h3>' + esc(m.atleta) + '</h3>') + '<div class="small muted">' + esc(minha ? 'Você' : m.professor) + '</div>' +
+    (opts.fichaId && m.origem === 'chat' && m.canal !== opts.fichaId && (m.atletasLista || []).some(function (a) { return a.id === opts.fichaId; }) ? '<div class="small" style="color:var(--green)">📌 Nota: ' + (m.resposta ? 'citado em resposta a ' + esc(m.resposta.professor) : 'citado em mensagem') + ' · por ' + esc(minha ? 'você' : m.professor) + '</div>' : '') +
     (m.resposta && !opts.filha ? '<div class="quote">↪ ' + esc(m.resposta.professor) + ': ' + esc(m.resposta.texto) + '</div>' : '') +
     (m.mencoes.length && m.email !== 'sistema@blc' ? '<div class="small" style="color:var(--green)">Para: ' + m.mencoes.map(function (e) { return esc(nomeEmail(e)); }).join(', ') + '</div>' : '') +
     '<div style="color:var(--fg);white-space:pre-wrap;overflow-wrap:anywhere">' + esc(m.texto) + '</div>' + vis +
@@ -436,6 +437,54 @@ function muralCard(m, hot, opts) {
     (aberta ? '<button class="btn btn-sm" onclick="resolver(\'' + esc(m.id) + '\')">Marcar como resolvido</button>' : '') + '</div>' +
     '<div id="rp_' + esc(m.id) + '"></div></div>';
 }
+
+/* @atleta: digitar @ numa caixa de texto abre a lista de atletas; quem for escolhido é marcado na mensagem e ela vai para a ficha dele */
+function ligaArroba(taId) {
+  var ta = $(taId); if (!ta || ta._arr) return;
+  ta._arr = {};
+  var box = document.createElement('div'); box.className = 'list'; box.style.marginTop = '6px';
+  ta.parentNode.insertBefore(box, ta.nextSibling);
+  var dica = document.createElement('div'); dica.className = 'small muted'; dica.style.marginTop = '4px';
+  dica.textContent = 'Digite @ e o nome para marcar um atleta: a mensagem também aparece na ficha dele.';
+  ta.parentNode.insertBefore(dica, box);
+  function garante() {
+    if (S.atletasTodos) return Promise.resolve();
+    return call('inicio', { todos: true }).then(function (r) { S.atletasTodos = r.atletas; S.tipos = r.tipos; });
+  }
+  function atualiza() {
+    var antes = ta.value.slice(0, ta.selectionStart || 0);
+    var m = /(^|\s)@([^\s@]*)$/.exec(antes);
+    if (!m) { box.innerHTML = ''; return; }
+    var q = norm(m[2]);
+    garante().then(function () {
+      var lista = (S.atletasTodos || []).filter(function (a) { return !q || norm(a.nome).indexOf(q) >= 0; }).slice(0, 6);
+      box.innerHTML = lista.map(function (a) {
+        return '<button type="button" class="pick" data-a="' + esc(a.id) + '"><span>' + esc(a.nome) + '</span><span>' + (a.status === 'Inativo' ? '<span class="tag w">Inativo</span> ' : '') + '<span class="a">@</span></span></button>';
+      }).join('') || '<div class="muted small">Nenhum atleta encontrado.</div>';
+      Array.prototype.forEach.call(box.querySelectorAll('.pick'), function (b) {
+        b.onclick = function () {
+          var id = b.getAttribute('data-a');
+          var at = (S.atletasTodos || []).filter(function (x) { return x.id === id; })[0]; if (!at) return;
+          var pos = ta.selectionStart || 0;
+          var ini = ta.value.slice(0, pos).replace(/@[^\s@]*$/, '');
+          var fim = ta.value.slice(pos);
+          ta.value = ini + '@' + at.nome + ' ' + fim;
+          ta._arr[id] = at.nome;
+          var novo = (ini + '@' + at.nome + ' ').length;
+          box.innerHTML = ''; ta.focus(); try { ta.setSelectionRange(novo, novo); } catch (e) {}
+        };
+      });
+    }).catch(function () { box.innerHTML = ''; });
+  }
+  ta.addEventListener('input', atualiza);
+  ta.addEventListener('click', atualiza);
+  ta.addEventListener('keyup', function (e) { if (e.key && e.key.indexOf('Arrow') === 0) atualiza(); });
+}
+function idsArroba(taId) {
+  var ta = $(taId); if (!ta || !ta._arr) return [];
+  return Object.keys(ta._arr).filter(function (id) { return ta.value.indexOf('@' + ta._arr[id]) >= 0; });
+}
+function uniao(a, b) { var o = a.slice(); b.forEach(function (x) { if (o.indexOf(x) < 0) o.push(x); }); return o; }
 
 /* resposta direta no próprio cartão */
 function responder(id) {
@@ -449,13 +498,14 @@ function responder(id) {
     '<textarea id="rpt" style="min-height:80px" placeholder="Escreva a resposta"></textarea><div id="rpm"></div>' +
     '<div class="row"><button class="btn btn-sm btn-green" id="rps" onclick="enviaResp()">Enviar resposta</button><button class="btn btn-sm" onclick="responder(\'' + esc(id) + '\')">Cancelar</button></div></div>';
   ligaChips('rpc', S.rp.marc);
+  ligaArroba('rpt');
   $('rpt').focus();
 }
 function enviaResp() {
   var rp = S.rp; if (!rp) return;
   var m = S.lookup[rp.id]; if (!m) return;
   $('rps').disabled = true; $('rps').textContent = 'Enviando…';
-  call('chatEnviar', { canal: m.canal || m.atletaId || 'GERAL', texto: $('rpt').value, respondeA: m.id, mencoes: Object.keys(rp.marc), prioridade: false }).then(function () {
+  call('chatEnviar', { canal: m.canal || m.atletaId || 'GERAL', texto: $('rpt').value, respondeA: m.id, atletas: idsArroba('rpt'), mencoes: Object.keys(rp.marc), prioridade: false }).then(function () {
     S.rp = null; recarrega();
   }).catch(function (er) { $('rpm').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; $('rps').disabled = false; $('rps').textContent = 'Enviar resposta'; });
 }
@@ -585,7 +635,7 @@ function desenhaAtleta(r) {
     (sem ? '<div class="muted">Sem contato de emergência cadastrado.</div>' :
       '<div class="kv two">' + kv('Nome', f['Contato emergência']) + kv('Telefone', f['Telefone emergência']) + '</div>' + foneBtns(f['Telefone emergência'])) + '</div>' +
 
-    (abertos.length ? '<section><div class="eyebrow cy" style="margin-bottom:10px">Prioridades em aberto · ' + abertos.length + '</div><div class="list">' + abertos.map(function (t) { return fioHtml(t, nf, { semAtleta: true }); }).join('') + '</div></section>' : '') +
+    (abertos.length ? '<section><div class="eyebrow cy" style="margin-bottom:10px">Prioridades em aberto · ' + abertos.length + '</div><div class="list">' + abertos.map(function (t) { return fioHtml(t, nf, { semAtleta: true, fichaId: f['ID'] }); }).join('') + '</div></section>' : '') +
 
     '<div class="card"><div class="eyebrow">Saúde</div>' +
     (atencao ? '<div><span class="tag">Atenção</span></div>' : '') +
@@ -602,7 +652,7 @@ function desenhaAtleta(r) {
     '<p class="small muted">Todos os professores veem este registro no mural e na ficha; quem você marcar recebe aviso por e-mail. Data, hora e o seu nome são gravados automaticamente. Registros não podem ser editados nem apagados; para corrigir, faça um novo registro.</p></form>' +
 
     '<section><div class="eyebrow" style="margin-bottom:10px">Histórico do atleta · ' + tl.length + '</div>' +
-    (resto.length ? '<div class="list">' + resto.map(function (t) { return fioHtml(t, nf, { semAtleta: true }); }).join('') + '</div>' : '<div class="card"><div class="muted small">Nenhum registro ainda.</div></div>') + '</section>' +
+    (resto.length ? '<div class="list">' + resto.map(function (t) { return fioHtml(t, nf, { semAtleta: true, fichaId: f['ID'] }); }).join('') + '</div>' : '<div class="card"><div class="muted small">Nenhum registro ainda.</div></div>') + '</section>' +
 
     '<div class="card"><div class="eyebrow">Treino e provas</div><div class="kv">' +
     kv('Objetivo', f['Objetivo']) + kv('Provas', f['Provas']) + kv('Tipo de prova', f['Tipo de prova']) +
@@ -618,12 +668,13 @@ function desenhaAtleta(r) {
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
 
   S.fm = {}; ligaChips('fchips', S.fm);
+  ligaArroba('tx');
   $('pr').onchange = function () { $('pc').className = 'chk' + ($('pr').checked ? ' on' : ''); };
   $('fi').onsubmit = function (e) {
     e.preventDefault();
     var tp = $('tp').value, txt = $('tx').value, men = Object.keys(S.fm), pr = $('pr').checked;
     $('bs').disabled = true; $('bs').textContent = 'Enviando…';
-    var p = (tp === 'Conversa' || tp === 'Atleta retornando') ? call('chatEnviar', { atletas: [f['ID']], tipo: tp, texto: txt, mencoes: men, prioridade: pr })
+    var p = (tp === 'Conversa' || tp === 'Atleta retornando') ? call('chatEnviar', { atletas: uniao([f['ID']], idsArroba('tx')), tipo: tp, texto: txt, mencoes: men, prioridade: pr })
                               : call('registrar', { atletaId: f['ID'], tipo: tp, texto: txt, mencoes: men, prioridade: pr });
     p.then(function () { abrir(f['ID']); }).catch(function (er) { $('msg').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; $('bs').disabled = false; $('bs').textContent = 'Enviar'; });
   };
@@ -665,6 +716,7 @@ function desenhaNova() {
     '<label class="chk" id="npc"><input type="checkbox" id="np"><span><b>Prioridade</b><span class="small muted">Fica em destaque para todos até ser resolvida. Sem ninguém marcado, todos recebem e-mail.</span></span></label>' +
     '<button class="btn btn-green" id="ns" type="submit">Enviar</button></form>');
   ligaChips('nchips', S.nm.marc);
+  ligaArroba('nt');
   desenhaTipos();
   $('ntp').onchange = dicaTipo;
   $('nq').oninput = function () {
@@ -682,7 +734,7 @@ function desenhaNova() {
     e.preventDefault();
     var tp = $('ntp').value, txt = $('nt').value, men = Object.keys(S.nm.marc), pr = $('np').checked;
     $('ns').disabled = true; $('ns').textContent = 'Enviando…';
-    var p = (tp === 'Conversa' || tp === 'Atleta retornando') ? call('chatEnviar', { atletas: S.nm.atl, tipo: tp, texto: txt, mencoes: men, prioridade: pr })
+    var p = (tp === 'Conversa' || tp === 'Atleta retornando') ? call('chatEnviar', { atletas: uniao(S.nm.atl, idsArroba('nt')), tipo: tp, texto: txt, mencoes: men, prioridade: pr })
                               : call('registrar', { atletaId: S.nm.atl[0], tipo: tp, texto: txt, mencoes: men, prioridade: pr });
     p.then(function () { mural(); }).catch(function (er) { $('nmsg').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; $('ns').disabled = false; $('ns').textContent = 'Enviar'; });
   };
