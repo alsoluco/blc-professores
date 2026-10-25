@@ -105,6 +105,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
 .thread{display:flex;flex-direction:column;gap:8px}.replies{display:flex;flex-direction:column;gap:8px;margin-left:14px;padding-left:12px;border-left:2px solid var(--green)}.replies .card{padding:12px}.more{align-self:flex-start}
 .rp{border-top:1px dashed var(--line);padding-top:12px;display:flex;flex-direction:column;gap:10px}
 .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ciente{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;padding:11px 14px;min-height:44px;border:1.5px solid var(--green);background:transparent;color:var(--green);font-family:var(--font);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.ciente.ok{background:var(--green);color:#000;border-color:var(--green);cursor:default}
 .vis{font-size:.74rem;color:var(--muted);letter-spacing:.04em}
 footer{text-align:center;color:var(--muted);font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;padding-top:10px}
 
@@ -420,8 +422,8 @@ function muralCard(m, hot, opts) {
   var aberta = m.prioridade && !m.resolvido;
   var vis = '';
   if (m.req && m.req.length) {
-    vis = '<div class="vis">' + (m.vistoPor.length ? 'Visto por ' + m.vistoPor.map(function (v) { return esc(v.nome) + ' ' + esc(v.quando); }).join(' · ') : 'Ninguém viu ainda') +
-      (m.faltam.length ? ' · <span style="color:var(--cyan)">Ainda não viu: ' + m.faltam.map(esc).join(', ') + '</span>' : '') + '</div>';
+    vis = '<div class="vis">' + (m.vistoPor.length ? 'Ciente: ' + m.vistoPor.map(function (v) { return esc(v.nome) + ' ' + esc(v.quando); }).join(' · ') : 'Ninguém deu ciente ainda') +
+      (m.faltam.length ? ' · <span style="color:var(--cyan)">Falta dar ciente: ' + m.faltam.map(esc).join(', ') + '</span>' : '') + '</div>';
   }
   return '<div class="card' + (hot ? ' hot' : '') + (aberta && !hot ? ' cy' : '') + '" data-id="' + esc(m.id) + '"' + (m.naoVi && !S.vi[m.id] ? ' data-need="1"' : '') + '>' +
     '<div class="row" style="justify-content:space-between;align-items:center"><span class="small muted">' + esc(m.quando) + '</span><span class="tags">' +
@@ -436,7 +438,7 @@ function muralCard(m, hot, opts) {
     (!opts.semAtleta && !opts.filha && m.atletaId ? '<button class="btn btn-sm' + (m.email === 'sistema@blc' ? ' btn-green' : '') + '" onclick="abrir(\'' + esc(m.atletaId) + '\')">Abrir atleta</button>' : '') +
     (!opts.semAtleta && !opts.filha && !m.atletaId && m.atletasLista && m.atletasLista.length > 1 ? m.atletasLista.map(function (a) { return '<button class="btn btn-sm" onclick="abrir(\'' + esc(a.id) + '\')">' + esc(a.nome.split(' ')[0]) + '</button>'; }).join('') : '') +
     (aberta ? '<button class="btn btn-sm" onclick="resolver(\'' + esc(m.id) + '\')">Marcar como resolvido</button>' : '') + '</div>' +
-    '<div id="rp_' + esc(m.id) + '"></div></div>';
+    cienteBtn(m) + '<div id="rp_' + esc(m.id) + '"></div></div>';
 }
 
 /* @atleta: digitar @ numa caixa de texto abre a lista de atletas; quem for escolhido é marcado na mensagem e ela vai para a ficha dele */
@@ -512,8 +514,30 @@ function enviaResp() {
 }
 function recarrega() { if (S.atual) abrir(S.atual); else mural(); }
 
+function cienteBtn(m) {
+  if (!m.req || m.req.indexOf(S.email) < 0) return '';
+  var feito = !m.naoVi || S.vi[m.id];
+  return '<button type="button" class="ciente' + (feito ? ' ok' : '') + '" id="ci_' + esc(m.id) + '"' + (feito ? ' disabled' : ' onclick="ciente(\'' + esc(m.id) + '\')"') + ' aria-pressed="' + (feito ? 'true' : 'false') + '">' +
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>' +
+    '<span>' + (feito ? 'Ciente · você leu' : 'Li e estou ciente') + '</span></button>';
+}
+function ciente(id) {
+  if (S.vi[id]) return;
+  var b = $('ci_' + id);
+  S.vi[id] = 1; S.fix[id] = 1;
+  var it = (S.lookup || {})[id];
+  if (it && it.paraMim && S.mural) S.mural.paraMimTotal = Math.max(0, S.mural.paraMimTotal - 1);
+  if (b) { b.className = 'ciente ok'; b.disabled = true; b.removeAttribute('onclick'); b.setAttribute('aria-pressed', 'true'); b.querySelector('span').textContent = 'Ciente · você leu'; }
+  desenhaNav(true);
+  call('muralVisto', { ids: [id] }).catch(function () {
+    S.vi[id] = 0;
+    if (b) { b.className = 'ciente'; b.disabled = false; b.setAttribute('onclick', "ciente('" + id + "')"); b.setAttribute('aria-pressed', 'false'); b.querySelector('span').textContent = 'Li e estou ciente'; }
+    aviso('Não consegui registrar. Confira a internet e toque de novo.');
+  });
+}
 /* "Visto": a mensagem em que o professor foi marcado conta como vista quando aparece na tela dele */
 function observaVistos() {
+  return; // agora o professor confirma a ciência com o botão "Li e estou ciente"
   var els = Array.prototype.filter.call(document.querySelectorAll('[data-need="1"]'), function (e) { return !S.vi[e.getAttribute('data-id')]; });
   if (!els.length) return;
   var pend = {}, tm = null;
