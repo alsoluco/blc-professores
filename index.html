@@ -388,7 +388,10 @@ function desenhaMural() {
   var dirEq = function (m) { return m.email !== S.email && !m.mencoes.length; };
   var nMim = ts.filter(function (t) { return t.itens.some(dirMim); }).length;
   var nEq = ts.filter(function (t) { return t.itens.some(dirEq); }).length;
+  var naoLida = function (m) { return m.naoVi && !S.vi[m.id]; };
+  var nNL = ts.filter(function (t) { return t.itens.some(naoLida); }).length;
   var nTodas = ts.length;
+  if (fm === 'nl') ts = ts.filter(function (t) { return t.itens.some(naoLida); });
   if (fm === 'mim') ts = ts.filter(function (t) { return t.itens.some(dirMim); });
   if (fm === 'equipe') ts = ts.filter(function (t) { return t.itens.some(dirEq); });
   var g1 = ts.filter(function (t) { return t.itens.some(meus); });
@@ -398,12 +401,13 @@ function desenhaMural() {
   S.lookup = {};
   app(head(userBar()) + '<div><div class="eyebrow">Olá, ' + esc(S.nome.split(' ')[0]) + '</div><h2>Mensagens da <em>equipe</em></h2></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-    [['todas', 'Todas', nTodas], ['mim', 'Direcionadas a mim', nMim], ['equipe', 'Para toda a equipe', nEq]].map(function (o) {
+    [['nl', '\u2713 N\u00e3o li', nNL], ['todas', 'Todas', nTodas], ['mim', 'Direcionadas a mim', nMim], ['equipe', 'Para toda a equipe', nEq]].map(function (o) {
       return '<button class="chip' + (fm === o[0] ? ' on' : '') + '" onclick="S.filtro=\'' + o[0] + '\';desenhaMural()">' + o[1] + ' · ' + o[2] + '</button>';
     }).join('') + '</div>' +
+    (fm === 'nl' ? '<div class="small muted">Conversas com mensagem sua ainda sem "Li e estou ciente". Toque no botão no fim da mensagem para ela sair daqui.</div>' : '') +
     (fm === 'mim' ? '<div class="small muted">Só as mensagens em que você foi marcado.</div>' : '') +
     (fm === 'equipe' ? '<div class="small muted">Mensagens sem ninguém marcado: valem para todos os professores.</div>' : '') +
-    (fm !== 'todas' && !ts.length ? '<div class="card"><div class="muted">Nada por aqui por enquanto.</div></div>' : '') +
+    (fm !== 'todas' && !ts.length ? '<div class="card"><div class="muted">' + (fm === 'nl' ? 'Tudo lido. Nenhuma mensagem esperando a sua ciência.' : 'Nada por aqui por enquanto.') + '</div></div>' : '') +
     secaoMural('Para você', '', g1, true) + secaoMural('Prioridades em aberto', 'cy', g2, false) +
     (mostra.length ? '<section><div class="eyebrow" style="margin-bottom:10px">Recentes</div><div class="list">' + mostra.map(function (t) { return fioHtml(t, function () { return false; }); }).join('') + '</div>' +
       (g3.length > mostra.length ? '<button class="btn btn-sm" style="margin-top:12px" onclick="S.limite+=40;desenhaMural()">Ver mais antigas</button>' : '') + '</section>' : '') +
