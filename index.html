@@ -84,7 +84,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--cyan)}
 .spin{color:var(--muted);text-align:center;padding:30px 0}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50}
 .dlg{background:#050505;border:1px solid var(--green);box-shadow:0 0 36px rgba(0,255,0,.18);max-width:420px;width:100%;padding:22px 20px;display:flex;flex-direction:column;gap:14px}
-.dlg p{color:var(--fg)}
+.dlg p{color:var(--fg);white-space:pre-line}
 .msg{border-left:2px solid var(--line);padding:2px 0 8px 12px;display:flex;flex-direction:column;gap:5px}
 .msg.mine{border-left-color:var(--green)}
 .msg.pri{border-left-color:var(--cyan)}
@@ -1176,6 +1176,7 @@ function carregaInscritos(id, primeira) {
     S.insc = r;
     if (r.participantes) { desenhaPart(); if (r.admin && !S.ptAtl) ptCarrega(); return; }
     desenhaInscritos(primeira);
+    if (r.admin && !S.ptAtl) ptCarrega();
     if (r.pendentes > 0 && !r.ocrDesligado) setTimeout(function () { if (S.aba2 === 'prova' + id) carregaInscritos(id, false); }, 600);
   }).catch(function (e) { if (S.aba2 === 'prova' + id) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Tentar de novo</button>'); });
 }
@@ -1205,6 +1206,7 @@ function desenhaInscritos(primeira) {
     '<div class="small muted">' + (r.prova.prazo ? 'Prazo: ' + esc(r.prova.prazo) + (r.encerrado ? ' · <b>encerrado</b>' : '') + '. ' : '') + (r.semPagto ? 'Este formulário não tem comprovante: só as respostas aparecem.' : 'O pagamento só vale pelo comprovante anexado no formulário.') + '</div>' +
     (r.erroOcr ? '<div class="err">Erro ao ler comprovante: ' + esc(r.erroOcr) + '</div>' : '') + (r.ocrDesligado ? '<div class="err">A leitura automática dos comprovantes ainda não está ligada no script. Os nomes aparecem, mas o valor não é conferido.</div>' : '') +
     (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(r.prova.id) + '\')">Convidar quem ainda não se inscreveu</button> <button type="button" class="btn btn-sm btn-green" id="pdfb" onclick="provaPdf(\'' + esc(r.prova.id) + '\')">Exportar PDF</button> <button type="button" class="btn btn-sm" onclick="provaConfigForm(\'' + esc(r.prova.id) + '\')">Configurar prova</button>' : '') + '</div>' +
+    aptosCard(r) +
     (r.semPagto ? '' : '<div class="tags">' + ch('todos', 'Todos') + ch('ok', 'Valor confere') + ch('rev', 'A conferir') + '</div>') +
     '<div class="list">' + (lista.map(function (x) {
       return '<div class="card insrow"><div class="top"><b>' + esc(x.nome) + '</b>' + statusTag(x) + '</div>' +
@@ -1214,6 +1216,63 @@ function desenhaInscritos(primeira) {
     }).join('') || '<div class="muted small">Ninguém nesta lista.</div>') + '</div>' +
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>';
   if (primeira) app(html); else { var y = window.scrollY; $('app').innerHTML = html; window.scrollTo(0, y); }
+}
+
+/* ---------- atletas aptos a se inscrever (prova com formulário) ---------- */
+function apZapSvg() { return '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>'; }
+function aptosCard(r) {
+  var l = r.aptos || [];
+  if (!l.length && !r.admin) return '';
+  var feitos = l.filter(function (x) { return x.inscrito; }).length;
+  l = l.slice().sort(function (a, b) { return (a.inscrito - b.inscrito) || (cvNorm(a.nome) < cvNorm(b.nome) ? -1 : 1); });
+  return '<div class="card"><div class="eyebrow cy">Atletas aptos a se inscrever</div>' +
+    (l.length ? '<div class="tags"><span class="tag g">' + feitos + ' de ' + l.length + ' inscritos</span>' + (l.length - feitos ? '<span class="tag r">' + (l.length - feitos) + ' faltam</span>' : '<span class="tag g">Todos inscritos</span>') + '</div>' :
+      '<div class="small muted">Ainda não há lista de aptos para esta prova.</div>') +
+    '<div class="list">' + l.map(function (x) {
+      var fone = cvFone(x.telefone);
+      return '<div class="chk cvr' + (x.inscrito ? ' on' : '') + '"><span><b>' + (x.inscrito ? '✓ ' : '') + esc(x.nome) + '</b><span class="small">' +
+        (x.inscrito ? 'Já se inscreveu' : 'Ainda não se inscreveu') + (r.admin && !x.inscrito && !fone ? ' · sem telefone cadastrado' : '') + '</span></span>' +
+        (r.admin && !x.inscrito && fone ? '<button type="button" class="zap" aria-label="Lembrar pelo WhatsApp" title="Lembrar pelo WhatsApp" onclick="apZap(\'' + esc(x.id) + '\')">' + apZapSvg() + '</button>' : '') +
+        (r.admin ? '<button type="button" class="btn btn-sm" onclick="apRem(\'' + esc(x.id) + '\')">Tirar</button>' : '') + '</div>';
+    }).join('') + '</div>' +
+    (r.admin ? '<div class="small muted" style="margin-top:8px">Para incluir atletas: cole os nomes, um por linha. Depois de enviar o link, quem faltar aparece aqui com o botão de lembrete.</div>' +
+      '<textarea id="apt" rows="4" placeholder="Um nome por linha"></textarea><button type="button" class="btn btn-sm btn-green" onclick="apAdd()">Incluir na lista de aptos</button>' : '') + '</div>';
+}
+function apZap(id) {
+  var x = ((S.insc && S.insc.aptos) || []).filter(function (a) { return a.id === id; })[0]; if (!x) return;
+  var p = S.insc.prova;
+  var msg = 'Olá, ' + String(x.nome).split(' ')[0] + '! Aqui é da BLC. Passando para lembrar que você ainda não preencheu o formulário de inscrição: ' + p.nome + '.' +
+    (p.prazo ? ' O prazo vai até ' + p.prazo + '.' : '') + (p.link ? '\n\nFormulário: ' + p.link : '') + '\n\nQualquer dúvida, é só chamar!';
+  window.open('https://wa.me/' + cvFone(x.telefone) + '?text=' + encodeURIComponent(msg), '_blank');
+}
+function apRem(id) {
+  var x = ((S.insc && S.insc.aptos) || []).filter(function (a) { return a.id === id; })[0], pid = S.insc.prova.id;
+  dlg('Tirar ' + (x ? x.nome : 'este atleta') + ' da lista de aptos?', { ok: 'Tirar' }).then(function (v) {
+    if (!v) return;
+    call('partRem', { id: pid, atletaId: id }).then(function () { inscritos(pid); }).catch(function (e) { aviso(e.message); });
+  });
+}
+function apToks(t) { return cvNorm(t).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(function (w) { return w.length > 2 && !/^(de|da|do|das|dos)$/.test(w); }); }
+function apAdd() {
+  if (!S.ptAtl) { aviso('Ainda carregando a lista de atletas. Tente de novo em alguns segundos.'); return; }
+  var linhas = ($('apt').value || '').split(/\n|;/).map(function (t) { return t.replace(/^[\s*~\-\u2022\d.)]+/, '').trim(); }).filter(Boolean);
+  if (!linhas.length) { aviso('Cole os nomes dos atletas, um por linha.'); return; }
+  var ja = {}; ((S.insc && S.insc.aptos) || []).forEach(function (a) { ja[a.id] = 1; });
+  var ok = [], ids = {}, nao = [], amb = [];
+  linhas.forEach(function (ln) {
+    var tk = apToks(ln); if (!tk.length) return;
+    var m = S.ptAtl.filter(function (a) { var w = apToks(a.nome); return tk.every(function (t) { return w.some(function (x) { return x.indexOf(t) === 0; }); }); });
+    if (m.length > 1) { var at = m.filter(function (a) { return a.status !== 'Inativo'; }); if (at.length) m = at; }
+    if (m.length === 1) { if (!ja[m[0].id] && !ids[m[0].id]) { ids[m[0].id] = 1; ok.push(m[0]); } }
+    else if (!m.length) nao.push(ln); else amb.push(ln + ' (' + m.length + ' atletas parecidos)');
+  });
+  var aviso2 = (nao.length ? '\n\nNão encontrei: ' + nao.join('; ') + '.' : '') + (amb.length ? '\n\nMais de um atleta com esse nome, digite o nome completo: ' + amb.join('; ') + '.' : '');
+  if (!ok.length) { aviso('Nenhum atleta novo para incluir.' + aviso2); return; }
+  var pid = S.insc.prova.id;
+  dlg('Incluir ' + ok.length + ' atleta(s) na lista de aptos?\n\n' + ok.map(function (a) { return '• ' + a.nome; }).join('\n') + aviso2, { ok: 'Incluir' }).then(function (v) {
+    if (!v) return;
+    call('partAdd', { id: pid, ids: ok.map(function (a) { return a.id; }) }).then(function () { inscritos(pid); }).catch(function (e) { aviso(e.message); });
+  });
 }
 
 /* ---------- insights semanais (IA) e condutas da equipe ---------- */
