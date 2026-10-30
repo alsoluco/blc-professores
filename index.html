@@ -1602,7 +1602,7 @@ function cvEnvia() {
 
 
 /* ---------- financeiro (só head coach) ---------- */
-var FIN = { d: null, aba: 'vencido' };
+var FIN = { d: null, aba: 'vencido', q: '' };
 function cabFin() {
   return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>Asaas</em></h2></div>' + painelTabs('fin');
 }
@@ -1614,22 +1614,25 @@ function painelFin() {
     FIN.d = r.dados; desenhaFin();
   }).catch(function (e) { app(cabFin() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
-function finMoeda(v) { var n = Number(v); return isFinite(n) ? 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+,)/g, '.') : esc(v || ''); }
+function finMoeda(v) { if (v === null || v === undefined || v === '') return ''; var n = Number(v); return isFinite(n) ? 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+,)/g, '.') : esc(v || ''); }
+function finBusca(v) { FIN.q = v; desenhaFin(); var e = $('finq'); if (e) { e.focus(); e.setSelectionRange(v.length, v.length); } }
 function finAba(k) { FIN.aba = k; desenhaFin(); }
 function desenhaFin() {
   var d = FIN.d, it = d.itens || [];
-  var grupos = [['vencido', 'Vencidos'], ['cartao', 'Cartão a lançar'], ['divergencia', 'Divergências'], ['emdia', 'Em dia']];
+  var grupos = [['vencido', 'Vencidos'], ['cartao', 'Cartão a lançar'], ['divergencia', 'Divergências'], ['avencer', 'A vencer'], ['emdia', 'Em dia'], ['naoaplica', 'Não se aplica']];
   var cont = {}; grupos.forEach(function (g) { cont[g[0]] = 0; });
   it.forEach(function (x) { if (cont[x.status] !== undefined && !(x.status === 'cartao' && x.lancadoEm)) cont[x.status]++; });
   var tabs = '<div class="tabs">' + grupos.map(function (g) {
     return '<button class="btn btn-sm' + (FIN.aba === g[0] ? ' on' : '') + '" onclick="finAba(\'' + g[0] + '\')">' + g[1] + ' (' + cont[g[0]] + ')</button>';
   }).join('') + '</div>';
-  var lista = it.filter(function (x) { return x.status === FIN.aba; });
+  var q = cvNorm(FIN.q || '');
+  var lista = it.filter(function (x) { return x.status === FIN.aba && (!q || cvNorm(x.nome + ' ' + (x.grupo || '')).indexOf(q) >= 0); });
   var tot = 0; lista.forEach(function (x) { if (!(x.status === 'cartao' && x.lancadoEm)) tot += Number(x.valor) || 0; });
   var corpo = lista.length ? lista.map(function (x) {
     var feito = x.status === 'cartao' && x.lancadoEm;
-    return '<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(x.nome) + '</h3><span class="tag' + (x.status === 'emdia' || feito ? ' g' : ' w') + '">' + finMoeda(x.valor) + '</span></div>' +
-      (x.vencimento ? '<div class="small muted">Vencimento: ' + esc(x.vencimento) + (x.diasAtraso ? ' · ' + esc(x.diasAtraso) + ' dias de atraso' : '') + '</div>' : '') +
+    return '<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(x.nome) + '</h3>' + (x.valor !== null && x.valor !== undefined ? '<span class="tag' + (x.status === 'emdia' || feito ? ' g' : ' w') + '">' + finMoeda(x.valor) + '</span>' : '') + '</div>' +
+      (x.grupo ? '<div class="small muted">' + esc(x.grupo) + '</div>' : '') +
+      (x.vencimento && x.status !== 'naoaplica' ? '<div class="small muted">Vencimento: ' + esc(x.vencimento) + (x.diasAtraso ? ' · ' + esc(x.diasAtraso) + ' dias de atraso' : '') + '</div>' : '') +
       (x.obs ? '<div class="small">' + esc(x.obs) + '</div>' : '') +
       (x.status === 'cartao' ? (feito ? '<div class="small muted">Lançado em ' + esc(x.lancadoEm) + '</div>' :
         '<div class="row"><button class="btn btn-sm btn-green" onclick="finLanca(\'' + esc(x.id) + '\')">Já lancei</button></div>') : '') +
@@ -1637,7 +1640,7 @@ function desenhaFin() {
       '</div>';
   }).join('') : '<div class="card"><div class="muted">Nada por aqui.</div></div>';
   app(cabFin() + '<div class="small muted">Atualizado em ' + esc(d.atualizadoEm || '—') + (d.fonte ? ' · ' + esc(d.fonte) : '') + '</div>' + tabs +
-    (lista.length ? '<div class="small muted">' + lista.length + ' atleta(s) · total ' + finMoeda(tot) + '</div>' : '') + '<div class="list">' + corpo + '</div>');
+    '<input id="finq" type="search" placeholder="Buscar por nome ou grupo" value="' + esc(FIN.q || '') + '" oninput="finBusca(this.value)">' + (lista.length ? '<div class="small muted">' + lista.length + ' atleta(s)' + (tot ? ' · total ' + finMoeda(tot) : '') + '</div>' : '') + '<div class="list">' + corpo + '</div>');
 }
 function finLanca(id) {
   var x = (FIN.d.itens || []).filter(function (i) { return String(i.id) === String(id); })[0];
