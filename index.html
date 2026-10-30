@@ -1602,50 +1602,168 @@ function cvEnvia() {
 
 
 /* ---------- financeiro (só head coach) ---------- */
-var FIN = { d: null, aba: 'vencido', q: '' };
+var FIN = { d: null, c: {}, reg: {}, aba: 'hoje', mes: 10, q: '' };
+var FIN_MES = { 9: 'setembro', 10: 'outubro', 11: 'novembro' };
+var FIN_FORMA = { B: 'Boleto', P: 'Pix', C: 'Cartão' };
 function cabFin() {
   return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>Asaas</em></h2></div>' + painelTabs('fin');
 }
+function finDt(s) { var p = String(s || '').split('/'); return p.length === 3 ? new Date(+p[2], +p[1] - 1, +p[0]) : null; }
+function finHoje() { var h = new Date(); return new Date(h.getFullYear(), h.getMonth(), h.getDate()); }
+function finDias(a, b) { return Math.round((b - a) / 86400000); }
+function finP2(n) { return (n < 10 ? '0' : '') + n; }
+function finFmt(d) { return finP2(d.getDate()) + '/' + finP2(d.getMonth() + 1) + '/' + d.getFullYear(); }
+function finAgora() { var d = new Date(); return finFmt(d) + ' ' + finP2(d.getHours()) + ':' + finP2(d.getMinutes()); }
+function finSoma(d, n) { var y = d.getFullYear(), m = d.getMonth() + n, dia = d.getDate(); var u = new Date(y, m + 1, 0).getDate(); return new Date(y, m, Math.min(dia, u)); }
 function painelFin() {
   S.aba = 'fin'; S.aba2 = 'pnl';
   app(cabFin() + '<div class="spin">Carregando…</div>');
   call('financeiro').then(function (r) {
     if (r.vazio) { app(cabFin() + '<div class="card"><div class="muted">Ainda não há conferência. Envie as planilhas do Asaas para o Claude e ela aparece aqui.</div></div>'); return; }
-    FIN.d = r.dados; desenhaFin();
+    if (!r.dados || r.dados.v !== 2) { app(cabFin() + '<div class="card"><div class="muted">Os dados estão em formato antigo. Peça ao Claude para atualizar a conferência.</div></div>'); return; }
+    FIN.d = r.dados; FIN.c = {};
+    (r.dados.cobr || []).forEach(function (x) { (FIN.c[x.a] = FIN.c[x.a] || []).push(x); });
+    FIN.reg = {}; (r.registros || []).forEach(function (g) { FIN.reg[g.id] = g.quando; });
+    var m = new Date().getMonth() + 1; FIN.mes = m < 9 ? 9 : (m > 11 ? 11 : m);
+    desenhaFin();
   }).catch(function (e) { app(cabFin() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
 function finMoeda(v) { if (v === null || v === undefined || v === '') return ''; var n = Number(v); return isFinite(n) ? 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+,)/g, '.') : esc(v || ''); }
 function finBusca(v) { FIN.q = v; desenhaFin(); var e = $('finq'); if (e) { e.focus(); e.setSelectionRange(v.length, v.length); } }
 function finAba(k) { FIN.aba = k; desenhaFin(); }
-function desenhaFin() {
-  var d = FIN.d, it = d.itens || [];
-  var grupos = [['vencido', 'Vencidos'], ['cartao', 'Cartão a lançar'], ['divergencia', 'Divergências'], ['avencer', 'A vencer'], ['emdia', 'Em dia'], ['naoaplica', 'Não se aplica']];
-  var cont = {}; grupos.forEach(function (g) { cont[g[0]] = 0; });
-  it.forEach(function (x) { if (cont[x.status] !== undefined && !(x.status === 'cartao' && x.lancadoEm)) cont[x.status]++; });
-  var tabs = '<div class="tabs">' + grupos.map(function (g) {
-    return '<button class="btn btn-sm' + (FIN.aba === g[0] ? ' on' : '') + '" onclick="finAba(\'' + g[0] + '\')">' + g[1] + ' (' + cont[g[0]] + ')</button>';
-  }).join('') + '</div>';
-  var q = cvNorm(FIN.q || '');
-  var lista = it.filter(function (x) { return x.status === FIN.aba && (!q || cvNorm(x.nome + ' ' + (x.grupo || '')).indexOf(q) >= 0); });
-  var tot = 0; lista.forEach(function (x) { if (!(x.status === 'cartao' && x.lancadoEm)) tot += Number(x.valor) || 0; });
-  var corpo = lista.length ? lista.map(function (x) {
-    var feito = x.status === 'cartao' && x.lancadoEm;
-    return '<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(x.nome) + '</h3>' + (x.valor !== null && x.valor !== undefined ? '<span class="tag' + (x.status === 'emdia' || feito ? ' g' : ' w') + '">' + finMoeda(x.valor) + '</span>' : '') + '</div>' +
-      (x.grupo ? '<div class="small muted">' + esc(x.grupo) + '</div>' : '') +
-      (x.vencimento && x.status !== 'naoaplica' ? '<div class="small muted">Vencimento: ' + esc(x.vencimento) + (x.diasAtraso ? ' · ' + esc(x.diasAtraso) + ' dias de atraso' : '') + '</div>' : '') +
-      (x.obs ? '<div class="small">' + esc(x.obs) + '</div>' : '') +
-      (x.status === 'cartao' ? (feito ? '<div class="small muted">Lançado em ' + esc(x.lancadoEm) + '</div>' :
-        '<div class="row"><button class="btn btn-sm btn-green" onclick="finLanca(\'' + esc(x.id) + '\')">Já lancei</button></div>') : '') +
-      (x.telefone && x.status === 'vencido' ? '<div class="row"><a class="btn btn-sm btn-line" target="_blank" rel="noopener" href="https://wa.me/' + esc(cvFone(x.telefone)) + '?text=' + encodeURIComponent('Oi, ' + String(x.nome).split(' ')[0] + '! Tudo bem? Identificamos que a sua mensalidade da BLC está em aberto. Pode nos ajudar a regularizar? Obrigado!') + '">Lembrar no WhatsApp</a></div>' : '') +
-      '</div>';
-  }).join('') : '<div class="card"><div class="muted">Nada por aqui.</div></div>';
-  app(cabFin() + '<div class="small muted">Atualizado em ' + esc(d.atualizadoEm || '—') + (d.fonte ? ' · ' + esc(d.fonte) : '') + '</div>' + tabs +
-    '<input id="finq" type="search" placeholder="Buscar por nome ou grupo" value="' + esc(FIN.q || '') + '" oninput="finBusca(this.value)">' + (lista.length ? '<div class="small muted">' + lista.length + ' atleta(s)' + (tot ? ' · total ' + finMoeda(tot) : '') + '</div>' : '') + '<div class="list">' + corpo + '</div>');
+function finMes(m) { FIN.mes = m; desenhaFin(); }
+function finOk(a) { var q = cvNorm(FIN.q || ''); return !q || cvNorm(a.n + ' ' + (a.g || '')).indexOf(q) >= 0; }
+function finStMes(i, m) {
+  var l = (FIN.c[i] || []).filter(function (x) { return x.m === m; });
+  if (!l.length) return '';
+  var t = function (s) { return l.some(function (x) { return x.s === s; }); };
+  if (t('V')) return 'V'; if (t('A')) return 'A'; if (t('E')) return 'E'; return 'P';
 }
-function finLanca(id) {
-  var x = (FIN.d.itens || []).filter(function (i) { return String(i.id) === String(id); })[0];
-  if (!x) return;
-  call('finLancar', { id: id, nome: x.nome, valor: x.valor }).then(function () { x.lancadoEm = 'agora'; desenhaFin(); }).catch(function (e) { aviso(e.message); });
+function finCalc() {
+  var d = FIN.d, hoje = finHoje(), M = FIN.mes, mReal = hoje.getMonth() + 1;
+  var o = { cobrar: [], cartao: [], acabando: [], verificar: [], avencer: [], emdia: [], naoaplica: [], hoje: hoje, mReal: mReal };
+  d.atletas.forEach(function (a, i) {
+    var cs = FIN.c[i] || [];
+    if (a.ov === 'n') { o.naoaplica.push({ i: i, a: a }); return; }
+    if (a.ov === 'v') { o.verificar.push({ i: i, a: a, motivo: a.o }); return; }
+    var venc = cs.filter(function (x) { return x.s === 'V'; }).sort(function (x, y) { return finDt(x.d) - finDt(y.d); });
+    if (venc.length) o.cobrar.push({ i: i, a: a, cs: venc });
+    cs.forEach(function (x) { if (x.f === 'C' && x.m === M && (x.s === 'C' || x.s === 'R')) o.cartao.push({ i: i, a: a, x: x }); });
+    var par = cs.filter(function (x) { return x.y > 1 && x.s !== 'E'; }).sort(function (x, y) { return finDt(y.d) - finDt(x.d); })[0];
+    if (par) {
+      var fim = finSoma(finDt(par.d), par.y - par.x);
+      var dias = finDias(hoje, fim);
+      if (dias <= 75 && dias >= -20) o.acabando.push({ i: i, a: a, x: par, fim: fim, dias: dias });
+    }
+    var est = cs.filter(function (x) { return x.s === 'E'; });
+    if (est.length) o.verificar.push({ i: i, a: a, motivo: 'Cobrança estornada em ' + est.sort(function (x, y) { return x.m - y.m; }).map(function (x) { return FIN_MES[x.m] || x.m; }).filter(function (v, k, r) { return r.indexOf(v) === k; }).join(' e ') });
+    else if (cs.length && !cs.some(function (x) { return x.m === M; }) && M <= mReal && (cs.some(function (x) { return x.m < M; }) && cs.some(function (x) { return x.m > M; }))) o.verificar.push({ i: i, a: a, motivo: 'Sem cobrança em ' + FIN_MES[M] });
+    var st = finStMes(i, M);
+    if (st === 'A') o.avencer.push({ i: i, a: a, cs: cs.filter(function (x) { return x.m === M && x.s === 'A'; }) });
+    if (st === 'P') o.emdia.push({ i: i, a: a, cs: cs.filter(function (x) { return x.m === M && x.s !== 'E'; }) });
+  });
+  o.cobrar.sort(function (x, y) { return finDt(x.cs[0].d) - finDt(y.cs[0].d); });
+  o.cartao.sort(function (x, y) { return finDt(x.x.d) - finDt(y.x.d); });
+  o.acabando.sort(function (x, y) { return x.fim - y.fim; });
+  o.avencer.sort(function (x, y) { return finDt(x.cs[0].d) - finDt(y.cs[0].d); });
+  var pend = o.cartao.filter(function (z) { return !FIN.reg['c-' + z.x.k]; }).length;
+  o.nHoje = o.cobrar.length + pend + o.acabando.length + o.verificar.length;
+  o.nPend = pend;
+  return o;
+}
+function finMsg(a, x, mReal) {
+  var nome = String(a.n).split(' ')[0];
+  var quando = x.m === mReal ? 'desse mês' : 'de ' + (FIN_MES[x.m] || 'mês ' + x.m);
+  return 'Olá, tudo bem ' + nome + '? Por favor verifica pra mim se acertou a mensalidade ' + quando + '. Pra mim está aparecendo como aberto. Se tiver alguma divergência pode me chamar. Abraços, Beto Lundgren.';
+}
+function finTit(n, txt) { return '<h3 style="margin:18px 0 6px">' + txt + ' <span class="tag' + (n ? ' w' : ' g') + '">' + n + '</span></h3>'; }
+function finVazio(t) { return '<div class="card"><div class="muted">' + t + '</div></div>'; }
+function finCabCard(a, tag) {
+  return '<div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(a.n) + '</h3>' + (tag || '') + '</div>' + (a.g ? '<div class="small muted">' + esc(a.g) + '</div>' : '');
+}
+function finCobrou(i, k) {
+  var a = FIN.d.atletas[i], x = (FIN.c[i] || []).filter(function (z) { return z.k === k; })[0];
+  if (!a || !x) return;
+  call('finLancar', { id: 'cb|' + k, nome: a.n, valor: x.v, multi: true }).then(function (r) { FIN.reg['cb|' + k] = (r && r.quando) || finAgora(); desenhaFin(); }).catch(function (e) { aviso(e.message); });
+}
+function finLanca(i, k) {
+  var a = FIN.d.atletas[i], x = (FIN.c[i] || []).filter(function (z) { return z.k === k; })[0];
+  if (!a || !x) return;
+  call('finLancar', { id: 'c-' + k, nome: a.n, valor: x.v }).then(function (r) { FIN.reg['c-' + k] = (r && r.quando) || finAgora(); desenhaFin(); }).catch(function (e) { aviso(e.message); });
+}
+function finSecCobrar(o) {
+  var l = o.cobrar.filter(function (z) { return finOk(z.a); });
+  var tot = 0; l.forEach(function (z) { z.cs.forEach(function (x) { tot += x.v; }); });
+  return finTit(l.length, 'Cobrar') + (l.length ? '<div class="small muted">Total em atraso: ' + finMoeda(tot) + '</div>' : '') + (l.length ? l.map(function (z) {
+    var soma = 0; z.cs.forEach(function (x) { soma += x.v; });
+    var atraso = finDias(finDt(z.cs[0].d), o.hoje);
+    return '<div class="card">' + finCabCard(z.a, '<span class="tag w">' + finMoeda(soma) + '</span>') +
+      '<div class="small"><b>' + atraso + ' dia(s) em atraso</b> · ' + z.cs.length + (z.cs.length > 1 ? ' meses devendo' : ' mês devendo') + '</div>' +
+      z.cs.map(function (x) {
+        var feito = FIN.reg['cb|' + x.k];
+        var link = z.a.t ? 'https://wa.me/' + cvFone(z.a.t) + '?text=' + encodeURIComponent(finMsg(z.a, x, o.mReal)) : '';
+        return '<div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:6px"><div><div class="small"><b>' + esc(FIN_MES[x.m] || x.m) + '</b> · ' + finMoeda(x.v) + ' · ' + esc(FIN_FORMA[x.f] || '') + '</div>' +
+          '<div class="small muted">Venceu ' + esc(x.d) + ' · ' + finDias(finDt(x.d), o.hoje) + ' dia(s)' + (feito ? ' · Cobrado em ' + esc(feito) : ' · ainda não cobrado') + '</div></div>' +
+          (link ? '<a class="btn btn-sm ' + (feito ? 'btn-line' : 'btn-green') + '" target="_blank" rel="noopener" href="' + link + '" onclick="finCobrou(' + z.i + ',\'' + x.k + '\')">WhatsApp</a>' : '<span class="small muted">sem telefone</span>') + '</div>';
+      }).join('') + '</div>';
+  }).join('') : finVazio('Ninguém vencido. 🎉'));
+}
+function finSecCartao(o) {
+  var l = o.cartao.filter(function (z) { return finOk(z.a); });
+  var pend = l.filter(function (z) { return !FIN.reg['c-' + z.x.k]; });
+  l = pend.concat(l.filter(function (z) { return FIN.reg['c-' + z.x.k]; }));
+  return finTit(pend.length, 'Lançar cartão · ' + FIN_MES[FIN.mes]) + (l.length ? l.map(function (z) {
+    var feito = FIN.reg['c-' + z.x.k], dt = finDt(z.x.d), dias = finDias(o.hoje, dt);
+    var quando = dias < 0 ? 'Data de lançar passou (' + z.x.d + ')' : (dias === 0 ? 'Lançar hoje (' + z.x.d + ')' : 'Lançar em ' + z.x.d + ' (' + dias + ' dia(s))');
+    return '<div class="card">' + finCabCard(z.a, '<span class="tag' + (feito ? ' g' : ' w') + '">' + finMoeda(z.x.v) + '</span>') +
+      '<div class="small">' + esc(feito ? 'Lançado em ' + feito : quando) + (z.x.y ? ' · parcela ' + z.x.x + ' de ' + z.x.y : '') + '</div>' +
+      (feito ? '' : '<div class="row"><button class="btn btn-sm btn-green" onclick="finLanca(' + z.i + ',\'' + z.x.k + '\')">Já lancei</button></div>') + '</div>';
+  }).join('') : finVazio('Nenhum pagamento de cartão neste mês.'));
+}
+function finSecAcabando(o) {
+  var l = o.acabando.filter(function (z) { return finOk(z.a); });
+  return finTit(l.length, 'Planos parcelados acabando') + (l.length ? l.map(function (z) {
+    var txt = z.dias < 0 ? 'Plano terminou em ' + finFmt(z.fim) : (z.x.x >= z.x.y ? 'Última parcela em ' + z.x.d : 'Última parcela em ' + finFmt(z.fim) + ' (' + z.dias + ' dia(s))');
+    return '<div class="card">' + finCabCard(z.a, '<span class="tag w">' + (z.x.y - z.x.x === 0 ? 'última' : 'faltam ' + (z.x.y - z.x.x)) + '</span>') +
+      '<div class="small">' + esc(txt) + ' · parcela ' + z.x.x + ' de ' + z.x.y + ' · ' + finMoeda(z.x.v) + ' (' + esc(FIN_FORMA[z.x.f] || '') + ')</div>' +
+      '<div class="small muted">Hora de combinar um novo plano com o atleta.</div></div>';
+  }).join('') : finVazio('Nenhum plano terminando nos próximos 75 dias.'));
+}
+function finSecVerificar(o) {
+  var l = o.verificar.filter(function (z) { return finOk(z.a); });
+  return finTit(l.length, 'Verificar') + (l.length ? l.map(function (z) {
+    return '<div class="card">' + finCabCard(z.a) + '<div class="small">' + esc(z.motivo) + '</div></div>';
+  }).join('') : finVazio('Nada para verificar.'));
+}
+function finLista(l, tit, fn, vazio) {
+  l = l.filter(function (z) { return finOk(z.a); });
+  var tot = 0; l.forEach(function (z) { (z.cs || []).forEach(function (x) { tot += x.v; }); });
+  return finTit(l.length, tit) + (tot ? '<div class="small muted">Total ' + finMoeda(tot) + '</div>' : '') + (l.length ? l.map(fn).join('') : finVazio(vazio));
+}
+function desenhaFin() {
+  var d = FIN.d, o = finCalc();
+  var grupos = [['hoje', 'Hoje', o.nHoje], ['avencer', 'A vencer', o.avencer.length], ['emdia', 'Em dia', o.emdia.length], ['naoaplica', 'Não se aplica', o.naoaplica.length]];
+  var tabs = '<div class="tabs">' + grupos.map(function (g) {
+    return '<button class="btn btn-sm' + (FIN.aba === g[0] ? ' on' : '') + '" onclick="finAba(\'' + g[0] + '\')">' + g[1] + ' (' + g[2] + ')</button>';
+  }).join('') + '</div>';
+  var meses = '<div class="tabs">' + [9, 10, 11].map(function (m) {
+    return '<button class="btn btn-sm' + (FIN.mes === m ? ' on' : '') + '" onclick="finMes(' + m + ')">' + FIN_MES[m].charAt(0).toUpperCase() + FIN_MES[m].slice(1) + '</button>';
+  }).join('') + '</div>';
+  var corpo = '';
+  if (FIN.aba === 'hoje') corpo = finSecCobrar(o) + finSecCartao(o) + finSecAcabando(o) + finSecVerificar(o);
+  else if (FIN.aba === 'avencer') corpo = finLista(o.avencer, 'A vencer · ' + FIN_MES[FIN.mes], function (z) {
+    var x = z.cs[0], dias = finDias(o.hoje, finDt(x.d)), s = 0; z.cs.forEach(function (c) { s += c.v; });
+    return '<div class="card">' + finCabCard(z.a, '<span class="tag w">' + finMoeda(s) + '</span>') + '<div class="small">Vence ' + esc(x.d) + (dias >= 0 ? ' (' + dias + ' dia(s))' : '') + ' · ' + esc(FIN_FORMA[x.f] || '') + '</div></div>';
+  }, 'Nada a vencer neste mês.');
+  else if (FIN.aba === 'emdia') corpo = finLista(o.emdia, 'Em dia · ' + FIN_MES[FIN.mes], function (z) {
+    var x = z.cs[0], s = 0; z.cs.forEach(function (c) { s += c.v; });
+    return '<div class="card">' + finCabCard(z.a, '<span class="tag g">' + finMoeda(s) + '</span>') + '<div class="small muted">' + esc(FIN_FORMA[x.f] || '') + (x.p ? ' · pago em ' + esc(x.p) : '') + (x.s === 'C' ? ' · confirmado, a liquidar' : '') + (x.y ? ' · parcela ' + x.x + ' de ' + x.y : '') + '</div></div>';
+  }, 'Ninguém em dia neste mês.');
+  else corpo = finLista(o.naoaplica, 'Não se aplica', function (z) {
+    return '<div class="card">' + finCabCard(z.a) + '<div class="small">' + esc(z.a.o || '') + '</div></div>';
+  }, 'Nada por aqui.');
+  app(cabFin() + '<div class="small muted">Atualizado em ' + esc(d.atualizadoEm || '—') + (d.fonte ? ' · ' + esc(d.fonte) : '') + '</div>' + tabs + meses +
+    '<input id="finq" type="search" placeholder="Buscar por nome ou grupo" value="' + esc(FIN.q || '') + '" oninput="finBusca(this.value)"><div class="list">' + corpo + '</div>');
 }
 
 function verPainel() { S.aba2 = 'pnl'; painel('hist'); }
