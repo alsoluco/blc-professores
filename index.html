@@ -1522,8 +1522,23 @@ function ptRem(id) {
 function convidar(id) {
   app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
   S.aba2 = 'prova' + id;
-  call('conviteLista', { id: id }).then(function (r) { S.cv = r; S.cvSel = {}; S.cvAll = false; cvGrupos(desenhaConvidar); })
+  call('conviteLista', { id: id }).then(function (r) { S.cv = r; S.cvSel = {}; S.cvAll = false; cvSemInscritos(id, function () { cvGrupos(desenhaConvidar); }); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Voltar</button>'); });
+}
+/* segunda checagem: tira da lista quem já respondeu o formulário, mesmo com e-mail ou grafia diferente do cadastro */
+function cvMesmoNome(a, b) {
+  var x = apToks(a), y = apToks(b);
+  if (!x.length || !y.length) return false;
+  var com = x.filter(function (w) { return y.indexOf(w) >= 0; }).length;
+  return com >= Math.min(x.length, y.length) || com >= 2;
+}
+function cvSemInscritos(id, depois) {
+  S.cvConf = false;
+  call('inscritos', { id: id }).then(function (r) {
+    var nomes = (r.itens || []).map(function (i) { return i.nome; }).concat((r.aptos || []).filter(function (x) { return x.inscrito; }).map(function (x) { return x.nome; }));
+    S.cv.atletas = S.cv.atletas.filter(function (a) { return !nomes.some(function (n) { return cvMesmoNome(n, a.nome); }); });
+    S.cvConf = true; depois();
+  }).catch(function () { depois(); });
 }
 /* grupos do TrainingPeaks (vêm da conferência do Financeiro) para selecionar o grupo inteiro */
 function cvGrupos(depois) {
@@ -1573,6 +1588,7 @@ function desenhaConvidar() {
   app(head(userBar()) + '<button class="back" onclick="inscritos(\'' + esc(r.prova.id) + '\')">← Inscritos</button>' +
     '<div><div class="eyebrow">Convite</div><h2>' + esc(r.prova.nome) + ' <em>' + esc(r.prova.data) + '</em></h2></div>' +
     '<div class="card"><div class="small muted">Atletas ativos que ainda não estão na lista desta prova. Busque pelo nome e toque para selecionar.</div>' +
+    (S.cvConf ? '' : '<div class="err small">Não consegui conferir agora a lista de quem já se inscreveu. Antes de enviar, veja os nomes na tela de inscritos.</div>') +
     '<input id="cvq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="cvLista()">' +
     ((S.cvG && S.cvG.length) ? '<div class="eyebrow cy">Selecionar o grupo inteiro (TrainingPeaks)</div><div class="tags" id="cvg"></div>' : '') +
     '<div class="tags"><button type="button" class="btn btn-sm" onclick="cvTodosVer()">Mostrar todos</button><button type="button" class="btn btn-sm" onclick="S.cvSel={};cvLista()">Limpar seleção</button></div>' +
@@ -1626,8 +1642,23 @@ function cvConta() {
   if (b) { b.textContent = com.length ? 'Enviar e-mail para ' + com.length + (com.length === 1 ? ' atleta' : ' atletas') : (tot ? 'Os selecionados não têm e-mail' : 'Selecione atletas para enviar'); b.disabled = !com.length; }
 }
 function cvEnvia() {
+  if (!cvComEmail().length) return;
+  $('cvb').disabled = true; $('cvb').textContent = 'Conferindo quem já se inscreveu…';
+  call('inscritos', { id: S.cv.prova.id }).then(function (r) {
+    var nomes = (r.itens || []).map(function (i) { return i.nome; }).concat((r.aptos || []).filter(function (x) { return x.inscrito; }).map(function (x) { return x.nome; }));
+    var saiu = [];
+    Object.keys(S.cvSel).forEach(function (id) {
+      var a = cvAtl(id);
+      if (a && nomes.some(function (n) { return cvMesmoNome(n, a.nome); })) { saiu.push(a.nome); delete S.cvSel[id]; }
+    });
+    S.cv.atletas = S.cv.atletas.filter(function (a) { return saiu.indexOf(a.nome) < 0; });
+    if (saiu.length) { aviso('Estes atletas acabaram de se inscrever e foram tirados do envio: ' + saiu.join(', ') + '. Confira a lista e envie de novo.').then(desenhaConvidar); return; }
+    cvEnvia2();
+  }).catch(function (e) { aviso('Não consegui conferir quem já se inscreveu, então não enviei. ' + e.message); cvConta(); });
+}
+function cvEnvia2() {
   var ids = cvComEmail(), texto = cvMsg(), sem = Object.keys(S.cvSel).length - ids.length;
-  if (!ids.length) return;
+  if (!ids.length) { cvConta(); return; }
   dlg('Enviar este e-mail para ' + ids.length + (ids.length === 1 ? ' atleta' : ' atletas') + '?' + (sem ? ' (' + sem + ' sem e-mail não recebe.)' : '') + ' O envio não pode ser desfeito.', { ok: 'Enviar' }).then(function (v) {
     if (!v) return;
     $('cvb').disabled = true; $('cvb').textContent = 'Enviando…';
