@@ -1522,8 +1522,43 @@ function ptRem(id) {
 function convidar(id) {
   app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
   S.aba2 = 'prova' + id;
-  call('conviteLista', { id: id }).then(function (r) { S.cv = r; S.cvSel = {}; S.cvAll = false; desenhaConvidar(); })
+  call('conviteLista', { id: id }).then(function (r) { S.cv = r; S.cvSel = {}; S.cvAll = false; cvGrupos(desenhaConvidar); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Voltar</button>'); });
+}
+/* grupos do TrainingPeaks (vêm da conferência do Financeiro) para selecionar o grupo inteiro */
+function cvGrupos(depois) {
+  S.cvG = [];
+  var fim = function () { depois(); };
+  call('financeiro').then(function (r) {
+    var ds = (r && r.dados && r.dados.atletas) || [], mapa = {};
+    var tk = function (t) { return apToks(t); };
+    S.cv.atletas.forEach(function (a) {
+      var ta = tk(a.nome), achou = null;
+      ds.forEach(function (d) {
+        if (achou || !d.g) return;
+        var td = tk(d.n);
+        if (cvNorm(d.n).trim() === cvNorm(a.nome).trim()) { achou = d; return; }
+        var c = ta.length <= td.length ? ta : td, l = ta.length <= td.length ? td : ta;
+        if (c.length >= 2 && c.every(function (t) { return l.some(function (x) { return x.indexOf(t) === 0 || t.indexOf(x) === 0; }); })) achou = d;
+      });
+      if (achou) { a.grupo = achou.g; (mapa[achou.g] = mapa[achou.g] || []).push(a.id); }
+    });
+    S.cvG = Object.keys(mapa).sort().map(function (g) { return { g: g, ids: mapa[g] }; });
+    fim();
+  }).catch(fim);
+}
+function cvChips() {
+  var el = $('cvg'); if (!el) return;
+  el.innerHTML = (S.cvG || []).map(function (x, i) {
+    var todos = x.ids.every(function (id) { return S.cvSel[id]; });
+    return '<button type="button" class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="cvGrupo(' + i + ')">' + (todos ? '\u2713 ' : '') + esc(x.g) + ' (' + x.ids.length + ')</button>';
+  }).join(' ');
+}
+function cvGrupo(i) {
+  var x = S.cvG[i]; if (!x) return;
+  var todos = x.ids.every(function (id) { return S.cvSel[id]; });
+  x.ids.forEach(function (id) { if (todos) delete S.cvSel[id]; else S.cvSel[id] = 1; });
+  cvLista();
 }
 function cvTextoPadrao(p) {
   if (p.modo === 'forms') return 'Estão abertas as inscrições para o ' + p.nome + ', no dia ' + p.data + '. Para se inscrever, preencha o formulário e anexe o comprovante de pagamento até ' + p.prazo + '. Quem não anexar o comprovante até o prazo fica sem a inscrição confirmada.';
@@ -1539,6 +1574,7 @@ function desenhaConvidar() {
     '<div><div class="eyebrow">Convite</div><h2>' + esc(r.prova.nome) + ' <em>' + esc(r.prova.data) + '</em></h2></div>' +
     '<div class="card"><div class="small muted">Atletas ativos que ainda não estão na lista desta prova. Busque pelo nome e toque para selecionar.</div>' +
     '<input id="cvq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="cvLista()">' +
+    ((S.cvG && S.cvG.length) ? '<div class="eyebrow cy">Selecionar o grupo inteiro (TrainingPeaks)</div><div class="tags" id="cvg"></div>' : '') +
     '<div class="tags"><button type="button" class="btn btn-sm" onclick="cvTodosVer()">Mostrar todos</button><button type="button" class="btn btn-sm" onclick="S.cvSel={};cvLista()">Limpar seleção</button></div>' +
     '<div class="list" id="cvres"></div></div>' +
     '<div class="card"><div class="eyebrow cy" id="cvsn"></div><div class="list" id="cvsel"></div></div>' +
@@ -1563,6 +1599,7 @@ function cvLista() {
   $('cvres').innerHTML = res.map(cvLinha).join('') + (total > 40 ? '<div class="muted small">Mostrando 40 de ' + total + '. Digite mais letras para filtrar.</div>' : '') ||
     '<div class="muted small">' + (q ? 'Nenhum atleta encontrado (ou ele já se inscreveu).' : (todos.length ? 'Digite o nome para buscar.' : 'Todos os atletas ativos já se inscreveram.')) + '</div>';
   var ids = Object.keys(S.cvSel);
+  cvChips();
   $('cvsn').textContent = 'Selecionados: ' + ids.length;
   $('cvsel').innerHTML = ids.map(function (id) { var a = cvAtl(id); return a ? cvLinha(a) : ''; }).join('') || '<div class="muted small">Ninguém selecionado ainda.</div>';
   cvConta();
