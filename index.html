@@ -1740,6 +1740,26 @@ function finLista(l, tit, fn, vazio) {
   var tot = 0; l.forEach(function (z) { (z.cs || []).forEach(function (x) { tot += x.v; }); });
   return finTit(l.length, tit) + (tot ? '<div class="small muted">Total ' + finMoeda(tot) + '</div>' : '') + (l.length ? l.map(fn).join('') : finVazio(vazio));
 }
+function finResumo() {
+  var M = FIN.mes, r = { rec: 0, liq: 0, ven: 0, avn: 0 };
+  FIN.d.atletas.forEach(function (a, i) {
+    if (a.ov) return;
+    (FIN.c[i] || []).forEach(function (x) {
+      if (x.m !== M) return;
+      if (x.s === 'R' || x.s === 'D') r.rec += x.v;
+      else if (x.s === 'C') { r.rec += x.v; r.liq += x.v; }
+      else if (x.s === 'V') r.ven += x.v;
+      else if (x.s === 'A') r.avn += x.v;
+    });
+  });
+  var falta = r.ven + r.avn, tot = r.rec + falta, pct = tot ? Math.round(100 * r.rec / tot) : 0;
+  return '<div class="card"><div class="small muted">' + esc(FIN_MES[M]) + ' · previsto ' + finMoeda(tot) + '</div>' +
+    '<div class="row" style="justify-content:space-between;gap:12px;margin-top:8px"><div><div class="small muted">Já recebi</div><h3>' + finMoeda(r.rec) + '</h3></div>' +
+    '<div style="text-align:right"><div class="small muted">Falta receber</div><h3>' + finMoeda(falta) + '</h3></div></div>' +
+    '<div style="height:6px;background:rgba(255,255,255,.12);margin:10px 0 6px"><div style="height:6px;width:' + pct + '%;background:#00ff00"></div></div>' +
+    '<div class="small muted">' + pct + '% recebido' + (r.liq ? ' · inclui ' + finMoeda(r.liq) + ' de cartão a liquidar' : '') + '</div>' +
+    '<div class="small muted">Falta: ' + finMoeda(r.ven) + ' vencido · ' + finMoeda(r.avn) + ' a vencer</div></div>';
+}
 function desenhaFin() {
   var d = FIN.d, o = finCalc();
   var grupos = [['hoje', 'Hoje', o.nHoje], ['avencer', 'A vencer', o.avencer.length], ['emdia', 'Em dia', o.emdia.length], ['naoaplica', 'Não se aplica', o.naoaplica.length]];
@@ -1762,7 +1782,7 @@ function desenhaFin() {
   else corpo = finLista(o.naoaplica, 'Não se aplica', function (z) {
     return '<div class="card">' + finCabCard(z.a) + '<div class="small">' + esc(z.a.o || '') + '</div></div>';
   }, 'Nada por aqui.');
-  app(cabFin() + '<div class="small muted">Atualizado em ' + esc(d.atualizadoEm || '—') + (d.fonte ? ' · ' + esc(d.fonte) : '') + '</div>' + tabs + meses +
+  app(cabFin() + '<div class="small muted">Atualizado em ' + esc(d.atualizadoEm || '—') + (d.fonte ? ' · ' + esc(d.fonte) : '') + '</div>' + meses + finResumo() + tabs +
     '<input id="finq" type="search" placeholder="Buscar por nome ou grupo" value="' + esc(FIN.q || '') + '" oninput="finBusca(this.value)"><div class="list">' + corpo + '</div>');
 }
 
