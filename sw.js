@@ -1,5 +1,5 @@
 /* BLC · Professores: cache simples do "casco" do app. Os dados vêm sempre da rede. */
-var V = 'blc-v24';
+var V = 'blc-v25';
 var CASCO = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(V).then(function (c) { return c.addAll(CASCO); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) {
