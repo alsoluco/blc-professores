@@ -1596,7 +1596,7 @@ function desenhaConvidar() {
     '<div class="card"><div class="eyebrow cy" id="cvsn"></div><div class="list" id="cvsel"></div></div>' +
     '<div class="card"><div class="eyebrow cy">Mensagem do convite</div><div class="small" style="border-left:2px solid var(--green);padding-left:12px">' + esc(cvTextoPadrao(r.prova)) + '</div>' +
     '<div class="small muted">Esse convite sempre vai no e-mail e no WhatsApp, com o link da inscrição. Se quiser, acrescente um recado:</div>' +
-    '<textarea id="cvt" rows="3" maxlength="600" placeholder="Recado extra (opcional)">' + esc(txt) + '</textarea>' +
+    '<textarea id="cvt" rows="3" maxlength="600" placeholder="Recado extra (opcional). Pode colar emojis. Use *asteriscos* para negrito.">' + esc(txt) + '</textarea>' +
     '<div class="eyebrow cy" id="cvpara"></div><div class="small" id="cvparal"></div>' +
     '<button type="button" class="btn btn-green" id="cvb" onclick="cvEnvia()"></button></div>');
   cvLista();
