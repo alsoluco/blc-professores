@@ -1522,7 +1522,7 @@ function ptRem(id) {
 function convidar(id) {
   app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
   S.aba2 = 'prova' + id;
-  call('conviteLista', { id: id }).then(function (r) { S.cv = r; S.cvSel = {}; S.cvAll = false; cvSemInscritos(id, function () { cvGrupos(desenhaConvidar); }); })
+  call('conviteLista', { id: id }).then(function (r) { S.cv = r; S.cvSel = {}; S.cvAll = false; S.cvGo = false; cvSemInscritos(id, function () { cvGrupos(desenhaConvidar); }); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="inscritos(\'' + esc(id) + '\')">Voltar</button>'); });
 }
 /* segunda checagem: tira da lista quem já respondeu o formulário, mesmo com e-mail ou grafia diferente do cadastro */
@@ -1562,8 +1562,13 @@ function cvGrupos(depois) {
     fim();
   }).catch(fim);
 }
+function cvGToggle() { S.cvGo = !S.cvGo; cvChips(); }
 function cvChips() {
   var el = $('cvg'); if (!el) return;
+  var pn = $('cvgp'), bt = $('cvgb'), nsel = 0;
+  (S.cvG || []).forEach(function (x) { nsel += x.ids.filter(function (id) { return S.cvSel[id]; }).length; });
+  if (pn) pn.style.display = S.cvGo ? '' : 'none';
+  if (bt) bt.innerHTML = (S.cvGo ? '\u25B4 ' : '\u25BE ') + 'Grupos (' + (S.cvG || []).length + ')';
   el.innerHTML = (S.cvG || []).map(function (x, i) {
     var todos = x.ids.every(function (id) { return S.cvSel[id]; });
     return '<button type="button" class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="cvGrupo(' + i + ')">' + (todos ? '\u2713 ' : '') + esc(x.g) + ' (' + x.ids.length + ')</button>';
@@ -1590,10 +1595,10 @@ function desenhaConvidar() {
     '<div class="card"><div class="small muted">Atletas ativos que ainda não estão na lista desta prova. Busque pelo nome e toque para selecionar.</div>' +
     (S.cvConf ? '' : '<div class="err small">Não consegui conferir agora a lista de quem já se inscreveu. Antes de enviar, veja os nomes na tela de inscritos.</div>') +
     '<input id="cvq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="cvLista()">' +
-    '<div class="list" id="cvres"></div>' +
-    '<div class="tags"><button type="button" class="btn btn-sm" onclick="cvTodosVer()">Mostrar todos</button><button type="button" class="btn btn-sm" onclick="S.cvSel={};cvLista()">Limpar seleção</button></div>' +
-    ((S.cvG && S.cvG.length) ? '<div class="eyebrow cy">Selecionar o grupo inteiro (TrainingPeaks)</div><div class="tags" id="cvg"></div>' : '') +
-    '</div>' +
+    '<div class="tags">' + ((S.cvG && S.cvG.length) ? '<button type="button" class="btn btn-sm" id="cvgb" onclick="cvGToggle()"></button>' : '') +
+    '<button type="button" class="btn btn-sm" onclick="cvTodosVer()">Mostrar todos</button><button type="button" class="btn btn-sm" onclick="S.cvSel={};cvLista()">Limpar seleção</button></div>' +
+    ((S.cvG && S.cvG.length) ? '<div id="cvgp" style="display:none"><div class="eyebrow cy">Toque para selecionar o grupo inteiro</div><div class="tags" id="cvg"></div></div>' : '') +
+    '<div class="list" id="cvres"></div></div>' +
     '<div class="card"><div class="eyebrow cy" id="cvsn"></div><div class="list" id="cvsel"></div></div>' +
     '<div class="card"><div class="eyebrow cy">Mensagem do convite</div><div class="small" style="border-left:2px solid var(--green);padding-left:12px">' + esc(cvTextoPadrao(r.prova)) + '</div>' +
     '<div class="small muted">Esse convite sempre vai no e-mail e no WhatsApp, com o link da inscrição. Se quiser, acrescente um recado:</div>' +
