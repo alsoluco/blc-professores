@@ -1351,7 +1351,7 @@ function apZap(id) {
   var x = ((S.insc && S.insc.aptos) || []).filter(function (a) { return a.id === id; })[0]; if (!x) return;
   var p = S.insc.prova;
   var msg = 'Olá, ' + String(x.nome).split(' ')[0] + '! Aqui é da BLC. Passando para lembrar que você ainda não preencheu o formulário de inscrição: ' + p.nome + '.' +
-    (p.prazo ? ' O prazo vai até ' + p.prazo + '.' : '') + (p.link ? '\n\nFormulário: ' + p.link : '') + '\n\nQualquer dúvida, é só chamar!';
+    (p.prazo ? ' O prazo vai até ' + p.prazo + '.' : '') + (p.link ? '\n\nFormulário de inscrição: ' + p.link : '') + (p.linkProva && p.linkProva !== p.link ? '\n\nMais detalhes sobre a prova: ' + p.linkProva : '') + '\n\nQualquer dúvida, é só chamar!';
   window.open('https://wa.me/' + cvFone(x.telefone) + '?text=' + encodeURIComponent(msg), '_blank');
 }
 function apRem(id) {
@@ -1632,7 +1632,7 @@ function cvMsg() { var x = ($('cvt').value || '').trim(); return cvTextoPadrao(S
 function cvZap(id) {
   var a = cvAtl(id); if (!a) return;
   var t = cvMsg(), link = S.cv.prova.link;
-  var msg = 'Olá, ' + String(a.nome).split(' ')[0] + '! ' + t + (t.indexOf(link) < 0 ? '\n\nFormulário de inscrição: ' + link : '');
+  var msg = 'Olá, ' + String(a.nome).split(' ')[0] + '! ' + t + (t.indexOf(link) < 0 ? '\n\nFormulário de inscrição: ' + link : '') + (S.cv.prova.linkProva && S.cv.prova.linkProva !== link ? '\n\nMais detalhes sobre a prova: ' + S.cv.prova.linkProva : '');
   window.open('https://wa.me/' + cvFone(a.telefone) + '?text=' + encodeURIComponent(msg), '_blank');
 }
 function cvComEmail() { return Object.keys(S.cvSel).filter(function (id) { var a = cvAtl(id); return a && a.email; }); }
