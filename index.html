@@ -1091,7 +1091,7 @@ function provaForm() {
     f('pfk', 'Link da prova (opcional)', 'https://...', 'url') + f('pfi', 'Como se inscrever (opcional)', 'Ex.: Pelo site, com o cupom BLC10') + '</div>' +
     '<div class="card"><div class="eyebrow cy">Inscri\u00e7\u00e3o pela BLC (opcional)</div>' +
     '<div class="small muted">Se a inscri\u00e7\u00e3o \u00e9 por formul\u00e1rio, abra a planilha de respostas dele, copie o link do navegador e cole aqui. O app l\u00ea as respostas e gera o relat\u00f3rio em PDF. Sem link, a prova fica com lista manual.</div>' +
-    f('pfp', 'Link da planilha de respostas', 'https://docs.google.com/spreadsheets/d/...', 'url') + f('pff', 'Link do formul\u00e1rio (para convidar atletas)', 'https://forms.gle/...', 'url') +
+    f('pfp', 'Link da planilha de respostas', 'https://docs.google.com/spreadsheets/d/...', 'url') + f('pff', 'Link do formul\u00e1rio de inscri\u00e7\u00e3o (o atleta preenche)', 'https://forms.gle/...', 'url') +
     prazoCampos('pfd2', 'pfh2', '') +
     '<div class="small muted">Sem hor\u00e1rio, vale at\u00e9 23h59 do dia escolhido.</div>' +
     '<button type="button" class="btn btn-green" id="pfb" onclick="provaSalva()">Salvar prova</button></div>');
@@ -1111,13 +1111,17 @@ function provaConfigForm(id) {
   var p = (S.provas || []).filter(function (x) { return x.id === id; })[0]; if (!p) return;
   function f(i, rot, ph, v) { return '<label class="small muted" for="' + i + '">' + rot + '</label><input id="' + i + '" type="text" placeholder="' + ph + '" value="' + esc(v || '') + '" autocomplete="off">'; }
   app(head(userBar()) + '<button class="back" onclick="inscritos(\'' + esc(id) + '\')">\u2190 ' + esc(p.nome) + '</button><div><div class="eyebrow">Configurar</div><h2>' + esc(p.nome) + '</h2></div>' +
-    '<div class="card"><div class="small muted">Deixe em branco o que n\u00e3o quiser mudar. Para trocar a planilha, cole o novo link.</div>' +
+    '<div class="card"><div class="eyebrow cy">Link para o atleta se inscrever</div>' +
+    '<div class="small muted">Este \u00e9 o link do seu formul\u00e1rio. Ele vai no bot\u00e3o do e-mail e na mensagem de WhatsApp dos convites e lembretes.</div>' +
+    f('pcf', 'Link do formul\u00e1rio de inscri\u00e7\u00e3o', 'https://forms.gle/...', p.link && p.link !== p.linkProva ? p.link : '') + '</div>' +
+    '<div class="card"><div class="eyebrow cy">Respostas e prazo</div><div class="small muted">Deixe em branco o que n\u00e3o quiser mudar. Para trocar a planilha de respostas, cole o novo link.</div>' +
     f('pcp', 'Link da planilha de respostas', 'Cole um novo link para trocar', '') + prazoCampos('pcd2', 'pch2', p.prazo) +
     '<button type="button" class="btn btn-green" id="pcb" onclick="provaConfigSalva(\'' + esc(id) + '\')">Salvar</button></div>');
 }
 function provaConfigSalva(id) {
   var b = $('pcb'); b.disabled = true; var d = { id: id };
   if ($('pcp').value.trim()) d.planilha = $('pcp').value;
+  d.form = $('pcf').value.trim();
   d.prazo = prazoLe('pcd2', 'pch2');
   call('provaConfig', d).then(function (r) { S.provasFrescas = false; carregaProvas(function () { inscritos(id); }); })
     .catch(function (e) { b.disabled = false; aviso(e.message); });
