@@ -1590,9 +1590,10 @@ function desenhaConvidar() {
     '<div class="card"><div class="small muted">Atletas ativos que ainda não estão na lista desta prova. Busque pelo nome e toque para selecionar.</div>' +
     (S.cvConf ? '' : '<div class="err small">Não consegui conferir agora a lista de quem já se inscreveu. Antes de enviar, veja os nomes na tela de inscritos.</div>') +
     '<input id="cvq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="cvLista()">' +
-    ((S.cvG && S.cvG.length) ? '<div class="eyebrow cy">Selecionar o grupo inteiro (TrainingPeaks)</div><div class="tags" id="cvg"></div>' : '') +
+    '<div class="list" id="cvres"></div>' +
     '<div class="tags"><button type="button" class="btn btn-sm" onclick="cvTodosVer()">Mostrar todos</button><button type="button" class="btn btn-sm" onclick="S.cvSel={};cvLista()">Limpar seleção</button></div>' +
-    '<div class="list" id="cvres"></div></div>' +
+    ((S.cvG && S.cvG.length) ? '<div class="eyebrow cy">Selecionar o grupo inteiro (TrainingPeaks)</div><div class="tags" id="cvg"></div>' : '') +
+    '</div>' +
     '<div class="card"><div class="eyebrow cy" id="cvsn"></div><div class="list" id="cvsel"></div></div>' +
     '<div class="card"><div class="eyebrow cy">Mensagem do convite</div><div class="small" style="border-left:2px solid var(--green);padding-left:12px">' + esc(cvTextoPadrao(r.prova)) + '</div>' +
     '<div class="small muted">Esse convite sempre vai no e-mail e no WhatsApp, com o link da inscrição. Se quiser, acrescente um recado:</div>' +
