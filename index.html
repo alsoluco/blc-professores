@@ -1090,7 +1090,7 @@ function provaForm() {
     '<div class="card">' + f('pfn', 'Nome da prova', 'Ex.: Maratona de Floripa') + f('pfd', 'Data', 'dd/mm/aaaa (ou 27 a 30/05/2027)') + f('pfl', 'Local (opcional)', 'Cidade, dist\u00e2ncias...') +
     f('pfk', 'Link da prova (opcional)', 'https://...', 'url') + f('pfi', 'Como se inscrever (opcional)', 'Ex.: Pelo site, com o cupom BLC10') + '</div>' +
     '<div class="card"><div class="eyebrow cy">Inscri\u00e7\u00e3o pela BLC (opcional)</div>' +
-    '<div class="small muted">Se a inscri\u00e7\u00e3o \u00e9 por formul\u00e1rio, abra a planilha de respostas dele, copie o link do navegador e cole aqui. O app l\u00ea as respostas e gera o relat\u00f3rio em PDF. Sem link, a prova fica com lista manual.</div>' +
+    '<div class="small muted">Se a inscri\u00e7\u00e3o \u00e9 por formul\u00e1rio, abra a planilha de respostas dele, copie o link do navegador e cole aqui. O app l\u00ea as respostas e mostra os inscritos, com o atalho para a planilha. Sem link, a prova fica com lista manual.</div>' +
     f('pfp', 'Link da planilha de respostas', 'https://docs.google.com/spreadsheets/d/...', 'url') + f('pff', 'Link do formul\u00e1rio de inscri\u00e7\u00e3o (o atleta preenche)', 'https://forms.gle/...', 'url') +
     prazoCampos('pfd2', 'pfh2', '') +
     '<div class="small muted">Sem hor\u00e1rio, vale at\u00e9 23h59 do dia escolhido.</div>' +
@@ -1318,7 +1318,7 @@ function desenhaInscritos(primeira) {
     (t.problema ? '<span class="tag r">' + t.problema + ' a conferir</span>' : '') + (t.pendentes ? '<span class="tag">' + t.pendentes + ' conferindo…</span>' : '') + '</div>' +
     '<div class="small muted">' + (r.prova.prazo ? 'Prazo: ' + esc(r.prova.prazo) + (r.encerrado ? ' · <b>encerrado</b>' : '') + '. ' : '') + (r.semPagto ? 'Este formulário não tem comprovante: só as respostas aparecem.' : 'O pagamento só vale pelo comprovante anexado no formulário.') + '</div>' +
     (r.erroOcr ? '<div class="err">Erro ao ler comprovante: ' + esc(r.erroOcr) + '</div>' : '') + (r.ocrDesligado ? '<div class="err">A leitura automática dos comprovantes ainda não está ligada no script. Os nomes aparecem, mas o valor não é conferido.</div>' : '') +
-    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(r.prova.id) + '\')">Convidar quem ainda não se inscreveu</button> <button type="button" class="btn btn-sm btn-green" id="pdfb" onclick="provaPdf(\'' + esc(r.prova.id) + '\')">Exportar PDF</button> <button type="button" class="btn btn-sm" onclick="provaConfigForm(\'' + esc(r.prova.id) + '\')">Configurar prova</button>' : '') + '</div>' +
+    (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(r.prova.id) + '\')">Convidar quem ainda não se inscreveu</button> ' + (r.planilhaUrl ? '<a class="btn btn-sm btn-green" href="' + esc(r.planilhaUrl) + '" target="_blank" rel="noopener">Abrir planilha de respostas</a>' : '') + ' <button type="button" class="btn btn-sm" onclick="provaConfigForm(\'' + esc(r.prova.id) + '\')">Configurar prova</button>' : '') + '</div>' +
     aptosCard(r) +
     (r.semPagto ? '' : '<div class="tags">' + ch('todos', 'Todos') + ch('ok', 'Valor confere') + ch('rev', 'A conferir') + '</div>') +
     '<div class="list">' + (lista.map(function (x) {
