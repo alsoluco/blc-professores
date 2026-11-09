@@ -1888,7 +1888,7 @@ function painelAsaas(mes, atualizar) {
   app(cabAsaas() + '<div class="spin">Buscando no Asaas…</div>');
   call('asaas', { mes: AS.mes, modo: AS.modo, atualizar: !!atualizar }).then(function (r) {
     var todos = AS.modo === 'atraso';
-    var modos = '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm' + (todos ? '' : ' btn-green') + '" onclick="asModo(\'mes\')">Por mês</button><button class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="asModo(\'atraso\')">Todos em atraso (qualquer mês)</button></div>';
+    var modos = '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm' + (todos ? '' : ' btn-green') + '" onclick="asModo(\'mes\')">Por mês</button><button class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="asModo(\'atraso\')">Todos em atraso (qualquer mês)</button><button class="btn btn-sm" onclick="painelProj()">Projeção dos próximos meses</button></div>';
     var nav = todos ? '<div class="row" style="gap:6px;align-items:center"><button class="btn btn-sm" onclick="painelAsaas(AS.mes, true)">Atualizar</button></div>' :
       '<div class="row" style="gap:6px;align-items:center"><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, -1) + '\')">‹</button><b>' + esc(asMesNome(AS.mes)) + '</b><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, 1) + '\')">›</button><button class="btn btn-sm" onclick="painelAsaas(AS.mes, true)">Atualizar</button></div>';
     var card = function (t, o, cls, extra) { return '<div class="card"><div class="eyebrow">' + t + '</div><h2><span class="tag ' + cls + '">' + finMoeda(o.valor) + '</span></h2><div class="small muted">' + o.qtd + ' cobrança(s)</div>' + (extra || '') + '</div>'; };
@@ -1914,6 +1914,28 @@ function painelAsaas(mes, atualizar) {
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
 
+function painelProj(atualizar) {
+  S.aba = 'fin'; S.aba2 = 'pnl';
+  app(cabAsaas() + '<div class="spin">Calculando a projeção…</div>');
+  call('asaasProj', { atualizar: !!atualizar }).then(function (r) {
+    var L = r.meses, atual = L[L.length - 1];
+    var prox = asMesSoma(r.mesAtual, 1);
+    var aviso = '<div class="card"><div class="eyebrow">PROJEÇÃO FICTÍCIA · não é valor recebido</div><h2><span class="tag w">' + finMoeda(atual.assinatura.valor) + '</span></h2>' +
+      '<div class="small">Previsão para <b>' + esc(asMesNome(prox)) + '</b>, <b>se todos</b> os ' + atual.assinatura.pessoas + ' atleta(s) com assinatura em ' + esc(asMesNome(r.mesAtual)) + ' renovarem pelo mesmo valor.</div>' +
+      '<div class="small muted" style="margin-top:6px">Considera só assinaturas (mensalidades recorrentes). Cobranças avulsas e parceladas não entram, pois não se repetem sozinhas.</div></div>';
+    var linhas = L.map(function (m, i) {
+      var seg = L[i + 1], projTxt = '';
+      if (seg) {
+        var dif = seg.assinatura.valor - m.assinatura.valor;
+        projTxt = '<div class="small">Projeção feita a partir deste mês para ' + esc(asMesNome(seg.mes)) + ': <b>' + finMoeda(m.assinatura.valor) + '</b> · realizado em assinaturas: <b>' + finMoeda(seg.assinatura.valor) + '</b> <span class="muted">(' + (dif >= 0 ? '+' : '−') + finMoeda(Math.abs(dif)) + ')</span></div>';
+      } else projTxt = '<div class="small">Projeção para ' + esc(asMesNome(prox)) + ': <b>' + finMoeda(m.assinatura.valor) + '</b> <span class="muted">(fictícia)</span></div>';
+      return '<div class="card"><div class="row" style="justify-content:space-between"><b>' + esc(asMesNome(m.mes)) + '</b><span class="tag">' + finMoeda(m.total) + '</span></div>' +
+        '<div class="small muted">Cobrado no mês (todos os status): assinatura ' + finMoeda(m.assinatura.valor) + ' (' + m.assinatura.pessoas + ' pessoa(s)) · avulso ' + finMoeda(m.avulso.valor) + ' · parcelado ' + finMoeda(m.parcelado.valor) + '</div>' + projTxt + '</div>';
+    }).reverse().join('');
+    app(cabAsaas() + '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm" onclick="asModo(\'mes\')">‹ Voltar ao mês</button><button class="btn btn-sm" onclick="painelProj(true)">Atualizar</button></div>' +
+      '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + ' · por data de vencimento</div>' + aviso + '<div class="eyebrow">Mês a mês (últimos 6)</div><div class="list">' + linhas + '</div>');
+  }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
+}
 function verPainel() { S.aba2 = 'pnl'; painel('hist'); }
 
 function painel(aba) {
