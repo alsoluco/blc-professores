@@ -1865,33 +1865,52 @@ function desenhaFin() {
 }
 
 /* ---------- Asaas ao vivo (só head coach) ---------- */
-var AS = { mes: '' };
+var AS = { mes: '', modo: 'mes' };
 var AS_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 var AS_FORMA = { BOLETO: 'Boleto', PIX: 'Pix', CREDIT_CARD: 'Cartão', DEBIT_CARD: 'Débito', UNDEFINED: '' };
+var AS_TIPO = { assinatura: 'Assinatura', avulso: 'Avulso', parcelado: 'Parcelado' };
 function asMesAtual() { var d = new Date(); return d.getFullYear() + '-' + finP2(d.getMonth() + 1); }
 function asMesSoma(m, n) { var p = m.split('-'); var d = new Date(+p[0], +p[1] - 1 + n, 1); return d.getFullYear() + '-' + finP2(d.getMonth() + 1); }
 function asMesNome(m) { var p = m.split('-'); return AS_MESES[+p[1] - 1] + ' de ' + p[0]; }
 function cabAsaas() {
   return head(userBar()) + '<button class="back" onclick="painelFin()">← Financeiro</button><div><div class="eyebrow">Head coach</div><h2>Asaas <em>ao vivo</em></h2></div>';
 }
+function asPrimeiro(n) { var t = String(n || '').trim().split(/\s+/)[0].toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
+function asZap(x) {
+  var msg = 'Olá, ' + asPrimeiro(x.nome) + '! Tudo bem?\n\nAqui é da BLC Assessoria Esportiva. Ao revisarmos nosso financeiro, identificamos que a cobrança de ' + finMoeda(x.valor) + ', com vencimento em ' + x.venc + ', ainda consta como em aberto em nosso sistema.\n\n' +
+    'Se o pagamento já foi realizado, por favor desconsidere esta mensagem e nos envie o comprovante para que possamos atualizar o seu cadastro. Caso ainda não tenha sido feito, segue o link para pagamento:\n\n' + x.link + '\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe BLC Assessoria Esportiva';
+  return 'https://wa.me/' + x.tel + '?text=' + encodeURIComponent(msg);
+}
+function asModo(m) { AS.modo = m; painelAsaas(); }
 function painelAsaas(mes, atualizar) {
   S.aba = 'fin'; S.aba2 = 'pnl';
   AS.mes = mes || AS.mes || asMesAtual();
   app(cabAsaas() + '<div class="spin">Buscando no Asaas…</div>');
-  call('asaas', { mes: AS.mes, atualizar: !!atualizar }).then(function (r) {
-    var nav = '<div class="row" style="gap:6px;align-items:center"><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, -1) + '\')">‹</button><b>' + esc(asMesNome(AS.mes)) + '</b><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, 1) + '\')">›</button><button class="btn btn-sm" onclick="painelAsaas(AS.mes, true)">Atualizar</button></div>';
-    var card = function (t, o, cls) { return '<div class="card"><div class="eyebrow">' + t + '</div><h2><span class="tag ' + cls + '">' + finMoeda(o.valor) + '</span></h2><div class="small muted">' + o.qtd + ' cobrança(s)</div></div>'; };
+  call('asaas', { mes: AS.mes, modo: AS.modo, atualizar: !!atualizar }).then(function (r) {
+    var todos = AS.modo === 'atraso';
+    var modos = '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm' + (todos ? '' : ' btn-green') + '" onclick="asModo(\'mes\')">Por mês</button><button class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="asModo(\'atraso\')">Todos em atraso (qualquer mês)</button></div>';
+    var nav = todos ? '<div class="row" style="gap:6px;align-items:center"><button class="btn btn-sm" onclick="painelAsaas(AS.mes, true)">Atualizar</button></div>' :
+      '<div class="row" style="gap:6px;align-items:center"><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, -1) + '\')">‹</button><b>' + esc(asMesNome(AS.mes)) + '</b><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, 1) + '\')">›</button><button class="btn btn-sm" onclick="painelAsaas(AS.mes, true)">Atualizar</button></div>';
+    var card = function (t, o, cls, extra) { return '<div class="card"><div class="eyebrow">' + t + '</div><h2><span class="tag ' + cls + '">' + finMoeda(o.valor) + '</span></h2><div class="small muted">' + o.qtd + ' cobrança(s)</div>' + (extra || '') + '</div>'; };
+    var tp = r.tot.recebido.tipos;
+    var rcbExtra = '<div class="small" style="margin-top:8px">' + ['assinatura', 'avulso', 'parcelado'].map(function (k) { return '<div><b>' + AS_TIPO[k] + ':</b> ' + finMoeda(tp[k].valor) + ' <span class="muted">(' + tp[k].qtd + ')</span></div>'; }).join('') + '</div>';
     var item = function (x) {
       var forma = AS_FORMA[x.forma] || '';
+      var zap = x.g === 'atraso' ? (x.tel ? '<a class="btn btn-sm btn-green" href="' + esc(asZap(x)) + '" target="_blank" rel="noopener">Lembrete no WhatsApp</a>' : '<span class="small muted">Sem telefone cadastrado</span>') : '';
       return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(x.nome) + '</b><span class="tag ' + (x.g === 'atraso' ? '' : 'w') + '">' + finMoeda(x.valor) + '</span></div>' +
-        '<div class="small muted">' + (x.g === 'atraso' ? 'Venceu ' + esc(x.venc) + ' (' + x.dias + ' dia(s) de atraso)' : 'Vence ' + esc(x.venc)) + (forma ? ' · ' + esc(forma) : '') + (x.desc ? ' · ' + esc(x.desc) : '') + '</div>' +
-        (x.link ? '<a class="lnk" href="' + esc(x.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div>';
+        '<div class="small muted">' + (x.g === 'atraso' ? 'Venceu ' + esc(x.venc) + ' (' + x.dias + ' dia(s) de atraso)' : 'Vence ' + esc(x.venc)) + ' · ' + esc(AS_TIPO[x.tipo] || '') + (forma ? ' · ' + esc(forma) : '') + (x.desc ? ' · ' + esc(x.desc) : '') + '</div>' +
+        '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' + zap + (x.link ? '<a class="lnk" href="' + esc(x.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div></div>';
     };
     var atr = r.itens.filter(function (x) { return x.g === 'atraso'; }), rec = r.itens.filter(function (x) { return x.g === 'areceber'; });
-    app(cabAsaas() + nav + '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + ' · por data de vencimento · ' + r.total + ' cobranças no mês</div>' +
-      card('Recebido', r.tot.recebido, 'g') + card('A receber', r.tot.areceber, 'w') + card('Em atraso', r.tot.atraso, '') +
+    var porPessoa = {}; atr.forEach(function (x) { porPessoa[x.nome] = 1; });
+    var topo = '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + (todos ? ' · todas as cobranças vencidas e não pagas, de qualquer mês' : ' · por data de vencimento · ' + r.total + ' cobranças no mês') + '</div>';
+    var corpo = todos ?
+      card('Em atraso (total)', r.tot.atraso, '', '<div class="small muted">' + Object.keys(porPessoa).length + ' pessoa(s)</div>') +
+      '<div class="eyebrow">Em atraso (' + atr.length + ')</div><div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso.</div>') + '</div>' :
+      card('Recebido', r.tot.recebido, 'g', rcbExtra) + card('A receber', r.tot.areceber, 'w') + card('Em atraso', r.tot.atraso, '') +
       '<div class="eyebrow">Em atraso (' + atr.length + ')</div><div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso neste mês.</div>') + '</div>' +
-      '<div class="eyebrow">A receber (' + rec.length + ')</div><div class="list">' + (rec.length ? rec.map(item).join('') : '<div class="muted small">Nada a receber neste mês.</div>') + '</div>');
+      '<div class="eyebrow">A receber (' + rec.length + ')</div><div class="list">' + (rec.length ? rec.map(item).join('') : '<div class="muted small">Nada a receber neste mês.</div>') + '</div>';
+    app(cabAsaas() + modos + nav + topo + corpo);
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
 
