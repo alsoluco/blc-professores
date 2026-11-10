@@ -1845,14 +1845,19 @@ function vendaTot() {
   var q = parseInt($('vq').value, 10) || 0, ent = $('ve') && $('ve').value === '1';
   $('vtot').innerHTML = q > 0 ? 'Total: <b>' + finMoeda(vendaTotal()) + '</b>' + (ent ? ' <span class="muted">(inclui taxa de entrega de ' + finMoeda(PR.taxa) + ')</span>' : '') : '';
 }
+function vendaLista() {
+  var l = (PR.atl || []).slice();
+  if (ehAdm() && S.email) l.unshift({ id: 'PROF:' + S.email, nome: String(S.nome || 'Beto').replace(/\s*\(.*?\)\s*/g, ' ').trim() + ' (teste)' });
+  return l;
+}
 function vendaBusca(v) {
   var q = norm(v);
-  $('vres').innerHTML = q.length < 2 ? '' : (PR.atl || []).filter(function (a) { return norm(a.nome).indexOf(q) >= 0; }).slice(0, 6).map(function (a) {
+  $('vres').innerHTML = q.length < 2 ? '' : vendaLista().filter(function (a) { return norm(a.nome).indexOf(q) >= 0; }).slice(0, 6).map(function (a) {
     return '<button type="button" class="pick" onclick="vendaAtl(\'' + esc(a.id) + '\')"><span>' + esc(a.nome) + '</span></button>';
   }).join('') || '<div class="muted small">Nenhum atleta encontrado.</div>';
 }
 function vendaAtl(id) {
-  var a = (PR.atl || []).filter(function (x) { return x.id === id; })[0]; if (!a) return;
+  var a = vendaLista().filter(function (x) { return x.id === id; })[0]; if (!a) return;
   PR.atletaSel = a; $('vres').innerHTML = ''; $('va').value = a.nome; $('vsel').innerHTML = 'Atleta escolhido: <b>' + esc(a.nome) + '</b>';
 }
 function vendaOk() {
