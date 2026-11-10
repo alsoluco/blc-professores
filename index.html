@@ -203,6 +203,7 @@ function menuAtualiza() {
     it('Atletas', 'atletas()', S.aba2 === 'atl') +
     '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
     provas +
+    it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
     it('\ud83e\udde0 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
     (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') : '') +
     '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
@@ -1770,9 +1771,10 @@ function painelProj(atualizar) {
 }
 /* ---------- Produtos e vendas (gera cobrança no Asaas) ---------- */
 var PR = { produtos: [], vendas: [], atl: null, atletaSel: null };
-function prCab() { return cabAsaas() + '<button class="back" onclick="painelAsaas()">← Asaas ao vivo</button>'; }
+function ehAdm() { return S.perfil === 'Admin'; }
+function prCab() { return ehAdm() ? cabAsaas() + '<button class="back" onclick="painelAsaas()">← Asaas ao vivo</button>' : head(userBar()) + '<button class="back" onclick="mural()">← Mensagens</button>'; }
 function painelProd() {
-  S.aba = 'fin'; S.aba2 = 'pnl';
+  if (ehAdm()) { S.aba = 'fin'; S.aba2 = 'pnl'; } else { S.aba2 = 'prod'; }
   app(prCab() + '<div class="spin">Carregando…</div>');
   call('prodLista').then(function (r) { PR.produtos = r.produtos; PR.vendas = r.vendas; desenhaProd(); }).catch(function (e) { app(prCab() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
@@ -1782,18 +1784,18 @@ function desenhaProd() {
     var tot = p.grade.reduce(function (a, x) { return a + x.q; }, 0);
     return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(p.nome) + '</b><span class="tag">' + finMoeda(p.preco) + '</span></div>' +
       '<div class="small" style="margin-top:6px">' + (prGrade(p) || 'sem grade') + '</div><div class="small muted">Estoque total: ' + tot + (p.ativo ? '' : ' · inativo') + '</div>' +
-      '<div class="row" style="margin-top:8px"><button class="btn btn-sm" onclick="formProd(\'' + esc(p.id) + '\')">Editar</button></div></div>';
+      (ehAdm() ? '<div class="row" style="margin-top:8px"><button class="btn btn-sm" onclick="formProd(\'' + esc(p.id) + '\')">Editar</button></div>' : '') + '</div>';
   }).join('') || '<div class="muted small">Nenhum produto cadastrado ainda.</div>';
   var vs = PR.vendas.map(function (v) {
     var ok = v.status === 'Registrada';
     return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(v.atleta) + '</b><span class="tag' + (ok ? '' : ' w') + '">' + finMoeda(v.total) + '</span></div>' +
       '<div class="small">' + v.qtd + '× ' + esc(v.produto) + ' · tam. ' + esc(v.tamanho) + '</div><div class="small muted">' + esc(v.quando) + ' · vendido por ' + esc(v.vendedor) + (v.obs ? ' · ' + esc(v.obs) : '') + (ok ? '' : ' · CANCELADA') + '</div>' +
-      (ok ? '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">' + (v.link ? '<button class="btn btn-sm btn-green" onclick="vendaZap(\'' + esc(v.id) + '\')">Enviar no WhatsApp</button>' : '') + '<button class="btn btn-sm" onclick="vendaCancela(\'' + esc(v.id) + '\')">Cancelar venda</button></div>' : '') + '</div>';
+      (ok ? '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">' + (v.link ? '<button class="btn btn-sm btn-green" onclick="vendaZap(\'' + esc(v.id) + '\')">Enviar no WhatsApp</button>' : '') + (ehAdm() ? '<button class="btn btn-sm" onclick="vendaCancela(\'' + esc(v.id) + '\')">Cancelar venda</button>' : '') + '</div>' : '') + '</div>';
   }).join('') || '<div class="muted small">Nenhuma venda registrada ainda.</div>';
-  app(prCab() + '<div><div class="eyebrow">Head coach</div><h2>Produtos <em>e vendas</em></h2></div>' +
+  app(prCab() + '<div><div class="eyebrow">' + (ehAdm() ? 'Head coach' : 'Professor') + '</div><h2>Produtos <em>e vendas</em></h2></div>' +
     '<div class="card"><div class="small">Cada venda <b>gera uma cobrança no Asaas</b>, baixa o estoque e envia o link por e-mail ao atleta. Depois você pode mandar o mesmo texto pelo WhatsApp.</div></div>' +
-    '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm btn-green" onclick="formVenda()">Nova venda</button><button class="btn btn-sm" onclick="formProd()">Novo produto</button></div>' +
-    '<div class="eyebrow">Produtos e estoque</div><div class="list">' + ps + '</div><div class="eyebrow">Vendas recentes</div><div class="list">' + vs + '</div>');
+    '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm btn-green" onclick="formVenda()">Nova venda</button>' + (ehAdm() ? '<button class="btn btn-sm" onclick="formProd()">Novo produto</button>' : '') + '</div>' +
+    '<div class="eyebrow">Produtos e estoque</div><div class="list">' + ps + '</div><div class="eyebrow">' + (ehAdm() ? 'Vendas recentes' : 'Minhas vendas') + '</div><div class="list">' + vs + '</div>');
 }
 function formProd(id) {
   var p = PR.produtos.filter(function (x) { return x.id === id; })[0] || { nome: '', preco: '', grade: [], ativo: true };
@@ -1814,7 +1816,7 @@ function formVenda() {
   var ativos = PR.produtos.filter(function (p) { return p.ativo; });
   if (!ativos.length) { aviso('Cadastre um produto primeiro.'); return; }
   var go = function () {
-    app(prCab() + '<div><div class="eyebrow">Head coach</div><h2>Nova <em>venda</em></h2></div><div class="card">' +
+    app(prCab() + '<div><div class="eyebrow">' + (ehAdm() ? 'Head coach' : 'Professor') + '</div><h2>Nova <em>venda</em></h2></div><div class="card">' +
       '<div><label for="vp">Produto</label><select id="vp" onchange="vendaProd()">' + ativos.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.nome) + ' · ' + finMoeda(p.preco) + '</option>'; }).join('') + '</select></div>' +
       '<div style="margin-top:12px"><label for="vt">Tamanho</label><select id="vt" onchange="vendaTot()"></select></div>' +
       '<div style="margin-top:12px"><label for="vq">Quantidade</label><input id="vq" type="text" inputmode="numeric" value="1" oninput="vendaTot()"></div>' +
@@ -1856,6 +1858,7 @@ function vendaOk() {
       return dlg('Registrar a venda de ' + resumo + '? Será criada uma cobrança no Asaas (cliente: ' + r.clienteNome + ')' + (r.temEmail ? ' e o link vai por e-mail ao atleta.' : '. Atenção: o atleta não tem e-mail cadastrado, então o e-mail não será enviado.'), { ok: 'Registrar e cobrar' })
         .then(function (sim) { return sim ? { criarCliente: false } : null; });
     }
+    if (!ehAdm()) { aviso(at.nome + ' ainda não está cadastrado(a) no Asaas. Peça ao head coach para cadastrar antes de vender.'); return null; }
     return dlg(at.nome + ' não está cadastrado(a) no Asaas. Para criar a cobrança, preciso cadastrar o cliente lá. Você autoriza? Digite o CPF do atleta e toque em Autorizar.', { ok: 'Autorizar e cadastrar', input: 'CPF (somente números)' })
       .then(function (cpf) { return cpf ? { criarCliente: true, cpf: cpf } : null; });
   }).then(function (extra) {
