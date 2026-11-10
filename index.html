@@ -1768,7 +1768,7 @@ function painelProj(atualizar) {
       '<div class="eyebrow">Meses anteriores (últimos 6)</div><div class="list">' + linhas + '</div>');
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
-/* ---------- Produtos e vendas (teste: só registra no app, não gera cobrança no Asaas) ---------- */
+/* ---------- Produtos e vendas (gera cobrança no Asaas) ---------- */
 var PR = { produtos: [], vendas: [], atl: null, atletaSel: null };
 function prCab() { return cabAsaas() + '<button class="back" onclick="painelAsaas()">← Asaas ao vivo</button>'; }
 function painelProd() {
@@ -1788,10 +1788,10 @@ function desenhaProd() {
     var ok = v.status === 'Registrada';
     return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(v.atleta) + '</b><span class="tag' + (ok ? '' : ' w') + '">' + finMoeda(v.total) + '</span></div>' +
       '<div class="small">' + v.qtd + '× ' + esc(v.produto) + ' · tam. ' + esc(v.tamanho) + '</div><div class="small muted">' + esc(v.quando) + ' · vendido por ' + esc(v.vendedor) + (v.obs ? ' · ' + esc(v.obs) : '') + (ok ? '' : ' · CANCELADA') + '</div>' +
-      (ok ? '<div class="row" style="margin-top:8px"><button class="btn btn-sm" onclick="vendaCancela(\'' + esc(v.id) + '\')">Cancelar venda</button></div>' : '') + '</div>';
+      (ok ? '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">' + (v.link ? '<button class="btn btn-sm btn-green" onclick="vendaZap(\'' + esc(v.id) + '\')">Enviar no WhatsApp</button>' : '') + '<button class="btn btn-sm" onclick="vendaCancela(\'' + esc(v.id) + '\')">Cancelar venda</button></div>' : '') + '</div>';
   }).join('') || '<div class="muted small">Nenhuma venda registrada ainda.</div>';
   app(prCab() + '<div><div class="eyebrow">Head coach</div><h2>Produtos <em>e vendas</em></h2></div>' +
-    '<div class="card"><div class="eyebrow">MODO TESTE</div><div class="small">A venda fica registrada aqui e baixa o estoque, mas ainda <b>não gera cobrança no Asaas</b>.</div></div>' +
+    '<div class="card"><div class="small">Cada venda <b>gera uma cobrança no Asaas</b>, baixa o estoque e envia o link por e-mail ao atleta. Depois você pode mandar o mesmo texto pelo WhatsApp.</div></div>' +
     '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm btn-green" onclick="formVenda()">Nova venda</button><button class="btn btn-sm" onclick="formProd()">Novo produto</button></div>' +
     '<div class="eyebrow">Produtos e estoque</div><div class="list">' + ps + '</div><div class="eyebrow">Vendas recentes</div><div class="list">' + vs + '</div>');
 }
@@ -1803,7 +1803,7 @@ function formProd(id) {
     '<div style="margin-top:12px"><label for="pp">Preço (R$)</label><input id="pp" type="text" inputmode="decimal" value="' + esc(p.preco === '' ? '' : String(p.preco).replace('.', ',')) + '"></div>' +
     '<div style="margin-top:12px"><label for="pg">Tamanhos e estoque</label><input id="pg" type="text" value="' + esc(g) + '" placeholder="P=10; M=8; G=5; GG=2"><div class="small muted" style="margin-top:6px">Use o formato tamanho=quantidade, separados por ponto e vírgula. Ao editar, os números são o estoque atual.</div></div>' +
     (id ? '<div style="margin-top:12px"><label for="pa">Situação</label><select id="pa"><option value="1"' + (p.ativo ? ' selected' : '') + '>Ativo (aparece nas vendas)</option><option value="0"' + (p.ativo ? '' : ' selected') + '>Inativo</option></select></div>' : '') +
-    '<div class="row" style="margin-top:14px;gap:8px"><button class="btn btn-green" onclick="salvaProd(\'' + esc(id || '') + '\')">Salvar</button><button class="btn" onclick="painelProd()">Cancelar</button></div></div>');
+    '<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap"><button class="btn btn-green" onclick="salvaProd(\'' + esc(id || '') + '\')">Salvar</button><button class="btn" onclick="painelProd()">Cancelar</button>' + (id ? '<button class="btn" onclick="apagaProd(\'' + esc(id) + '\')">Apagar produto</button>' : '') + '</div></div>');
 }
 function salvaProd(id) {
   call('prodSalvar', { id: id, nome: $('pn').value, preco: $('pp').value, grade: $('pg').value, ativo: $('pa') ? $('pa').value === '1' : true })
@@ -1848,14 +1848,47 @@ function vendaAtl(id) {
 }
 function vendaOk() {
   if (!PR.atletaSel) { aviso('Escolha o atleta na lista que aparece ao digitar o nome.'); return; }
-  var p = vendaProdSel(), q = parseInt($('vq').value, 10) || 0, t = $('vt').value;
-  dlg('Registrar venda de ' + q + '× ' + p.nome + ' (tam. ' + t + ') para ' + PR.atletaSel.nome + ' por ' + finMoeda(Math.round(p.preco * q * 100) / 100) + '? O estoque será baixado.', { ok: 'Registrar' }).then(function (sim) {
+  var p = vendaProdSel(), q = parseInt($('vq').value, 10) || 0, t = $('vt').value, obs = $('vo').value, at = PR.atletaSel;
+  var tot = finMoeda(Math.round(p.preco * q * 100) / 100);
+  var resumo = q + '× ' + p.nome + ' (tam. ' + t + ') para ' + at.nome + ' por ' + tot;
+  call('vendaPreparar', { atletaId: at.id }).then(function (r) {
+    if (r.achou) {
+      return dlg('Registrar a venda de ' + resumo + '? Será criada uma cobrança no Asaas (cliente: ' + r.clienteNome + ')' + (r.temEmail ? ' e o link vai por e-mail ao atleta.' : '. Atenção: o atleta não tem e-mail cadastrado, então o e-mail não será enviado.'), { ok: 'Registrar e cobrar' })
+        .then(function (sim) { return sim ? { criarCliente: false } : null; });
+    }
+    return dlg(at.nome + ' não está cadastrado(a) no Asaas. Para criar a cobrança, preciso cadastrar o cliente lá. Você autoriza? Digite o CPF do atleta e toque em Autorizar.', { ok: 'Autorizar e cadastrar', input: 'CPF (somente números)' })
+      .then(function (cpf) { return cpf ? { criarCliente: true, cpf: cpf } : null; });
+  }).then(function (extra) {
+    if (!extra) return;
+    return call('vendaRegistrar', { produtoId: p.id, tamanho: t, qtd: q, atletaId: at.id, obs: obs, criarCliente: extra.criarCliente, cpf: extra.cpf }).then(function (r) { vendaFeita(r, at.nome); });
+  }).catch(function (e) { aviso(e.message); });
+}
+function zapLink(tel, texto) { return 'https://wa.me/' + tel + '?text=' + encodeURIComponent(texto); }
+function vendaFeita(r, nome) {
+  PR.ult = r;
+  app(prCab() + '<div><div class="eyebrow">Venda registrada</div><h2>Cobrança <em>criada</em></h2></div><div class="card">' +
+    '<div class="small"><b>' + esc(nome) + '</b> · ' + finMoeda(r.total) + '</div>' +
+    '<div class="small muted" style="margin-top:6px">E-mail: ' + esc(r.email === 'enviado' ? 'enviado ao atleta' : r.email) + '</div>' +
+    '<div class="small muted">Estoque restante deste tamanho: ' + r.restante + '</div>' +
+    '<div class="small" style="margin-top:8px;word-break:break-all">Link: ' + esc(r.link) + '</div>' +
+    '<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">' +
+    (r.tel ? '<button class="btn btn-green" onclick="window.open(zapLink(PR.ult.tel, PR.ult.texto), \'_blank\')">Enviar no WhatsApp</button>' : '<div class="small muted">Atleta sem telefone cadastrado: copie o link e envie manualmente.</div>') +
+    '<button class="btn" onclick="painelProd()">Concluir</button></div></div>');
+}
+function vendaZap(id) {
+  var v = PR.vendas.filter(function (x) { return x.id === id; })[0];
+  if (!v || !v.texto) return;
+  if (!v.tel) { aviso('Este atleta não tem telefone cadastrado. Link: ' + v.link); return; }
+  window.open(zapLink(v.tel, v.texto), '_blank');
+}
+function apagaProd(id) {
+  dlg('Apagar este produto? Só é possível se ele não tiver vendas.', { ok: 'Apagar' }).then(function (sim) {
     if (!sim) return;
-    call('vendaRegistrar', { produtoId: p.id, tamanho: t, qtd: q, atletaId: PR.atletaSel.id, obs: $('vo').value }).then(function () { painelProd(); }).catch(function (e) { aviso(e.message); });
+    call('prodApagar', { id: id }).then(function () { painelProd(); }).catch(function (e) { aviso(e.message); });
   });
 }
 function vendaCancela(id) {
-  dlg('Cancelar esta venda? As peças voltam para o estoque.', { ok: 'Cancelar venda' }).then(function (sim) {
+  dlg('Cancelar esta venda? A cobrança no Asaas será cancelada e as peças voltam para o estoque.', { ok: 'Cancelar venda' }).then(function (sim) {
     if (!sim) return;
     call('vendaCancelar', { id: id }).then(function () { painelProd(); }).catch(function (e) { aviso(e.message); });
   });
