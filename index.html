@@ -1770,7 +1770,7 @@ function painelProj(atualizar) {
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
 /* ---------- Produtos e vendas (gera cobrança no Asaas) ---------- */
-var PR = { produtos: [], vendas: [], atl: null, atletaSel: null };
+var PR = { produtos: [], vendas: [], atl: null, atletaSel: null, taxa: 15 };
 function ehAdm() { return S.perfil === 'Admin'; }
 function prCab() { return ehAdm() ? cabAsaas() + '<button class="back" onclick="painelAsaas()">← Asaas ao vivo</button>' : head(userBar()) + '<button class="back" onclick="mural()">← Mensagens</button>'; }
 function painelProd() {
@@ -1789,7 +1789,7 @@ function desenhaProd() {
   var vs = PR.vendas.map(function (v) {
     var ok = v.status === 'Registrada';
     return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(v.atleta) + '</b><span class="tag' + (ok ? '' : ' w') + '">' + finMoeda(v.total) + '</span></div>' +
-      '<div class="small">' + v.qtd + '× ' + esc(v.produto) + ' · tam. ' + esc(v.tamanho) + '</div><div class="small muted">' + esc(v.quando) + ' · vendido por ' + esc(v.vendedor) + (v.obs ? ' · ' + esc(v.obs) : '') + (ok ? '' : ' · CANCELADA') + '</div>' +
+      '<div class="small">' + v.qtd + '× ' + esc(v.produto) + ' · tam. ' + esc(v.tamanho) + '</div><div class="small">' + (v.entrega ? 'Entrega em casa: ' + esc(v.endereco) : 'Retirada na tenda') + '</div><div class="small muted">' + esc(v.quando) + ' · vendido por ' + esc(v.vendedor) + (v.obs ? ' · ' + esc(v.obs) : '') + (ok ? '' : ' · CANCELADA') + '</div>' +
       (ok ? '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">' + (v.link ? '<button class="btn btn-sm btn-green" onclick="vendaZap(\'' + esc(v.id) + '\')">Enviar no WhatsApp</button>' : '') + (ehAdm() ? '<button class="btn btn-sm" onclick="vendaCancela(\'' + esc(v.id) + '\')">Cancelar venda</button>' : '') + '</div>' : '') + '</div>';
   }).join('') || '<div class="muted small">Nenhuma venda registrada ainda.</div>';
   app(prCab() + '<div><div class="eyebrow">' + (ehAdm() ? 'Head coach' : 'Professor') + '</div><h2>Produtos <em>e vendas</em></h2></div>' +
@@ -1821,6 +1821,8 @@ function formVenda() {
       '<div style="margin-top:12px"><label for="vt">Tamanho</label><select id="vt" onchange="vendaTot()"></select></div>' +
       '<div style="margin-top:12px"><label for="vq">Quantidade</label><input id="vq" type="text" inputmode="numeric" value="1" oninput="vendaTot()"></div>' +
       '<div style="margin-top:12px"><label for="va">Atleta</label><input id="va" type="search" placeholder="Digite o nome do atleta" oninput="vendaBusca(this.value)"><div id="vsel" class="small" style="margin-top:6px"></div><div id="vres" class="list"></div></div>' +
+      '<div style="margin-top:12px"><label for="ve">Entrega</label><select id="ve" onchange="vendaEnt()"><option value="0">Retirar na tenda da BLC (sem taxa)</option><option value="1">Receber em casa (+ ' + finMoeda(PR.taxa) + ')</option></select></div>' +
+      '<div id="vend" style="margin-top:12px;display:none"><label for="vad">Endereço de entrega</label><input id="vad" type="text" placeholder="Rua, número, complemento, bairro"></div>' +
       '<div style="margin-top:12px"><label for="vo">Observação (opcional)</label><input id="vo" type="text"></div>' +
       '<div id="vtot" class="small" style="margin-top:12px"></div>' +
       '<div class="row" style="margin-top:14px;gap:8px"><button class="btn btn-green" onclick="vendaOk()">Registrar venda</button><button class="btn" onclick="painelProd()">Cancelar</button></div></div>');
@@ -1834,9 +1836,14 @@ function vendaProd() {
   $('vt').innerHTML = p.grade.map(function (x) { return '<option value="' + esc(x.t) + '"' + (x.q < 1 ? ' disabled' : '') + '>' + esc(x.t) + ' (' + x.q + ' em estoque)</option>'; }).join('');
   vendaTot();
 }
-function vendaTot() {
+function vendaEnt() { $('vend').style.display = $('ve').value === '1' ? 'block' : 'none'; vendaTot(); }
+function vendaTotal() {
   var p = vendaProdSel(), q = parseInt($('vq').value, 10) || 0;
-  $('vtot').innerHTML = q > 0 ? 'Total: <b>' + finMoeda(Math.round(p.preco * q * 100) / 100) + '</b>' : '';
+  return Math.round((p.preco * q + ($('ve') && $('ve').value === '1' ? PR.taxa : 0)) * 100) / 100;
+}
+function vendaTot() {
+  var q = parseInt($('vq').value, 10) || 0, ent = $('ve') && $('ve').value === '1';
+  $('vtot').innerHTML = q > 0 ? 'Total: <b>' + finMoeda(vendaTotal()) + '</b>' + (ent ? ' <span class="muted">(inclui taxa de entrega de ' + finMoeda(PR.taxa) + ')</span>' : '') : '';
 }
 function vendaBusca(v) {
   var q = norm(v);
@@ -1851,8 +1858,10 @@ function vendaAtl(id) {
 function vendaOk() {
   if (!PR.atletaSel) { aviso('Escolha o atleta na lista que aparece ao digitar o nome.'); return; }
   var p = vendaProdSel(), q = parseInt($('vq').value, 10) || 0, t = $('vt').value, obs = $('vo').value, at = PR.atletaSel;
-  var tot = finMoeda(Math.round(p.preco * q * 100) / 100);
-  var resumo = q + '× ' + p.nome + ' (tam. ' + t + ') para ' + at.nome + ' por ' + tot;
+  var ent = $('ve').value === '1', endr = $('vad').value;
+  if (ent && String(endr).trim().length < 8) { aviso('Digite o endereço de entrega.'); return; }
+  var tot = finMoeda(vendaTotal());
+  var resumo = q + '× ' + p.nome + ' (tam. ' + t + ') para ' + at.nome + ' por ' + tot + (ent ? ', com entrega em casa' : ', retirada na tenda');
   call('vendaPreparar', { atletaId: at.id }).then(function (r) {
     if (r.achou) {
       return dlg('Registrar a venda de ' + resumo + '? Será criada uma cobrança no Asaas (cliente: ' + r.clienteNome + ')' + (r.temEmail ? ' e o link vai por e-mail ao atleta.' : '. Atenção: o atleta não tem e-mail cadastrado, então o e-mail não será enviado.'), { ok: 'Registrar e cobrar' })
@@ -1863,7 +1872,7 @@ function vendaOk() {
       .then(function (cpf) { return cpf ? { criarCliente: true, cpf: cpf } : null; });
   }).then(function (extra) {
     if (!extra) return;
-    return call('vendaRegistrar', { produtoId: p.id, tamanho: t, qtd: q, atletaId: at.id, obs: obs, criarCliente: extra.criarCliente, cpf: extra.cpf }).then(function (r) { vendaFeita(r, at.nome); });
+    return call('vendaRegistrar', { produtoId: p.id, tamanho: t, qtd: q, atletaId: at.id, obs: obs, entrega: ent, endereco: endr, criarCliente: extra.criarCliente, cpf: extra.cpf }).then(function (r) { vendaFeita(r, at.nome); });
   }).catch(function (e) { aviso(e.message); });
 }
 function zapLink(tel, texto) { return 'https://wa.me/' + tel + '?text=' + encodeURIComponent(texto); }
