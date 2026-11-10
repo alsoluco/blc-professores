@@ -1679,190 +1679,10 @@ function cvEnvia2() {
 }
 
 
-/* ---------- financeiro (só head coach) ---------- */
-var FIN = { d: null, c: {}, reg: {}, aba: 'hoje', mes: 10, q: '' };
-var FIN_MES = { 9: 'setembro', 10: 'outubro', 11: 'novembro' };
-var FIN_FORMA = { B: 'Boleto', P: 'Pix', C: 'Cartão' };
-function cabFin() {
-  return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>Asaas</em></h2></div>' + painelTabs('fin') + '<button class="btn btn-sm btn-green" onclick="painelAsaas()">Asaas ao vivo (direto da conta)</button>';
-}
-function finDt(s) { var p = String(s || '').split('/'); return p.length === 3 ? new Date(+p[2], +p[1] - 1, +p[0]) : null; }
-function finHoje() { var h = new Date(); return new Date(h.getFullYear(), h.getMonth(), h.getDate()); }
-function finDias(a, b) { return Math.round((b - a) / 86400000); }
+/* ---------- financeiro (só head coach): somente Asaas ao vivo ---------- */
 function finP2(n) { return (n < 10 ? '0' : '') + n; }
-function finFmt(d) { return finP2(d.getDate()) + '/' + finP2(d.getMonth() + 1) + '/' + d.getFullYear(); }
-function finAgora() { var d = new Date(); return finFmt(d) + ' ' + finP2(d.getHours()) + ':' + finP2(d.getMinutes()); }
-function finSoma(d, n) { var y = d.getFullYear(), m = d.getMonth() + n, dia = d.getDate(); var u = new Date(y, m + 1, 0).getDate(); return new Date(y, m, Math.min(dia, u)); }
-function painelFin() {
-  S.aba = 'fin'; S.aba2 = 'pnl';
-  app(cabFin() + '<div class="spin">Carregando…</div>');
-  call('financeiro').then(function (r) {
-    if (r.vazio) { app(cabFin() + '<div class="card"><div class="muted">Ainda não há conferência. Envie as planilhas do Asaas para o Claude e ela aparece aqui.</div></div>'); return; }
-    if (!r.dados || r.dados.v !== 2) { app(cabFin() + '<div class="card"><div class="muted">Os dados estão em formato antigo. Peça ao Claude para atualizar a conferência.</div></div>'); return; }
-    FIN.d = r.dados; FIN.c = {};
-    (r.dados.cobr || []).forEach(function (x) { (FIN.c[x.a] = FIN.c[x.a] || []).push(x); });
-    FIN.reg = {}; (r.registros || []).forEach(function (g) { FIN.reg[g.id] = g.quando; });
-    var m = new Date().getMonth() + 1; FIN.mes = m < 9 ? 9 : (m > 11 ? 11 : m);
-    desenhaFin();
-  }).catch(function (e) { app(cabFin() + '<div class="err">' + esc(e.message) + '</div>'); });
-}
 function finMoeda(v) { if (v === null || v === undefined || v === '') return ''; var n = Number(v); return isFinite(n) ? 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+,)/g, '.') : esc(v || ''); }
-function finBusca(v) { FIN.q = v; desenhaFin(); var e = $('finq'); if (e) { e.focus(); e.setSelectionRange(v.length, v.length); } }
-function finAba(k) { FIN.aba = k; desenhaFin(); }
-function finMes(m) { FIN.mes = m; desenhaFin(); }
-function finOk(a) { var q = cvNorm(FIN.q || ''); return !q || cvNorm(a.n + ' ' + (a.g || '')).indexOf(q) >= 0; }
-function finStMes(i, m) {
-  var l = (FIN.c[i] || []).filter(function (x) { return x.m === m; });
-  if (!l.length) return '';
-  var t = function (s) { return l.some(function (x) { return x.s === s; }); };
-  if (t('V')) return 'V'; if (t('A')) return 'A'; if (t('E')) return 'E'; return 'P';
-}
-function finCalc() {
-  var d = FIN.d, hoje = finHoje(), M = FIN.mes, mReal = hoje.getMonth() + 1;
-  var o = { cobrar: [], cartao: [], acabando: [], verificar: [], avencer: [], emdia: [], naoaplica: [], hoje: hoje, mReal: mReal };
-  d.atletas.forEach(function (a, i) {
-    var cs = FIN.c[i] || [];
-    if (a.ov === 'n') { o.naoaplica.push({ i: i, a: a }); return; }
-    if (a.ov === 'v') { o.verificar.push({ i: i, a: a, motivo: a.o }); return; }
-    var venc = cs.filter(function (x) { return x.s === 'V'; }).sort(function (x, y) { return finDt(x.d) - finDt(y.d); });
-    if (venc.length) o.cobrar.push({ i: i, a: a, cs: venc });
-    cs.forEach(function (x) { if (x.f === 'C' && x.m === M && (x.s === 'C' || x.s === 'R')) o.cartao.push({ i: i, a: a, x: x }); });
-    var par = cs.filter(function (x) { return x.y > 1 && x.s !== 'E'; }).sort(function (x, y) { return finDt(y.d) - finDt(x.d); })[0];
-    if (par) {
-      var fim = finSoma(finDt(par.d), par.y - par.x);
-      var dias = finDias(hoje, fim);
-      if (dias <= 75 && dias >= -20) o.acabando.push({ i: i, a: a, x: par, fim: fim, dias: dias });
-    }
-    var est = cs.filter(function (x) { return x.s === 'E'; });
-    if (est.length) o.verificar.push({ i: i, a: a, motivo: 'Cobrança estornada em ' + est.sort(function (x, y) { return x.m - y.m; }).map(function (x) { return FIN_MES[x.m] || x.m; }).filter(function (v, k, r) { return r.indexOf(v) === k; }).join(' e ') });
-    else if (cs.length && !cs.some(function (x) { return x.m === M; }) && M <= mReal && (cs.some(function (x) { return x.m < M; }) && cs.some(function (x) { return x.m > M; }))) o.verificar.push({ i: i, a: a, motivo: 'Sem cobrança em ' + FIN_MES[M] });
-    var st = finStMes(i, M);
-    if (st === 'A') o.avencer.push({ i: i, a: a, cs: cs.filter(function (x) { return x.m === M && x.s === 'A'; }) });
-    if (st === 'P') o.emdia.push({ i: i, a: a, cs: cs.filter(function (x) { return x.m === M && x.s !== 'E'; }) });
-  });
-  o.cobrar.sort(function (x, y) { return finDt(x.cs[0].d) - finDt(y.cs[0].d); });
-  o.cartao.sort(function (x, y) { return finDt(x.x.d) - finDt(y.x.d); });
-  o.acabando.sort(function (x, y) { return x.fim - y.fim; });
-  o.avencer.sort(function (x, y) { return finDt(x.cs[0].d) - finDt(y.cs[0].d); });
-  var pend = o.cartao.filter(function (z) { return !FIN.reg['c-' + z.x.k]; }).length;
-  o.nHoje = o.cobrar.length + pend + o.acabando.length + o.verificar.length;
-  o.nPend = pend;
-  return o;
-}
-function finMsg(a, x, mReal) {
-  var nome = String(a.n).split(' ')[0];
-  var quando = x.m === mReal ? 'desse mês' : 'de ' + (FIN_MES[x.m] || 'mês ' + x.m);
-  return 'Olá, tudo bem ' + nome + '? Por favor verifica pra mim se acertou a mensalidade ' + quando + '. Pra mim está aparecendo como aberto. Se tiver alguma divergência pode me chamar. Abraços, Beto Lundgren.';
-}
-function finTit(n, txt) { return '<h3 style="margin:18px 0 6px">' + txt + ' <span class="tag' + (n ? ' w' : ' g') + '">' + n + '</span></h3>'; }
-function finVazio(t) { return '<div class="card"><div class="muted">' + t + '</div></div>'; }
-function finCabCard(a, tag) {
-  return '<div class="row" style="justify-content:space-between;align-items:center"><h3>' + esc(a.n) + '</h3>' + (tag || '') + '</div>' + (a.g ? '<div class="small muted">' + esc(a.g) + '</div>' : '');
-}
-function finCobrou(i, k) {
-  var a = FIN.d.atletas[i], x = (FIN.c[i] || []).filter(function (z) { return z.k === k; })[0];
-  if (!a || !x) return;
-  call('finLancar', { id: 'cb|' + k, nome: a.n, valor: x.v, multi: true }).then(function (r) { FIN.reg['cb|' + k] = (r && r.quando) || finAgora(); desenhaFin(); }).catch(function (e) { aviso(e.message); });
-}
-function finLanca(i, k) {
-  var a = FIN.d.atletas[i], x = (FIN.c[i] || []).filter(function (z) { return z.k === k; })[0];
-  if (!a || !x) return;
-  call('finLancar', { id: 'c-' + k, nome: a.n, valor: x.v }).then(function (r) { FIN.reg['c-' + k] = (r && r.quando) || finAgora(); desenhaFin(); }).catch(function (e) { aviso(e.message); });
-}
-function finSecCobrar(o) {
-  var l = o.cobrar.filter(function (z) { return finOk(z.a); });
-  var tot = 0; l.forEach(function (z) { z.cs.forEach(function (x) { tot += x.v; }); });
-  return finTit(l.length, 'Cobrar') + (l.length ? '<div class="small muted">Total em atraso: ' + finMoeda(tot) + '</div>' : '') + (l.length ? l.map(function (z) {
-    var soma = 0; z.cs.forEach(function (x) { soma += x.v; });
-    var atraso = finDias(finDt(z.cs[0].d), o.hoje);
-    return '<div class="card">' + finCabCard(z.a, '<span class="tag w">' + finMoeda(soma) + '</span>') +
-      '<div class="small"><b>' + atraso + ' dia(s) em atraso</b> · ' + z.cs.length + (z.cs.length > 1 ? ' meses devendo' : ' mês devendo') + '</div>' +
-      z.cs.map(function (x) {
-        var feito = FIN.reg['cb|' + x.k];
-        var link = z.a.t ? 'https://wa.me/' + cvFone(z.a.t) + '?text=' + encodeURIComponent(finMsg(z.a, x, o.mReal)) : '';
-        return '<div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:6px"><div><div class="small"><b>' + esc(FIN_MES[x.m] || x.m) + '</b> · ' + finMoeda(x.v) + ' · ' + esc(FIN_FORMA[x.f] || '') + '</div>' +
-          '<div class="small muted">Venceu ' + esc(x.d) + ' · ' + finDias(finDt(x.d), o.hoje) + ' dia(s)' + (feito ? ' · Cobrado em ' + esc(feito) : ' · ainda não cobrado') + '</div></div>' +
-          (link ? '<a class="btn btn-sm ' + (feito ? 'btn-line' : 'btn-green') + '" target="_blank" rel="noopener" href="' + link + '" onclick="finCobrou(' + z.i + ',\'' + x.k + '\')" title="Cobrar ' + esc(FIN_MES[x.m] || '') + ' no WhatsApp" aria-label="Cobrar no WhatsApp"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12.04 2a9.9 9.9 0 0 0-8.4 15.1L2 22l5.05-1.6A9.9 9.9 0 1 0 12.04 2zm0 1.8a8.1 8.1 0 1 1-4.3 14.98l-.3-.18-3 .95.97-2.9-.2-.31A8.1 8.1 0 0 1 12.04 3.8zM8.6 7.5c-.2 0-.5.07-.75.35-.25.28-.98.96-.98 2.34s1 2.7 1.14 2.9c.14.18 1.95 3.1 4.8 4.2 2.38.93 2.86.75 3.38.7.52-.05 1.67-.68 1.9-1.34.24-.66.24-1.22.17-1.34-.07-.12-.26-.19-.54-.33-.28-.14-1.67-.82-1.93-.92-.26-.1-.45-.14-.64.14-.19.28-.73.92-.9 1.1-.16.19-.33.21-.6.07-.28-.14-1.2-.44-2.28-1.4-.84-.75-1.4-1.68-1.57-1.96-.16-.28-.02-.43.12-.57.13-.13.28-.33.42-.5.14-.16.19-.28.28-.47.1-.19.05-.35-.02-.5-.07-.14-.63-1.55-.88-2.1-.2-.5-.42-.5-.6-.5z"/></svg></a>' : '<span class="small muted">sem telefone</span>') + '</div>';
-      }).join('') + '</div>';
-  }).join('') : finVazio('Ninguém vencido. 🎉'));
-}
-function finSecCartao(o) {
-  var l = o.cartao.filter(function (z) { return finOk(z.a); });
-  var pend = l.filter(function (z) { return !FIN.reg['c-' + z.x.k]; });
-  l = pend.concat(l.filter(function (z) { return FIN.reg['c-' + z.x.k]; }));
-  return finTit(pend.length, 'Lançar cartão · ' + FIN_MES[FIN.mes]) + (l.length ? l.map(function (z) {
-    var feito = FIN.reg['c-' + z.x.k], dt = finDt(z.x.d), dias = finDias(o.hoje, dt);
-    var quando = dias < 0 ? 'Data de lançar passou (' + z.x.d + ')' : (dias === 0 ? 'Lançar hoje (' + z.x.d + ')' : 'Lançar em ' + z.x.d + ' (' + dias + ' dia(s))');
-    return '<div class="card">' + finCabCard(z.a, '<span class="tag' + (feito ? ' g' : ' w') + '">' + finMoeda(z.x.v) + '</span>') +
-      '<div class="small">' + esc(feito ? 'Lançado em ' + feito : quando) + (z.x.y ? ' · parcela ' + z.x.x + ' de ' + z.x.y : '') + '</div>' +
-      (feito ? '' : '<div class="row"><button class="btn btn-sm btn-green" onclick="finLanca(' + z.i + ',\'' + z.x.k + '\')">Já lancei</button></div>') + '</div>';
-  }).join('') : finVazio('Nenhum pagamento de cartão neste mês.'));
-}
-function finSecAcabando(o) {
-  var l = o.acabando.filter(function (z) { return finOk(z.a); });
-  return finTit(l.length, 'Planos parcelados acabando') + (l.length ? l.map(function (z) {
-    var txt = z.dias < 0 ? 'Plano terminou em ' + finFmt(z.fim) : (z.x.x >= z.x.y ? 'Última parcela em ' + z.x.d : 'Última parcela em ' + finFmt(z.fim) + ' (' + z.dias + ' dia(s))');
-    return '<div class="card">' + finCabCard(z.a, '<span class="tag w">' + (z.x.y - z.x.x === 0 ? 'última' : 'faltam ' + (z.x.y - z.x.x)) + '</span>') +
-      '<div class="small">' + esc(txt) + ' · parcela ' + z.x.x + ' de ' + z.x.y + ' · ' + finMoeda(z.x.v) + ' (' + esc(FIN_FORMA[z.x.f] || '') + ')</div>' +
-      '<div class="small muted">Hora de combinar um novo plano com o atleta.</div></div>';
-  }).join('') : finVazio('Nenhum plano terminando nos próximos 75 dias.'));
-}
-function finSecVerificar(o) {
-  var l = o.verificar.filter(function (z) { return finOk(z.a); });
-  return finTit(l.length, 'Verificar') + (l.length ? l.map(function (z) {
-    return '<div class="card">' + finCabCard(z.a) + '<div class="small">' + esc(z.motivo) + '</div></div>';
-  }).join('') : finVazio('Nada para verificar.'));
-}
-function finLista(l, tit, fn, vazio) {
-  l = l.filter(function (z) { return finOk(z.a); });
-  var tot = 0; l.forEach(function (z) { (z.cs || []).forEach(function (x) { tot += x.v; }); });
-  return finTit(l.length, tit) + (tot ? '<div class="small muted">Total ' + finMoeda(tot) + '</div>' : '') + (l.length ? l.map(fn).join('') : finVazio(vazio));
-}
-function finResumo() {
-  var M = FIN.mes, r = { rec: 0, liq: 0, ven: 0, avn: 0 };
-  FIN.d.atletas.forEach(function (a, i) {
-    if (a.ov) return;
-    (FIN.c[i] || []).forEach(function (x) {
-      if (x.m !== M) return;
-      if (x.s === 'R' || x.s === 'D') r.rec += x.v;
-      else if (x.s === 'C') { r.rec += x.v; r.liq += x.v; }
-      else if (x.s === 'V') r.ven += x.v;
-      else if (x.s === 'A') r.avn += x.v;
-    });
-  });
-  var falta = r.ven + r.avn, tot = r.rec + falta, pct = tot ? Math.round(100 * r.rec / tot) : 0;
-  return '<div class="card"><div class="small muted">' + esc(FIN_MES[M]) + ' · previsto ' + finMoeda(tot) + '</div>' +
-    '<div class="row" style="justify-content:space-between;gap:12px;margin-top:8px"><div><div class="small muted">Já recebi</div><h3>' + finMoeda(r.rec) + '</h3></div>' +
-    '<div style="text-align:right"><div class="small muted">Falta receber</div><h3>' + finMoeda(falta) + '</h3></div></div>' +
-    '<div style="height:6px;background:rgba(255,255,255,.12);margin:10px 0 6px"><div style="height:6px;width:' + pct + '%;background:#00ff00"></div></div>' +
-    '<div class="small muted">' + pct + '% recebido' + (r.liq ? ' · inclui ' + finMoeda(r.liq) + ' de cartão a liquidar' : '') + '</div>' +
-    '<div class="small muted">Falta: ' + finMoeda(r.ven) + ' vencido · ' + finMoeda(r.avn) + ' a vencer</div></div>';
-}
-function desenhaFin() {
-  var d = FIN.d, o = finCalc();
-  var grupos = [['hoje', 'Hoje', o.nHoje], ['avencer', 'A vencer', o.avencer.length], ['emdia', 'Em dia', o.emdia.length], ['naoaplica', 'Não se aplica', o.naoaplica.length]];
-  var tabs = '<div class="tabs">' + grupos.map(function (g) {
-    return '<button class="btn btn-sm' + (FIN.aba === g[0] ? ' on' : '') + '" onclick="finAba(\'' + g[0] + '\')">' + g[1] + ' (' + g[2] + ')</button>';
-  }).join('') + '</div>';
-  var meses = '<div class="tabs">' + [9, 10, 11].map(function (m) {
-    return '<button class="btn btn-sm' + (FIN.mes === m ? ' on' : '') + '" onclick="finMes(' + m + ')">' + FIN_MES[m].charAt(0).toUpperCase() + FIN_MES[m].slice(1) + '</button>';
-  }).join('') + '</div>';
-  var corpo = '';
-  if (FIN.aba === 'hoje') corpo = finSecCobrar(o) + finSecCartao(o) + finSecAcabando(o) + finSecVerificar(o);
-  else if (FIN.aba === 'avencer') corpo = finLista(o.avencer, 'A vencer · ' + FIN_MES[FIN.mes], function (z) {
-    var x = z.cs[0], dias = finDias(o.hoje, finDt(x.d)), s = 0; z.cs.forEach(function (c) { s += c.v; });
-    return '<div class="card">' + finCabCard(z.a, '<span class="tag w">' + finMoeda(s) + '</span>') + '<div class="small">Vence ' + esc(x.d) + (dias >= 0 ? ' (' + dias + ' dia(s))' : '') + ' · ' + esc(FIN_FORMA[x.f] || '') + '</div></div>';
-  }, 'Nada a vencer neste mês.');
-  else if (FIN.aba === 'emdia') corpo = finLista(o.emdia, 'Em dia · ' + FIN_MES[FIN.mes], function (z) {
-    var x = z.cs[0], s = 0; z.cs.forEach(function (c) { s += c.v; });
-    return '<div class="card">' + finCabCard(z.a, '<span class="tag g">' + finMoeda(s) + '</span>') + '<div class="small muted">' + esc(FIN_FORMA[x.f] || '') + (x.p ? ' · pago em ' + esc(x.p) : '') + (x.s === 'C' ? ' · confirmado, a liquidar' : '') + (x.y ? ' · parcela ' + x.x + ' de ' + x.y : '') + '</div></div>';
-  }, 'Ninguém em dia neste mês.');
-  else corpo = finLista(o.naoaplica, 'Não se aplica', function (z) {
-    return '<div class="card">' + finCabCard(z.a) + '<div class="small">' + esc(z.a.o || '') + '</div></div>';
-  }, 'Nada por aqui.');
-  app(cabFin() + '<div class="small muted">Atualizado em ' + esc(d.atualizadoEm || '—') + (d.fonte ? ' · ' + esc(d.fonte) : '') + '</div>' + meses + finResumo() + tabs +
-    '<input id="finq" type="search" placeholder="Buscar por nome ou grupo" value="' + esc(FIN.q || '') + '" oninput="finBusca(this.value)"><div class="list">' + corpo + '</div>');
-}
+function painelFin() { painelAsaas(); }
 
 /* ---------- Asaas ao vivo (só head coach) ---------- */
 var AS = { mes: '', modo: 'mes' };
@@ -1873,7 +1693,7 @@ function asMesAtual() { var d = new Date(); return d.getFullYear() + '-' + finP2
 function asMesSoma(m, n) { var p = m.split('-'); var d = new Date(+p[0], +p[1] - 1 + n, 1); return d.getFullYear() + '-' + finP2(d.getMonth() + 1); }
 function asMesNome(m) { var p = m.split('-'); return AS_MESES[+p[1] - 1] + ' de ' + p[0]; }
 function cabAsaas() {
-  return head(userBar()) + '<button class="back" onclick="painelFin()">← Financeiro</button><div><div class="eyebrow">Head coach</div><h2>Asaas <em>ao vivo</em></h2></div>';
+  return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>Asaas ao vivo</em></h2></div>' + painelTabs('fin');
 }
 function asPrimeiro(n) { var t = String(n || '').trim().split(/\s+/)[0].toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
 function asZap(x) {
@@ -1907,7 +1727,7 @@ function painelAsaas(mes, atualizar) {
     var corpo = todos ?
       card('Em atraso (total)', r.tot.atraso, '', '<div class="small muted">' + Object.keys(porPessoa).length + ' pessoa(s)</div>') +
       '<div class="eyebrow">Em atraso (' + atr.length + ')</div><div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso.</div>') + '</div>' :
-      card('Recebido', r.tot.recebido, 'g', rcbExtra) + card('A receber', r.tot.areceber, 'w') + card('Em atraso', r.tot.atraso, '') +
+      card('Recebido', r.tot.recebido, 'g', rcbExtra) + card('Falta receber (a receber + em atraso)', { valor: r.tot.areceber.valor + r.tot.atraso.valor, qtd: r.tot.areceber.qtd + r.tot.atraso.qtd }, 'w', '<div class="small" style="margin-top:8px"><div><b>A receber (ainda no prazo):</b> ' + finMoeda(r.tot.areceber.valor) + ' <span class="muted">(' + r.tot.areceber.qtd + ')</span></div><div><b>Vencido (em atraso):</b> ' + finMoeda(r.tot.atraso.valor) + ' <span class="muted">(' + r.tot.atraso.qtd + ')</span></div></div>') +
       '<div class="eyebrow">Em atraso (' + atr.length + ')</div><div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso neste mês.</div>') + '</div>' +
       '<div class="eyebrow">A receber (' + rec.length + ')</div><div class="list">' + (rec.length ? rec.map(item).join('') : '<div class="muted small">Nada a receber neste mês.</div>') + '</div>';
     app(cabAsaas() + modos + nav + topo + corpo);
@@ -1918,22 +1738,33 @@ function painelProj(atualizar) {
   S.aba = 'fin'; S.aba2 = 'pnl';
   app(cabAsaas() + '<div class="spin">Calculando a projeção…</div>');
   call('asaasProj', { atualizar: !!atualizar }).then(function (r) {
-    var L = r.meses, atual = L[L.length - 1];
-    var prox = asMesSoma(r.mesAtual, 1);
-    var aviso = '<div class="card"><div class="eyebrow">PROJEÇÃO FICTÍCIA · não é valor recebido</div><h2><span class="tag w">' + finMoeda(atual.assinatura.valor) + '</span></h2>' +
-      '<div class="small">Previsão para <b>' + esc(asMesNome(prox)) + '</b>, <b>se todos</b> os ' + atual.assinatura.pessoas + ' atleta(s) com assinatura em ' + esc(asMesNome(r.mesAtual)) + ' renovarem pelo mesmo valor.</div>' +
-      '<div class="small muted" style="margin-top:6px">Considera só assinaturas (mensalidades recorrentes). Cobranças avulsas e parceladas não entram, pois não se repetem sozinhas.</div></div>';
+    var L = r.meses, F = r.futuros, atual = L[L.length - 1], pr = F[0];
+    var aviso = '<div class="card"><div class="eyebrow">PROJEÇÃO FICTÍCIA · não é valor recebido</div><h2><span class="tag w">' + finMoeda(pr.projecao) + '</span></h2>' +
+      '<div class="small">Previsão para <b>' + esc(asMesNome(pr.mes)) + '</b>, <b>se todos</b> os ' + pr.assinatura.pessoas + ' atleta(s) com assinatura em ' + esc(asMesNome(r.mesAtual)) + ' renovarem pelo mesmo valor.</div>' +
+      '<div class="small" style="margin-top:8px"><div><b>Assinaturas renovadas:</b> ' + finMoeda(pr.assinatura.valor) + '</div><div><b>Parcelas da assessoria já agendadas:</b> ' + finMoeda(pr.parcelas.valor) + ' <span class="muted">(' + pr.parcelas.qtd + ')</span></div></div>' +
+      '<div class="small muted" style="margin-top:6px">Avulso (ex.: inscrições em provas) não entra. As parcelas já existem no Asaas, então não são suposição.</div></div>';
+    var futs = F.map(function (m) {
+      var itens = m.itens.map(function (i) {
+        return '<div class="small" style="padding:4px 0;border-top:1px solid rgba(128,128,128,.25)"><b>' + esc(i.nome) + '</b> · ' + finMoeda(i.valor) + ' · ' + esc(i.venc) + (AS_FORMA[i.forma] ? ' · ' + esc(AS_FORMA[i.forma]) : '') +
+          '<div class="muted">' + esc(i.desc || '(sem descrição)') + ' · ' + (i.soma ? 'somada' : 'NÃO somada') + '</div></div>';
+      }).join('');
+      return '<div class="card"><div class="row" style="justify-content:space-between"><b>' + esc(asMesNome(m.mes)) + '</b><span class="tag w">' + finMoeda(m.projecao) + '</span></div>' +
+        '<div class="small muted">Assinaturas ' + finMoeda(m.assinatura.valor) + ' (se todos renovarem) + parcelas ' + finMoeda(m.parcelas.valor) + ' (' + m.parcelas.qtd + ')' + (m.naoSomado.qtd ? ' · fora da soma: ' + finMoeda(m.naoSomado.valor) + ' (' + m.naoSomado.qtd + ')' : '') + '</div>' +
+        (m.itens.length ? '<details style="margin-top:6px"><summary class="small">Ver parcelas deste mês (' + m.itens.length + ')</summary>' + itens + '</details>' : '') + '</div>';
+    }).join('');
     var linhas = L.map(function (m, i) {
       var seg = L[i + 1], projTxt = '';
       if (seg) {
-        var dif = seg.assinatura.valor - m.assinatura.valor;
-        projTxt = '<div class="small">Projeção feita a partir deste mês para ' + esc(asMesNome(seg.mes)) + ': <b>' + finMoeda(m.assinatura.valor) + '</b> · realizado em assinaturas: <b>' + finMoeda(seg.assinatura.valor) + '</b> <span class="muted">(' + (dif >= 0 ? '+' : '−') + finMoeda(Math.abs(dif)) + ')</span></div>';
-      } else projTxt = '<div class="small">Projeção para ' + esc(asMesNome(prox)) + ': <b>' + finMoeda(m.assinatura.valor) + '</b> <span class="muted">(fictícia)</span></div>';
+        var real = seg.assinatura.valor, dif = real - m.assinatura.valor;
+        projTxt = '<div class="small">Se todas as assinaturas deste mês renovassem em ' + esc(asMesNome(seg.mes)) + ': <b>' + finMoeda(m.assinatura.valor) + '</b> · realizado em assinaturas: <b>' + finMoeda(real) + '</b> <span class="muted">(' + (dif >= 0 ? '+' : '−') + finMoeda(Math.abs(dif)) + ')</span></div>';
+      }
       return '<div class="card"><div class="row" style="justify-content:space-between"><b>' + esc(asMesNome(m.mes)) + '</b><span class="tag">' + finMoeda(m.total) + '</span></div>' +
-        '<div class="small muted">Cobrado no mês (todos os status): assinatura ' + finMoeda(m.assinatura.valor) + ' (' + m.assinatura.pessoas + ' pessoa(s)) · avulso ' + finMoeda(m.avulso.valor) + ' · parcelado ' + finMoeda(m.parcelado.valor) + '</div>' + projTxt + '</div>';
+        '<div class="small muted">Cobrado no mês (todos os status): assinatura ' + finMoeda(m.assinatura.valor) + ' (' + m.assinatura.pessoas + ' pessoa(s)) · parcelado ' + finMoeda(m.parcelado.valor) + ' (assessoria: ' + finMoeda(m.parcelado.assess.valor) + ') · avulso ' + finMoeda(m.avulso.valor) + '</div>' + projTxt + '</div>';
     }).reverse().join('');
     app(cabAsaas() + '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm" onclick="asModo(\'mes\')">‹ Voltar ao mês</button><button class="btn btn-sm" onclick="painelProj(true)">Atualizar</button></div>' +
-      '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + ' · por data de vencimento</div>' + aviso + '<div class="eyebrow">Mês a mês (últimos 6)</div><div class="list">' + linhas + '</div>');
+      '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + ' · por data de vencimento</div>' + aviso +
+      '<div class="eyebrow">Próximos 3 meses (projeção)</div><div class="list">' + futs + '</div>' +
+      '<div class="eyebrow">Meses anteriores (últimos 6)</div><div class="list">' + linhas + '</div>');
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
 function verPainel() { S.aba2 = 'pnl'; painel('hist'); }
