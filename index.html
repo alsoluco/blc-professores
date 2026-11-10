@@ -1902,7 +1902,7 @@ function apagaProd(id) {
 function vendaCancela(id) {
   dlg('Cancelar esta venda? A cobrança no Asaas será cancelada e as peças voltam para o estoque.', { ok: 'Cancelar venda' }).then(function (sim) {
     if (!sim) return;
-    call('vendaCancelar', { id: id }).then(function () { painelProd(); }).catch(function (e) { aviso(e.message); });
+    call('vendaCancelar', { id: id }).then(function (r) { painelProd(); if (r.email && r.email !== 'enviado') aviso('Venda cancelada. O e-mail ao atleta não foi enviado (' + r.email + '). Avise-o por WhatsApp.'); }).catch(function (e) { aviso(e.message); });
   });
 }
 function verPainel() { S.aba2 = 'pnl'; painel('hist'); }
