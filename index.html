@@ -36,11 +36,14 @@ p{margin:0}
 .brand b{font-weight:200;font-size:1.7rem;letter-spacing:.32em;color:var(--fg);line-height:1}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .who{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.ld{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
-.ld svg{width:120px;height:120px}
-.ld .fill{animation:ldsobe 2.6s ease-in-out infinite}
-@keyframes ldsobe{0%{transform:translateY(100px)}85%,100%{transform:translateY(0)}}
-.ld p{margin:0;font-size:.8rem;text-transform:uppercase;letter-spacing:.16em;color:var(--text)}
+.ld{position:fixed;inset:0;background:rgba(0,0,0,.86);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center}
+.ld .lg{position:relative;display:flex;align-items:center;gap:16px}
+.ld .lg.base{opacity:.16}
+.ld .lg.fill{position:absolute;inset:0;animation:ldsobe 2.4s ease-in-out infinite}
+.ld .mark{width:46px;gap:9px}.ld .mark i{height:4px}
+.ld .lg b{font-weight:200;font-size:2.6rem;letter-spacing:.32em;color:var(--fg);line-height:1}
+@keyframes ldsobe{0%{clip-path:inset(100% 0 0 0)}80%,100%{clip-path:inset(0 0 0 0)}}
+.ld p{margin:0;font-size:.8rem;text-transform:uppercase;letter-spacing:.16em;color:var(--text);min-height:1em}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font);font-weight:400;font-size:.74rem;text-transform:uppercase;letter-spacing:.16em;text-decoration:none;padding:14px 22px;border-radius:0;background:transparent;color:var(--fg);border:1px solid rgba(255,255,255,.28);cursor:pointer;line-height:1.3;text-align:center}
 .btn:hover{border-color:var(--green);color:var(--green)}
 .btn-green{background:var(--green);color:#000;border-color:var(--green);font-weight:600;box-shadow:0 0 28px rgba(0,255,0,.25)}
@@ -230,7 +233,23 @@ function dlg(msg, opts) {
 }
 function aviso(msg) { return dlg(msg, { cancel: false }); }
 
-function call(action, payload) {
+var LD = { n: 0, force: false, vis: false, msg: '', t: null, el: null };
+function ldAtualiza() {
+  var quer = LD.force || LD.vis;
+  if (quer && !LD.el) {
+    var lg = '<div class="mark"><i></i><i></i><i></i></div><b>BLC</b>';
+    LD.el = document.createElement('div'); LD.el.className = 'ld';
+    LD.el.innerHTML = '<div style="position:relative"><div class="lg base">' + lg + '</div><div class="lg fill">' + lg + '</div></div><p></p>';
+    document.body.appendChild(LD.el);
+  } else if (!quer && LD.el) { if (LD.el.parentNode) LD.el.parentNode.removeChild(LD.el); LD.el = null; }
+  if (LD.el) LD.el.querySelector('p').textContent = LD.force ? LD.msg : '';
+}
+function carrega(msg) { LD.force = true; LD.msg = msg || ''; ldAtualiza(); }
+function carregaFim() { LD.force = false; ldAtualiza(); }
+function ldFim() { LD.n--; if (LD.n <= 0) { LD.n = 0; clearTimeout(LD.t); LD.vis = false; ldAtualiza(); } }
+function call(action, payload, quieto) {
+  if (!quieto) { LD.n++; if (LD.n === 1) LD.t = setTimeout(function () { if (LD.n > 0) { LD.vis = true; ldAtualiza(); } }, 600); }
+  var fim = function () { if (!quieto) ldFim(); };
   return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: action, t: S.token, p: payload || {} }), redirect: 'follow' })
     .then(function (resp) { return resp.text(); })
     .then(function (txt) {
@@ -240,7 +259,8 @@ function call(action, payload) {
         throw new Error(r.erro || 'Erro.');
       }
       return r;
-    }, function () { throw new Error('Sem conexão com o servidor. Verifique a internet e tente de novo.'); });
+    }, function () { throw new Error('Sem conexão com o servidor. Verifique a internet e tente de novo.'); })
+    .then(function (r) { fim(); return r; }, function (e) { fim(); throw e; });
 }
 
 function head(right) {
@@ -323,7 +343,7 @@ function mural() {
   carregaMural(true);
 }
 function carregaMural(primeira) {
-  call('mural').then(function (r) {
+  call('mural', null, !primeira).then(function (r) {
     if (!S.telaMural) return;
     S.mural = r; S.membros = r.membros;
     badgeIcone(r.paraMimTotal || 0);
@@ -1865,15 +1885,6 @@ function vendaAtl(id) {
   var a = vendaLista().filter(function (x) { return x.id === id; })[0]; if (!a) return;
   PR.atletaSel = a; $('vres').innerHTML = ''; $('va').value = a.nome; $('vsel').innerHTML = 'Atleta escolhido: <b>' + esc(a.nome) + '</b>';
 }
-var LD = null;
-function carrega(msg) {
-  carregaFim();
-  LD = document.createElement('div'); LD.className = 'ld';
-  var cam = 'M30 10 L10 24 L20 42 L30 36 L30 108 L90 108 L90 36 L100 42 L110 24 L90 10 C86 20 74 24 60 24 C46 24 34 20 30 10 Z';
-  LD.innerHTML = '<svg viewBox="0 0 120 120"><defs><clipPath id="ldc"><path d="' + cam + '"/></clipPath></defs><path d="' + cam + '" fill="none" stroke="#00ff00" stroke-width="2.5" stroke-linejoin="round"/><g clip-path="url(#ldc)"><rect class="fill" x="0" y="8" width="120" height="102" fill="#00ff00" opacity=".85"/></g></svg><p>' + esc(msg) + '</p>';
-  document.body.appendChild(LD);
-}
-function carregaFim() { if (LD && LD.parentNode) LD.parentNode.removeChild(LD); LD = null; }
 function vendaOk() {
   if (!PR.atletaSel) { aviso('Escolha o atleta na lista que aparece ao digitar o nome.'); return; }
   var p = vendaProdSel(), q = parseInt($('vq').value, 10) || 0, t = $('vt').value, obs = $('vo').value, at = PR.atletaSel;
