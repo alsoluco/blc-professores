@@ -36,6 +36,11 @@ p{margin:0}
 .brand b{font-weight:200;font-size:1.7rem;letter-spacing:.32em;color:var(--fg);line-height:1}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .who{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ld{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+.ld svg{width:120px;height:120px}
+.ld .fill{animation:ldsobe 2.6s ease-in-out infinite}
+@keyframes ldsobe{0%{transform:translateY(100px)}85%,100%{transform:translateY(0)}}
+.ld p{margin:0;font-size:.8rem;text-transform:uppercase;letter-spacing:.16em;color:var(--text)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;font-family:var(--font);font-weight:400;font-size:.74rem;text-transform:uppercase;letter-spacing:.16em;text-decoration:none;padding:14px 22px;border-radius:0;background:transparent;color:var(--fg);border:1px solid rgba(255,255,255,.28);cursor:pointer;line-height:1.3;text-align:center}
 .btn:hover{border-color:var(--green);color:var(--green)}
 .btn-green{background:var(--green);color:#000;border-color:var(--green);font-weight:600;box-shadow:0 0 28px rgba(0,255,0,.25)}
@@ -1860,6 +1865,15 @@ function vendaAtl(id) {
   var a = vendaLista().filter(function (x) { return x.id === id; })[0]; if (!a) return;
   PR.atletaSel = a; $('vres').innerHTML = ''; $('va').value = a.nome; $('vsel').innerHTML = 'Atleta escolhido: <b>' + esc(a.nome) + '</b>';
 }
+var LD = null;
+function carrega(msg) {
+  carregaFim();
+  LD = document.createElement('div'); LD.className = 'ld';
+  var cam = 'M30 10 L10 24 L20 42 L30 36 L30 108 L90 108 L90 36 L100 42 L110 24 L90 10 C86 20 74 24 60 24 C46 24 34 20 30 10 Z';
+  LD.innerHTML = '<svg viewBox="0 0 120 120"><defs><clipPath id="ldc"><path d="' + cam + '"/></clipPath></defs><path d="' + cam + '" fill="none" stroke="#00ff00" stroke-width="2.5" stroke-linejoin="round"/><g clip-path="url(#ldc)"><rect class="fill" x="0" y="8" width="120" height="102" fill="#00ff00" opacity=".85"/></g></svg><p>' + esc(msg) + '</p>';
+  document.body.appendChild(LD);
+}
+function carregaFim() { if (LD && LD.parentNode) LD.parentNode.removeChild(LD); LD = null; }
 function vendaOk() {
   if (!PR.atletaSel) { aviso('Escolha o atleta na lista que aparece ao digitar o nome.'); return; }
   var p = vendaProdSel(), q = parseInt($('vq').value, 10) || 0, t = $('vt').value, obs = $('vo').value, at = PR.atletaSel;
@@ -1867,7 +1881,9 @@ function vendaOk() {
   if (ent && String(endr).trim().length < 8) { aviso('Digite o endereço de entrega.'); return; }
   var tot = finMoeda(vendaTotal());
   var resumo = q + '× ' + p.nome + ' (tam. ' + t + ') para ' + at.nome + ' por ' + tot + (ent ? ', com entrega em casa' : ', retirada na tenda');
+  carrega('Conferindo o cadastro no Asaas...');
   call('vendaPreparar', { atletaId: at.id }).then(function (r) {
+    carregaFim();
     if (r.achou) {
       return dlg('Registrar a venda de ' + resumo + '? Será criada uma cobrança no Asaas (cliente: ' + r.clienteNome + ')' + (r.temEmail ? ' e o link vai por e-mail ao atleta.' : '. Atenção: o atleta não tem e-mail cadastrado, então o e-mail não será enviado.'), { ok: 'Registrar e cobrar' })
         .then(function (sim) { return sim ? { criarCliente: false } : null; });
@@ -1877,8 +1893,9 @@ function vendaOk() {
       .then(function (cpf) { return cpf ? { criarCliente: true, cpf: cpf } : null; });
   }).then(function (extra) {
     if (!extra) return;
-    return call('vendaRegistrar', { produtoId: p.id, tamanho: t, qtd: q, atletaId: at.id, obs: obs, entrega: ent, endereco: endr, criarCliente: extra.criarCliente, cpf: extra.cpf }).then(function (r) { vendaFeita(r, at.nome); });
-  }).catch(function (e) { aviso(e.message); });
+    carrega('Gerando a cobrança e enviando os e-mails...');
+    return call('vendaRegistrar', { produtoId: p.id, tamanho: t, qtd: q, atletaId: at.id, obs: obs, entrega: ent, endereco: endr, criarCliente: extra.criarCliente, cpf: extra.cpf }).then(function (r) { carregaFim(); vendaFeita(r, at.nome); });
+  }).catch(function (e) { carregaFim(); aviso(e.message); });
 }
 function zapLink(tel, texto) { return 'https://wa.me/' + tel + '?text=' + encodeURIComponent(texto); }
 function vendaFeita(r, nome) {
@@ -1907,7 +1924,8 @@ function apagaProd(id) {
 function vendaCancela(id) {
   dlg('Cancelar esta venda? A cobrança no Asaas será cancelada e as peças voltam para o estoque.', { ok: 'Cancelar venda' }).then(function (sim) {
     if (!sim) return;
-    call('vendaCancelar', { id: id }).then(function (r) { painelProd(); if (r.email && r.email !== 'enviado') aviso('Venda cancelada. O e-mail ao atleta não foi enviado (' + r.email + '). Avise-o por WhatsApp.'); }).catch(function (e) { aviso(e.message); });
+    carrega('Cancelando a cobrança e avisando por e-mail...');
+    call('vendaCancelar', { id: id }).then(function (r) { carregaFim(); painelProd(); if (r.email && r.email !== 'enviado') aviso('Venda cancelada. O e-mail ao atleta não foi enviado (' + r.email + '). Avise-o por WhatsApp.'); }).catch(function (e) { carregaFim(); aviso(e.message); });
   });
 }
 function verPainel() { S.aba2 = 'pnl'; painel('hist'); }
