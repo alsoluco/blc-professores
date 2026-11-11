@@ -1364,11 +1364,23 @@ function paAlertasTela() {
     c.appendChild(paEl('div', 'msg', msg));
     var rw = paEl('div', 'row');
     function bt(txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = function () { fn(b); }; rw.appendChild(b); }
-    if (!ct) { bt('Copiar mensagem', 'btn-green', function (b) { paCopia(PA.msgs[idx], b); }); bt('Já enviei', '', function () { paRegistra(idx, 'Enviada'); }); }
-    else { bt('Registrar novo contato', '', function () { paRegistra(idx, 'Enviada'); }); bt('Respondeu', '', function () { paRegistra(idx, 'Respondeu'); }); bt('Voltou a treinar', '', function () { paRegistra(idx, 'Voltou'); }); }
+    var fone = cvFone((PA.E.T || [])[x.p]);
+    PA.items[idx].fone = fone;
+    if (fone) bt(ct ? 'Enviar de novo no WhatsApp' : 'Enviar no WhatsApp', 'btn-green', function () { paZap(idx); });
+    else { var sf = paEl('span', 'pa-hint', 'Sem telefone cadastrado'); rw.appendChild(sf); bt('Copiar mensagem', '', function (b) { paCopia(PA.msgs[idx], b); }); }
+    if (ct) { bt('Respondeu', '', function () { paRegistra(idx, 'Respondeu'); }); bt('Voltou a treinar', '', function () { paRegistra(idx, 'Voltou'); }); }
+    else if (!fone) bt('Já enviei', '', function () { paRegistra(idx, 'Enviada'); });
     var f = PA.E.F[x.p]; if (f) bt('Abrir ficha', '', function () { abrir(f); });
     c.appendChild(rw); box.appendChild(c);
   });
+}
+function paZap(i) {
+  var it = PA.items[i];
+  window.open('https://wa.me/' + it.fone + '?text=' + encodeURIComponent(it.msg), '_blank');
+  call('presContato', { nome: it.nome, fid: it.fid, treino: it.treino, nivel: it.nivel, tipo: 'Enviada', msg: it.msg }).then(function (r) {
+    aviso('WhatsApp aberto. Contato registrado.' + (r.email === 'enviado' ? ' O head coach foi avisado por e-mail.' : ''));
+    return call('presAlunos', {}, true).then(function (d) { paInit(d); paDesenha(); });
+  }).catch(function (e) { aviso(e.message); });
 }
 function paRegistra(i, tipo) {
   var it = PA.items[i];
