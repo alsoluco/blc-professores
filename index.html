@@ -1141,12 +1141,12 @@ function paInit(r) {
       PA.D[k]['2026-' + md] = { c: v.c ? v.c.split(',').map(Number) : [], p: v.p ? v.p.split(',').map(function (x) { var a = x.split('@'); return [+a[0], a[1].slice(0, 2) + 'h' + a[1].slice(2)]; }) : [], g: v.g || '' };
     });
   });
-  var t0 = Date.UTC(2026, 7, 3), n = 0;
+  var t0 = Date.UTC(2025, 11, 29), n = 0;
   PA.WK = [];
   while (true) { var ds = []; for (var i = 0; i < 7; i++) ds.push(paIso(t0 + (n * 7 + i) * 864e5)); PA.WK.push(ds); if (ds[6] >= PA.ult) break; n++; }
   var um = +PA.ult.slice(5, 7) - 1;
   PA.MON = [];
-  for (var m = 7; m <= um; m++) { var out = [], t = Date.UTC(2026, m, 1); while (new Date(t).getUTCMonth() === m) { out.push(paIso(t)); t += 864e5; } PA.MON.push({ m: m, d: out }); }
+  for (var m = 0; m <= um; m++) { var out = [], t = Date.UTC(2026, m, 1); while (new Date(t).getUTCMonth() === m) { out.push(paIso(t)); t += 864e5; } PA.MON.push({ m: m, d: out }); }
   PA.wi = Math.max(paLastFull(), 0); PA.mi = PA.MON.length - 1; PA.sel = null; PA.hsel = null;
   PA.R = PA_R.filter(function (x) { return r.regs[x.k]; });
 }
@@ -1270,7 +1270,7 @@ function paBuildHist(tb) {
   var sw = paEl('div', 'pa-mode');
   [['avg', 'Média por treino'], ['tot', 'Total da semana']].forEach(function (x) { var b = paEl('button', PA.hm === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { PA.hm = x[0]; paBuild(); }; sw.appendChild(b); });
   tb.appendChild(sw);
-  tb.appendChild(paEl('span', 'pa-hint', 'Cada barra é uma semana, da mais antiga (3/8) à mais recente. A última, se estiver incompleta, aparece clara e não entra na tendência.'));
+  tb.appendChild(paEl('span', 'pa-hint', 'Cada barra é uma semana, da mais antiga à mais recente. A última, se estiver incompleta, aparece clara e não entra na tendência.'));
   var H = $('paHist'); H.innerHTML = '';
   var items = PA.R.map(function (r) { return { k: r.k, n: r.n, s: r.s }; }); items.push({ k: 'ALL', n: 'Todos os treinos', s: 'atletas diferentes por semana' });
   items.forEach(function (it) { H.appendChild(paHistCard(it)); });
