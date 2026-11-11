@@ -1347,19 +1347,38 @@ function paAlertasTela() {
   cab.appendChild(paEl('div', 'pa-hint', 'Semana avaliada: ' + ref + '. Compara com a média das 4 semanas anteriores, só de quem treinava com a gente (pelo menos 2 presenças nessas 4 semanas). Amarelo: a semana ficou em metade da média ou menos. Vermelho: duas semanas seguidas assim. Semanas com feriado são ajustadas. ' + (S.perfil === 'Admin' ? 'Você vê todos os horários.' : 'Aparecem só os atletas do seu horário.')));
   box.appendChild(cab);
   if (!R.lista.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhuma queda de frequência para avisar nesta semana.')); return; }
+  var ctm = PA.E.contatos || {};
+  R.lista.sort(function (x, y) { return (ctm[x.p] ? 1 : 0) - (ctm[y.p] ? 1 : 0); });
+  PA.items = [];
   R.lista.forEach(function (x, idx) {
-    var nome = PA.E.N[x.p], pri = nome.split(' ')[0], tr = nomeR[x.rule];
+    var nome = PA.E.N[x.p], pri = nome.split(' ')[0], tr = nomeR[x.rule], ct = ctm[x.p];
     var msg = x.nivel === 'red'
       ? 'Oi, ' + pri + ', tudo bem? Faz um tempinho que não te vejo ' + nomeM[x.rule] + '. Aconteceu alguma coisa? Se for horário ou rotina, a gente vê como encaixar melhor.'
       : 'Oi, ' + pri + ', tudo bem? Senti sua falta ' + nomeM[x.rule] + ' esta semana. Está tudo certo por aí?';
-    PA.msgs.push(msg);
+    PA.msgs.push(msg); PA.items.push({ nome: nome, fid: PA.E.F[x.p] || '', treino: tr, nivel: x.nivel, msg: msg });
     var c = paEl('div', 'pa-al ' + x.nivel);
+    if (ct) c.style.opacity = '.8';
     var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', nome)); t.appendChild(paEl('span', 'tag ' + (x.nivel === 'red' ? '' : 'w'), (x.nivel === 'red' ? 'Vermelho' : 'Amarelo') + ' · ' + tr)); c.appendChild(t);
     c.appendChild(paEl('div', 'pa-hint', 'Média das 4 semanas antes: ' + x.base.toFixed(1).replace('.', ',') + ' por semana · última semana: ' + x.vw + (x.nivel === 'red' ? ' · anterior: ' + x.v1 : '') + ' · 6 últimas semanas: ' + x.hist.join(' · ')));
+    if (ct) { var cc = paEl('div', '', (ct.tipo === 'Enviada' ? 'Já contatado' : ct.tipo === 'Respondeu' ? 'Respondeu ao contato' : 'Voltou a treinar') + ' · ' + ct.prof + ' em ' + ct.quando); cc.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(cc); }
     c.appendChild(paEl('div', 'msg', msg));
-    var rw = paEl('div', 'row'), b = paEl('button', 'btn btn-sm btn-green', 'Copiar mensagem'); b.type = 'button'; b.onclick = (function (i, bt) { return function () { paCopia(PA.msgs[i], bt); }; })(idx, b); rw.appendChild(b);
-    var f = PA.E.F[x.p]; if (f) { var b2 = paEl('button', 'btn btn-sm', 'Abrir ficha'); b2.type = 'button'; b2.onclick = (function (f) { return function () { abrir(f); }; })(f); rw.appendChild(b2); }
+    var rw = paEl('div', 'row');
+    function bt(txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = function () { fn(b); }; rw.appendChild(b); }
+    if (!ct) { bt('Copiar mensagem', 'btn-green', function (b) { paCopia(PA.msgs[idx], b); }); bt('Já enviei', '', function () { paRegistra(idx, 'Enviada'); }); }
+    else { bt('Registrar novo contato', '', function () { paRegistra(idx, 'Enviada'); }); bt('Respondeu', '', function () { paRegistra(idx, 'Respondeu'); }); bt('Voltou a treinar', '', function () { paRegistra(idx, 'Voltou'); }); }
+    var f = PA.E.F[x.p]; if (f) bt('Abrir ficha', '', function () { abrir(f); });
     c.appendChild(rw); box.appendChild(c);
+  });
+}
+function paRegistra(i, tipo) {
+  var it = PA.items[i];
+  var q = tipo === 'Enviada' ? 'Registrar que você enviou a mensagem para ' + it.nome + '? A equipe vai ver que ele já foi contatado e o head coach recebe um e-mail.' : tipo === 'Respondeu' ? 'Registrar que ' + it.nome + ' respondeu ao contato?' : 'Registrar que ' + it.nome + ' voltou a treinar?';
+  dlg(q, { ok: 'Registrar' }).then(function (v) {
+    if (!v) return;
+    call('presContato', { nome: it.nome, fid: it.fid, treino: it.treino, nivel: it.nivel, tipo: tipo, msg: it.msg }).then(function (r) {
+      aviso(tipo === 'Enviada' ? 'Contato registrado.' + (r.email === 'enviado' ? ' O head coach foi avisado por e-mail.' : '') : 'Registrado.');
+      return call('presAlunos', {}, true).then(function (d) { paInit(d); paDesenha(); });
+    }).catch(function (e) { aviso(e.message); });
   });
 }
 function paCopia(txt, bt) {
