@@ -1162,7 +1162,7 @@ function paDesenha() {
   app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Presença</div><h2>Presença de <em>alunos</em></h2></div>' +
     '<div class="pa-hint">Leitura do TrainingPeaks · dados até ' + paFd(PA.ult) + '.</div>' +
     '<div class="pa-tot" id="paTot"></div><div class="pa-mode" id="paMode"></div><div class="pa-tabs" id="paTabs"></div>' +
-    '<div class="pa-hs" id="paHist" hidden></div><div class="pa-wrap" id="paWr"><table id="paTb"></table></div><div id="paAl" hidden></div>' +
+    '<div class="pa-hs" id="paHist" hidden></div><div class="pa-wrap" id="paWr"><table id="paTb"></table></div><div class="pa-tot" id="paFim"></div><div id="paAl" hidden></div>' +
     '<div class="pa-panel" id="paPn"><span class="pa-hint">Toque em um número da tabela.</span></div>' +
     '<details class="pa-panel" id="paRkd"><summary id="paRks">Presenças por atleta</summary><div class="pa-rank" id="paRk"></div></details>' +
     '<p class="pa-hint">Conta quem estava a até 150 m do local dentro da janela de horário (ou saiu de casa para o pedal, sem precisar ser do mesmo ponto). O círculo laranja indica uma turma de 5 ou mais que chegou junta logo depois da janela. A lista "passou pelo local" aparece só para o professor do horário e para o head coach. Feriados não entram. Natação do Flamengo é contada só pelo horário, sem GPS. No total do dia, quem faz mais de um treino conta uma vez.</p>' +
@@ -1181,7 +1181,7 @@ function paBuild() {
   [['sem', 'Semana'], ['mes', 'Mês'], ['his', 'Histórico'], ['ale', 'Alertas']].forEach(function (x) { var b = paEl('button', m === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { PA.mode = x[0]; PA.sel = null; paBuild(); }; md.appendChild(b); });
   var tb = $('paTabs'); tb.innerHTML = ''; tb.style.flexWrap = m === 'his' ? 'wrap' : 'nowrap';
   var isH = m === 'his', isA = m === 'ale';
-  $('paWr').hidden = isH || isA; $('paHist').hidden = !isH; $('paAl').hidden = !isA; $('paPn').hidden = isA; $('paRkd').hidden = isA;
+  $('paWr').hidden = isH || isA; $('paFim').hidden = isH || isA; $('paHist').hidden = !isH; $('paAl').hidden = !isA; $('paPn').hidden = isA; $('paRkd').hidden = isA;
   if (isA) { paAlertasTela(); return; }
   if (!isH) paReset();
   if (isH) { paBuildHist(tb); paRank(C, 'período todo'); return; }
@@ -1189,6 +1189,9 @@ function paBuild() {
   else PA.MON.forEach(function (x, i) { var a = paAgg(x.d), b = paEl('button', i === PA.mi ? 'on' : '', PA_MNF[x.m]); b.type = 'button'; b.appendChild(paEl('small', '', a.u + ' atletas · ' + a.p + ' presenças')); b.onclick = function () { PA.mi = i; PA.sel = null; paBuild(); }; tb.appendChild(b); });
   var T = $('paTb'); T.innerHTML = '';
   if (m === 'sem') paBuildWeek(T); else paBuildMonth(T);
+  var fm = $('paFim'); fm.innerHTML = ''; fm.hidden = false;
+  var vd = paDiasValidos(paCur()), qq = m === 'sem' ? 'da semana' : 'do mês';
+  [[C.p, 'presenças ' + qq, 'all'], [C.u, 'atletas atendidos ' + qq, 'all'], [vd ? (C.p / vd).toFixed(1).replace('.', ',') : '–', 'média por dia de treino (' + vd + (vd === 1 ? ' dia' : ' dias') + ', sem feriados)', 'all']].forEach(function (x) { var d = paEl('div', x[2]); d.appendChild(paEl('b', '', x[0])); d.appendChild(paEl('span', '', x[1])); fm.appendChild(d); });
   paRank(C, m === 'sem' ? 'semana' : PA_MNF[PA.MON[PA.mi].m].toLowerCase());
 }
 function paRank(C, tit) {
@@ -1266,12 +1269,45 @@ function paWval(k, i) {
   if (!n) return { v: null, n: 0, p: a.p };
   return { v: PA.hm === 'avg' ? (k === 'C4' ? a.p : a.p / n) : a.p, n: n, p: a.p };
 }
+function paDiasValidos(ds) { var n = 0; ds.forEach(function (d) { if (paValid(d)) n++; }); return n; }
+function fmN(x, c) { return x.toFixed(c === undefined ? 1 : c).replace('.', ','); }
+function paAnoPainel(H) {
+  var all = []; PA.WK.forEach(function (w) { all = all.concat(w); });
+  var Y = paAgg(all), dY = paDiasValidos(all), mY = dY ? Y.p / dY : 0, lf = paLastFull();
+  var box = paEl('div', 'pa-panel'); box.style.gridColumn = '1 / -1';
+  var h = paEl('h3'); h.appendChild(document.createTextNode('Panorama de 2026 · ')); h.appendChild(paEl('em', '', 'até ' + paFd(PA.ult))); box.appendChild(h);
+  var tot = paEl('div', 'pa-tot');
+  [[Y.p, 'presenças no ano', 'all'], [Y.u, 'atletas atendidos no ano', 'all'], [fmN(mY), 'média de presenças por dia de treino', 'all'], [dY, 'dias de treino contados (feriados fora)', 'all']].forEach(function (x) { var d = paEl('div', x[2]); d.appendChild(paEl('b', '', x[0])); d.appendChild(paEl('span', '', x[1])); tot.appendChild(d); });
+  box.appendChild(tot);
+  box.appendChild(paEl('div', 'pa-hint', 'Média = presenças ÷ dias de treino. Feriados não contam como dia (nem entram na média), nem os dias ainda não lidos. Quem faz dois treinos no mesmo dia conta uma presença só. A coluna "vs ano" compara a média do período com a média de 2026 inteira (' + fmN(mY) + ').'));
+  function tabela(titulo, linhas, colTit) {
+    var det = paEl('details'); var sm = paEl('summary', '', titulo); sm.style.cssText = 'cursor:pointer;font-size:.8rem;font-weight:600;padding:4px 0'; det.appendChild(sm);
+    var w = paEl('div', 'pa-wrap'), T = paEl('table'); T.style.minWidth = '520px';
+    var hd = paEl('tr'); [colTit, 'Dias', 'Presenças', 'Atletas', 'Média/dia', 'vs ano'].forEach(function (t, i) { hd.appendChild(paEl('th', i === 0 ? 'l' : '', t)); }); T.appendChild(hd);
+    linhas.forEach(function (x) {
+      var tr = paEl('tr'); tr.appendChild(paEl('td', 'l', x.l + (x.parcial ? ' · em andamento' : '')));
+      tr.appendChild(paEl('td', '', x.d)); tr.appendChild(paEl('td', '', x.p)); tr.appendChild(paEl('td', '', x.u));
+      tr.appendChild(paEl('td', '', x.d ? fmN(x.p / x.d) : '–'));
+      var cv = paEl('td', ''); if (x.d && mY > 0) { var pc = (x.p / x.d - mY) / mY * 100; cv.textContent = (pc >= 0 ? '▲ +' : '▼ ') + Math.round(pc) + '%'; cv.className = pc >= 0 ? 'pa-up' : 'pa-dn'; } else cv.textContent = '–';
+      tr.appendChild(cv); T.appendChild(tr);
+    });
+    w.appendChild(T); det.appendChild(w); return det;
+  }
+  var mes = []; PA.MON.forEach(function (x) { var a = paAgg(x.d); mes.push({ l: PA_MNF[x.m], d: paDiasValidos(x.d), p: a.p, u: a.u, parcial: x.d[x.d.length - 1] > PA.ult }); });
+  var sem = []; PA.WK.forEach(function (ds, i) { var a = paAgg(ds); sem.push({ l: paLab(ds), d: paDiasValidos(ds), p: a.p, u: a.u, parcial: i > lf }); });
+  var det1 = tabela('Mês a mês', mes, 'Mês'); det1.open = true; box.appendChild(det1);
+  box.appendChild(tabela('Semana a semana', sem, 'Semana'));
+  var porT = []; PA.R.forEach(function (r) { var a = paAggRule(r.k, all), n = 0; all.forEach(function (d, i) { if (r.d.indexOf((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7) >= 0 && paValid(d)) n++; }); porT.push({ l: r.n, d: n, p: a.p, u: a.u }); });
+  var det3 = tabela('Por treino (média por sessão realizada)', porT, 'Treino'); box.appendChild(det3);
+  H.appendChild(box);
+}
 function paBuildHist(tb) {
   var sw = paEl('div', 'pa-mode');
   [['avg', 'Média por treino'], ['tot', 'Total da semana']].forEach(function (x) { var b = paEl('button', PA.hm === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { PA.hm = x[0]; paBuild(); }; sw.appendChild(b); });
   tb.appendChild(sw);
   tb.appendChild(paEl('span', 'pa-hint', 'Cada barra é uma semana, da mais antiga à mais recente. A última, se estiver incompleta, aparece clara e não entra na tendência.'));
   var H = $('paHist'); H.innerHTML = '';
+  paAnoPainel(H);
   var items = PA.R.map(function (r) { return { k: r.k, n: r.n, s: r.s }; }); items.push({ k: 'ALL', n: 'Todos os treinos', s: 'atletas diferentes por semana' });
   items.forEach(function (it) { H.appendChild(paHistCard(it)); });
 }
