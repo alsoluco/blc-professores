@@ -131,6 +131,70 @@ footer{text-align:center;color:var(--muted);font-size:.68rem;letter-spacing:.16e
 .tag.r{border-color:#ff5a5a;color:#ffb3b3}
 .insrow{display:flex;flex-direction:column;gap:8px}
 .cvr{padding:10px 12px;gap:10px;align-items:center;justify-content:space-between}.cvr>span{flex:1;min-width:0;cursor:pointer}.cvr b{font-size:.72rem;letter-spacing:.06em;line-height:1.35;overflow-wrap:anywhere}.cvr .small{display:block;font-size:.72rem;overflow-wrap:anywhere}.zap{flex:none;width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid var(--green);background:transparent;color:var(--green);padding:0;cursor:pointer}.zap:hover{background:var(--green);color:#000}
+/* ---------- presença de alunos ---------- */
+.pa{display:flex;flex-direction:column;gap:16px;min-width:0}
+.pa-tot{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.pa-tot div{border:1px solid var(--line);background:var(--panel);padding:10px 14px;min-width:0}
+.pa-tot b{display:block;font-size:1.6rem;font-weight:800;color:var(--green);font-variant-numeric:tabular-nums}
+.pa-tot span{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pa-tot .all b{color:var(--fg)}
+.pa-mode{display:flex;gap:0;flex-wrap:wrap}
+.pa-mode button{font-family:var(--font);font-weight:600;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:10px 16px;cursor:pointer;flex:1}
+.pa-mode button.on{background:var(--green);color:#000;border-color:var(--green)}
+.pa-tabs{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px}.pa-tabs button{flex:none}
+.pa-tabs button{font-family:var(--font);font-weight:600;font-size:.7rem;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:8px 12px;cursor:pointer;text-align:left;line-height:1.4}
+.pa-tabs button small{display:block;color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+.pa-tabs button.on{border-color:var(--green);box-shadow:inset 0 -3px 0 var(--green)}
+.pa-wrap{overflow-x:auto;border:1px solid var(--line);background:var(--panel)}
+.pa-wrap table{border-collapse:collapse;width:100%;min-width:620px}
+.pa-wrap th,.pa-wrap td{border-bottom:1px solid var(--line);padding:9px 6px;text-align:center;font-variant-numeric:tabular-nums}
+.pa-wrap th{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.pa-wrap th small{display:block;font-weight:400;letter-spacing:0}
+.pa-wrap th.l,.pa-wrap td.l{text-align:left;padding-left:12px}
+.pa-wrap td.l{font-weight:600;font-size:.78rem}
+.pa-wrap td.l small{display:block;color:var(--muted);font-size:.64rem;margin-top:2px;font-weight:400}
+.pa-wrap tr.sum td{font-weight:800;border-bottom:0;background:rgba(255,255,255,.05)}
+.pa-wrap .off{background:rgba(255,255,255,.05);color:var(--muted);font-size:.62rem}
+.pa-wrap td.tt{border-left:2px solid var(--line)}
+button.pa-n{font-family:var(--font);font-weight:800;font-size:1.05rem;min-width:42px;height:36px;padding:0 6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer;position:relative}
+button.pa-n:hover{border-color:var(--green)}
+button.pa-n.on{background:var(--green);color:#000;border-color:var(--green)}
+button.pa-n.z{color:var(--muted);font-weight:400}
+button.pa-n i{position:absolute;top:-6px;right:-6px;background:#ffb347;color:#000;font:800 .6rem var(--font);width:14px;height:14px;line-height:14px;border-radius:50%;font-style:normal}
+.pa-panel{border:1px solid var(--line);background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:12px;min-height:80px;min-width:0}
+.pa-panel h3{margin:0;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase}
+.pa-panel h3 em{font-style:normal;color:var(--green)}
+.pa-names{display:flex;flex-wrap:wrap;gap:6px}
+.pa-names span{border:1px solid var(--line);padding:5px 10px;font-size:.78rem}
+.pa-names span b{color:var(--green);margin-left:6px}
+.pa-pass{color:#ffb347;font-size:.74rem;line-height:1.6}
+.pa-pass b{letter-spacing:.08em;text-transform:uppercase;font-size:.66rem}
+.pa-hint{color:var(--muted);font-size:.78rem}
+.pa-rank{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 18px;font-size:.78rem;margin-top:8px}
+.pa-rank div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);padding:4px 0}
+.pa-rank b{color:var(--green)}
+.pa-hs{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.pa-hc{border:1px solid var(--line);background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pa-hc h4{margin:0;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase}
+.pa-hc small{color:var(--muted);font-size:.66rem}
+.pa-hc .tr{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:.72rem}
+.pa-hc .tr b{font-size:.95rem}
+.pa-up{color:var(--green)}.pa-dn{color:#ffb347}
+svg.pa-ch{width:100%;height:auto;display:block}
+svg.pa-ch rect.b{fill:var(--green);cursor:pointer}
+svg.pa-ch rect.b.part{opacity:.4}
+svg.pa-ch rect.b.sel{fill:var(--cyan)}
+svg.pa-ch text{fill:var(--muted);font:9px var(--font)}
+svg.pa-ch text.v{fill:var(--fg)}
+svg.pa-ch line{stroke:var(--line)}
+.pa-sw{display:flex;gap:0;margin-top:4px}
+.pa-al{border:1px solid var(--line);background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.pa-al.red{border-color:#ff5a5a}.pa-al.yel{border-color:#ffb347}
+.pa-al .ttl{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.pa-al .ttl b{font-size:.88rem}
+.pa-al .msg{border-left:2px solid var(--line);padding:4px 0 4px 12px;color:var(--text);font-size:.78rem;white-space:pre-wrap}
+.pa-al .row{display:flex;gap:8px;flex-wrap:wrap}
+.pa [hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -209,6 +273,7 @@ function menuAtualiza() {
     (pushPronto() && Notification.permission !== 'granted' ? '<button type="button" class="btn" onclick="menuFecha();pushAtiva()">\ud83d\udd14 Ativar avisos no celular</button>' : '') +
     it('Mensagens', 'mural()', S.aba2 === 'msg', badge(S.mural ? S.mural.paraMimTotal : 0)) +
     it('Atletas', 'atletas()', S.aba2 === 'atl') +
+    it('Presen\u00e7a de alunos', 'presAlu()', S.aba2 === 'pal') +
     '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
     provas +
     it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
@@ -716,9 +781,9 @@ function desenhaAtleta(r) {
 
     '<div class="card"><div class="eyebrow">Contato</div><div class="kv two">' + kv('Telefone', f['Telefone']) + kv('E-mail', f['E-mail']) + kv('Instagram', f['Instagram']) + kv('Nascimento', f['Nascimento']) + kv('Camisa', f['Camisa']) + kv('Autoriza imagem', f['Autoriza imagem']) + '</div>' + foneBtns(f['Telefone']) + '</div>' +
 
-    '<div class="card"><div class="eyebrow">Presença nos treinos da equipe</div>' +
-    (r.presencas.length ? r.presencas.slice(0, 15).map(function (p) { return '<div class="hist"><div class="meta">' + esc(p.data) + ' · início ' + esc(p.inicio) + '</div><div class="txt">' + esc(p.local) + ' · ' + esc(p.duracao) + ' min' + (p.modalidade ? ' · ' + esc(p.modalidade) : '') + '</div></div>'; }).join('') :
-      '<div class="muted small">Ainda sem presenças importadas. Elas aparecem aqui quando os arquivos FIT forem processados.</div>') + '</div>' +
+    '<div class="card"><div class="eyebrow">Presença nos treinos da equipe' + (r.presencas.length ? ' · ' + r.presencas.length + ' desde 03/08' : '') + '</div>' +
+    (r.presencas.length ? r.presencas.slice(0, 15).map(function (p) { return '<div class="hist"><div class="meta">' + esc(p.data) + (p.inicio ? ' · início ' + esc(p.inicio) : '') + '</div><div class="txt">' + esc(p.local) + (p.duracao ? ' · ' + esc(p.duracao) + ' min' : '') + (p.modalidade ? ' · ' + esc(p.modalidade) : '') + '</div></div>'; }).join('') :
+      '<div class="muted small">Nenhum treino presencial registrado desde 03/08 (leitura do TrainingPeaks).</div>') + '</div>' +
     (S.perfil === 'Admin' ? '<button class="btn btn-sm" onclick="statusAtleta(\'' + esc(f['ID']) + '\',' + (f['Status'] === 'Inativo') + ')">' + (f['Status'] === 'Inativo' ? 'Reativar atleta' : 'Marcar atleta como inativo') + '</button>' : '') +
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
 
@@ -1036,12 +1101,273 @@ function desenhaPres() {
 }
 function painelTabs(aba) {
   function b(k, t) { return '<button class="btn btn-sm' + (aba === k ? ' on' : '') + '" onclick="painel(\'' + k + '\')">' + t + '</button>'; }
-  return '<div class="tabs">' + b('hist', 'Histórico') + b('eng', 'Engajamento') + b('pres', 'Presença') + b('fin', 'Financeiro') + b('prof', 'Professores') + '</div>';
+  return '<div class="tabs">' + b('hist', 'Histórico') + b('eng', 'Engajamento') + b('pres', 'Presença de professores') + b('fin', 'Financeiro') + b('prof', 'Professores') + '</div>';
 }
 
 /* ---------- painel do head coach ---------- */
 
 /* ---------- provas da BLC (lista) ---------- */
+/* ---------- presença de alunos (leitura do TrainingPeaks) ---------- */
+var PA = { E: null, mode: 'sem', wi: 0, mi: 0, sel: null, hm: 'avg', hsel: null, msgs: [] };
+var PA_DS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+var PA_MNF = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+var PA_R = [
+  { k: 'LR', m: 'na corrida da Lagoa', n: 'Corrida Lagoa', s: '6h05–6h20 · seg, qua, sex', d: [0, 2, 4] },
+  { k: 'CA', m: 'no pedal da APCC', n: 'Ciclismo APCC', s: '3h45–4h05 · ter, qui', d: [1, 3] },
+  { k: 'CL', m: 'no pedal de sábado na Lagoa', n: 'Ciclismo Lagoa 5h', s: '4h30–5h08 · sáb', d: [5] },
+  { k: 'C4', m: 'no pedal de sábado na Lagoa', n: 'Ciclismo Lagoa 4h', s: '3h50–4h10 · sáb, às vezes', d: [5] },
+  { k: 'RP', m: 'na corrida de domingo', n: 'Corrida Posto 6', s: '7h00–7h20 · dom, Copacabana', d: [6] },
+  { k: 'NP', m: 'na natação de domingo', n: 'Natação Posto 6', s: '8h00–8h20 · dom, Copacabana', d: [6] },
+  { k: 'NF', m: 'na natação do Flamengo', n: 'Natação Flamengo', s: '5h00–5h30 · seg, qua (só horário)', d: [0, 2] }
+];
+function paEl(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
+function paIso(t) { return new Date(t).toISOString().slice(0, 10); }
+function paFd(d) { return d.slice(8) + '/' + d.slice(5, 7); }
+function paValid(d) { return d <= PA.ult && d >= PA.E.inicio && !PA.hol[d]; }
+function paCell(k, d) { return PA.D[k] && PA.D[k][d]; }
+function paDayset(d) { var o = {}; if (!paValid(d)) return o; PA_R.forEach(function (r) { var c = paCell(r.k, d); if (c) c.c.forEach(function (n) { o[n] = 1; }); }); return o; }
+function paAgg(dates) { var cnt = {}, pres = 0; dates.forEach(function (d) { var o = paDayset(d); Object.keys(o).forEach(function (n) { cnt[n] = (cnt[n] || 0) + 1; pres++; }); }); return { cnt: cnt, u: Object.keys(cnt).length, p: pres }; }
+function paAggRule(k, dates) { var cnt = {}, p = 0; dates.forEach(function (d) { var c = paValid(d) && paCell(k, d); if (c) c.c.forEach(function (n) { cnt[n] = (cnt[n] || 0) + 1; p++; }); }); return { cnt: cnt, u: Object.keys(cnt).length, p: p }; }
+function paNames(cnt) { return Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a] || PA.E.N[a].localeCompare(PA.E.N[b], 'pt'); }); }
+function paLab(ds) { var a = ds[0], b = ds[ds.length - 1]; return a === b ? paFd(a) : paFd(a) + '–' + paFd(b); }
+function paSeg(m) { var days = PA.MON[m].d, out = [], cur = []; days.forEach(function (d) { var dw = (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7; if (dw === 0 && cur.length) { out.push(cur); cur = []; } cur.push(d); }); if (cur.length) out.push(cur); return out; }
+function paInit(r) {
+  PA.E = r; PA.ult = r.ult; PA.hol = {}; (r.hol || []).forEach(function (h) { PA.hol[h] = 1; });
+  PA.D = {};
+  Object.keys(r.D).forEach(function (k) {
+    PA.D[k] = {};
+    Object.keys(r.D[k]).forEach(function (md) {
+      var v = r.D[k][md];
+      PA.D[k]['2026-' + md] = { c: v.c ? v.c.split(',').map(Number) : [], p: v.p ? v.p.split(',').map(function (x) { var a = x.split('@'); return [+a[0], a[1].slice(0, 2) + 'h' + a[1].slice(2)]; }) : [], g: v.g || '' };
+    });
+  });
+  var t0 = Date.UTC(2026, 7, 3), n = 0;
+  PA.WK = [];
+  while (true) { var ds = []; for (var i = 0; i < 7; i++) ds.push(paIso(t0 + (n * 7 + i) * 864e5)); PA.WK.push(ds); if (ds[6] >= PA.ult) break; n++; }
+  var um = +PA.ult.slice(5, 7) - 1;
+  PA.MON = [];
+  for (var m = 7; m <= um; m++) { var out = [], t = Date.UTC(2026, m, 1); while (new Date(t).getUTCMonth() === m) { out.push(paIso(t)); t += 864e5; } PA.MON.push({ m: m, d: out }); }
+  PA.wi = Math.max(paLastFull(), 0); PA.mi = PA.MON.length - 1; PA.sel = null; PA.hsel = null;
+  PA.R = PA_R.filter(function (x) { return r.regs[x.k]; });
+}
+function presAlu(modo) {
+  S.aba2 = 'pal';
+  if (modo) PA.mode = modo;
+  if (PA.E) { paDesenha(); }
+  else app(head(userBar()) + '<div class="spin">Carregando presença…</div>');
+  call('presAlunos', {}, !!PA.E).then(function (r) { paInit(r); paDesenha(); })
+    .catch(function (e) { if (S.token && !PA.E) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="presAlu()">Tentar de novo</button>'); });
+}
+function paDesenha() {
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Presença</div><h2>Presença de <em>alunos</em></h2></div>' +
+    '<div class="pa-hint">Leitura do TrainingPeaks · dados até ' + paFd(PA.ult) + '.</div>' +
+    '<div class="pa-tot" id="paTot"></div><div class="pa-mode" id="paMode"></div><div class="pa-tabs" id="paTabs"></div>' +
+    '<div class="pa-hs" id="paHist" hidden></div><div class="pa-wrap" id="paWr"><table id="paTb"></table></div><div id="paAl" hidden></div>' +
+    '<div class="pa-panel" id="paPn"><span class="pa-hint">Toque em um número da tabela.</span></div>' +
+    '<details class="pa-panel" id="paRkd"><summary id="paRks">Presenças por atleta</summary><div class="pa-rank" id="paRk"></div></details>' +
+    '<p class="pa-hint">Conta quem estava a até 150 m do local dentro da janela de horário (ou saiu de casa para o pedal, sem precisar ser do mesmo ponto). O círculo laranja indica uma turma de 5 ou mais que chegou junta logo depois da janela. A lista "passou pelo local" aparece só para o professor do horário e para o head coach. Feriados não entram. Natação do Flamengo é contada só pelo horário, sem GPS. No total do dia, quem faz mais de um treino conta uma vez.</p>' +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer></div>');
+  paBuild();
+}
+function paReset() { $('paPn').innerHTML = '<span class="pa-hint">Toque em um número da tabela.</span>'; }
+function paCur() { if (PA.mode === 'his') { var a = []; PA.WK.forEach(function (w) { a = a.concat(w); }); return a; } return PA.mode === 'sem' ? PA.WK[PA.wi] : PA.MON[PA.mi].d; }
+function paBuild() {
+  var all = []; PA.WK.forEach(function (w) { all = all.concat(w); });
+  var A = paAgg(all), C = paAgg(paCur()), m = PA.mode, t = $('paTot'); t.innerHTML = '';
+  var qd = m === 'sem' ? 'nesta semana' : m === 'mes' ? 'neste mês' : 'no período';
+  if (m === 'ale') { [[A.u, 'atletas diferentes no período todo', 'all'], [A.p, 'presenças no período todo', 'all']].forEach(function (x) { var d = paEl('div', x[2]); d.appendChild(paEl('b', '', x[0])); d.appendChild(paEl('span', '', x[1])); t.appendChild(d); }); }
+  else [[A.u, 'atletas diferentes no período todo', 'all'], [A.p, 'presenças no período todo', 'all'], [C.u, 'atletas diferentes ' + qd, ''], [C.p, 'presenças ' + qd, '']].forEach(function (x) { var d = paEl('div', x[2]); d.appendChild(paEl('b', '', x[0])); d.appendChild(paEl('span', '', x[1])); t.appendChild(d); });
+  var md = $('paMode'); md.innerHTML = '';
+  [['sem', 'Semana'], ['mes', 'Mês'], ['his', 'Histórico'], ['ale', 'Alertas']].forEach(function (x) { var b = paEl('button', m === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { PA.mode = x[0]; PA.sel = null; paBuild(); }; md.appendChild(b); });
+  var tb = $('paTabs'); tb.innerHTML = ''; tb.style.flexWrap = m === 'his' ? 'wrap' : 'nowrap';
+  var isH = m === 'his', isA = m === 'ale';
+  $('paWr').hidden = isH || isA; $('paHist').hidden = !isH; $('paAl').hidden = !isA; $('paPn').hidden = isA; $('paRkd').hidden = isA;
+  if (isA) { paAlertasTela(); return; }
+  if (!isH) paReset();
+  if (isH) { paBuildHist(tb); paRank(C, 'período todo'); return; }
+  if (m === 'sem') PA.WK.forEach(function (ds, i) { var a = paAgg(ds), b = paEl('button', i === PA.wi ? 'on' : '', paLab(ds)); b.type = 'button'; b.appendChild(paEl('small', '', a.u + ' atletas · ' + a.p + ' presenças')); b.onclick = function () { PA.wi = i; PA.sel = null; paBuild(); }; tb.appendChild(b); });
+  else PA.MON.forEach(function (x, i) { var a = paAgg(x.d), b = paEl('button', i === PA.mi ? 'on' : '', PA_MNF[x.m]); b.type = 'button'; b.appendChild(paEl('small', '', a.u + ' atletas · ' + a.p + ' presenças')); b.onclick = function () { PA.mi = i; PA.sel = null; paBuild(); }; tb.appendChild(b); });
+  var T = $('paTb'); T.innerHTML = '';
+  if (m === 'sem') paBuildWeek(T); else paBuildMonth(T);
+  paRank(C, m === 'sem' ? 'semana' : PA_MNF[PA.MON[PA.mi].m].toLowerCase());
+}
+function paRank(C, tit) {
+  var rk = $('paRk'); rk.innerHTML = ''; $('paRks').textContent = 'Presenças por atleta · ' + tit;
+  paNames(C.cnt).forEach(function (n) { var d = paEl('div'); d.appendChild(paEl('span', '', PA.E.N[n])); d.appendChild(paEl('b', '', C.cnt[n])); rk.appendChild(d); });
+}
+function paBuildWeek(T) {
+  var ds = PA.WK[PA.wi];
+  var h = paEl('tr'); h.appendChild(paEl('th', 'l', 'Treino')); ds.forEach(function (d, i) { var th = paEl('th', '', PA_DS[i]); th.appendChild(paEl('small', '', paFd(d))); h.appendChild(th); }); T.appendChild(h);
+  PA.R.forEach(function (r) {
+    var tr = paEl('tr'), c = paEl('td', 'l', r.n); c.appendChild(paEl('small', '', r.s)); tr.appendChild(c);
+    ds.forEach(function (d, i) {
+      var td = paEl('td'), x = paCell(r.k, d);
+      if (PA.hol[d]) { td.className = 'off'; td.textContent = 'feriado'; }
+      else if (d > PA.ult || d < PA.E.inicio) { td.textContent = '·'; td.style.color = 'var(--muted)'; }
+      else { var n = x ? x.c.length : 0, b = paEl('button', 'pa-n' + (n ? '' : ' z'), n); b.type = 'button'; var key = r.k + '|' + d; if (PA.sel === key) b.className += ' on'; if (x && x.g) b.appendChild(paEl('i', '', '!')); b.onclick = (function (r, d, i, key) { return function () { paPickDay(r, d, i, key); }; })(r, d, i, key); td.appendChild(b); }
+      tr.appendChild(td);
+    });
+    T.appendChild(tr);
+  });
+  var s = paEl('tr', 'sum'); s.appendChild(paEl('td', 'l', 'Total do dia')); ds.forEach(function (d) { s.appendChild(paEl('td', '', PA.hol[d] ? '' : paValid(d) ? Object.keys(paDayset(d)).length : '')); }); T.appendChild(s);
+}
+function paBuildMonth(T) {
+  var sg = paSeg(PA.mi), md = PA.MON[PA.mi], mnome = PA_MNF[md.m].toLowerCase();
+  var h = paEl('tr'); h.appendChild(paEl('th', 'l', 'Treino')); sg.forEach(function (ds) { h.appendChild(paEl('th', '', paLab(ds))); }); h.appendChild(paEl('th', 'tt', 'Mês')); T.appendChild(h);
+  PA.R.forEach(function (r) {
+    var tr = paEl('tr'), c = paEl('td', 'l', r.n); c.appendChild(paEl('small', '', r.s)); tr.appendChild(c);
+    sg.concat([md.d]).forEach(function (ds, i) {
+      var a = paAggRule(r.k, ds), td = paEl('td', i === sg.length ? 'tt' : ''), b = paEl('button', 'pa-n' + (a.p ? '' : ' z'), a.p); b.type = 'button';
+      var key = r.k + '|' + i; if (PA.sel === key) b.className += ' on';
+      b.onclick = (function (r, ds, i, a, key) { return function () { paPickAgg(r.n + ' · ' + (i === sg.length ? mnome : paLab(ds)), a, key); }; })(r, ds, i, a, key);
+      td.appendChild(b); tr.appendChild(td);
+    });
+    T.appendChild(tr);
+  });
+  var s = paEl('tr', 'sum'); s.appendChild(paEl('td', 'l', 'Presenças')); var s2 = paEl('tr', 'sum'); s2.appendChild(paEl('td', 'l', 'Atletas diferentes'));
+  sg.concat([md.d]).forEach(function (ds, i) {
+    var a = paAgg(ds), k = 'T|' + i;
+    [['p', s], ['u', s2]].forEach(function (z) {
+      var td = paEl('td', i === sg.length ? 'tt' : ''), b = paEl('button', 'pa-n', a[z[0]]); b.type = 'button'; var key = k + z[0]; if (PA.sel === key) b.className += ' on';
+      b.onclick = function () { paPickAgg((z[0] === 'p' ? 'Presenças' : 'Atletas diferentes') + ' · ' + (i === sg.length ? mnome : paLab(ds)), a, key); };
+      td.appendChild(b); z[1].appendChild(td);
+    });
+  });
+  T.appendChild(s); T.appendChild(s2);
+}
+function paNomeBtn(n, num) {
+  var f = PA.E.F[n], s = paEl(f ? 'button' : 'span', '', PA.E.N[n]);
+  if (f) { s.type = 'button'; s.style.cssText = 'font:inherit;color:var(--fg);background:transparent;cursor:pointer;border:1px solid var(--line);padding:5px 10px;font-size:.78rem'; s.onclick = function () { abrir(f); }; }
+  if (num !== undefined) s.appendChild(paEl('b', '', num)); return s;
+}
+function paPickDay(r, d, i, key) {
+  PA.sel = key; paBuild();
+  var x = paCell(r.k, d) || { c: [], p: [] }, pn = $('paPn'); pn.innerHTML = '';
+  var h = paEl('h3'); h.appendChild(document.createTextNode(r.n + ' · ' + PA_DS[i] + ' ' + paFd(d) + ' · ')); h.appendChild(paEl('em', '', x.c.length + ' com a gente')); pn.appendChild(h);
+  var ns = paEl('div', 'pa-names');
+  if (x.c.length) x.c.slice().sort(function (a, b) { return PA.E.N[a].localeCompare(PA.E.N[b], 'pt'); }).forEach(function (n) { var s = paNomeBtn(n); if (!PA.E.F[n]) s.style.cssText = ''; ns.appendChild(s); }); else ns.appendChild(paEl('span', 'pa-hint', 'Ninguém dentro da janela.'));
+  pn.appendChild(ns);
+  if (x.g) pn.appendChild(paEl('div', 'pa-pass', 'Uma turma de ' + x.g + ' chegou junta fora da janela.'));
+  if (x.p.length) { var q = paEl('div', 'pa-pass'); q.appendChild(paEl('b', '', 'Passou pelo local, não saiu com a gente')); q.appendChild(paEl('div', '', x.p.map(function (p) { return PA.E.N[p[0]] + ' ' + p[1]; }).join(' · '))); pn.appendChild(q); }
+}
+function paPickAgg(title, a, key) {
+  PA.sel = key; paBuild();
+  var pn = $('paPn'); pn.innerHTML = '';
+  var h = paEl('h3'); h.appendChild(document.createTextNode(title + ' · ')); h.appendChild(paEl('em', '', a.p + ' presenças · ' + a.u + ' atletas')); pn.appendChild(h);
+  var ns = paEl('div', 'pa-names'), l = paNames(a.cnt);
+  if (l.length) l.forEach(function (n) { ns.appendChild(paEl('span', '', PA.E.N[n])); ns.lastChild.appendChild(paEl('b', '', a.cnt[n])); }); else ns.appendChild(paEl('span', 'pa-hint', 'Ninguém neste período.'));
+  pn.appendChild(ns); pn.appendChild(paEl('div', 'pa-hint', 'O número ao lado do nome é quantas vezes a pessoa treinou com a gente.'));
+}
+function paSess(r, ds) { var n = 0; ds.forEach(function (d, i) { if (r.d.indexOf(i) >= 0 && paValid(d)) n++; }); return n; }
+function paWval(k, i) {
+  var ds = PA.WK[i], a = paAggRule(k, ds);
+  if (k === 'ALL') { var u = paAgg(ds).u; return { v: u, n: 1, p: u }; }
+  var r = PA_R.filter(function (x) { return x.k === k; })[0], n = paSess(r, ds);
+  if (!n) return { v: null, n: 0, p: a.p };
+  return { v: PA.hm === 'avg' ? (k === 'C4' ? a.p : a.p / n) : a.p, n: n, p: a.p };
+}
+function paBuildHist(tb) {
+  var sw = paEl('div', 'pa-mode');
+  [['avg', 'Média por treino'], ['tot', 'Total da semana']].forEach(function (x) { var b = paEl('button', PA.hm === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { PA.hm = x[0]; paBuild(); }; sw.appendChild(b); });
+  tb.appendChild(sw);
+  tb.appendChild(paEl('span', 'pa-hint', 'Cada barra é uma semana, da mais antiga (3/8) à mais recente. A última, se estiver incompleta, aparece clara e não entra na tendência.'));
+  var H = $('paHist'); H.innerHTML = '';
+  var items = PA.R.map(function (r) { return { k: r.k, n: r.n, s: r.s }; }); items.push({ k: 'ALL', n: 'Todos os treinos', s: 'atletas diferentes por semana' });
+  items.forEach(function (it) { H.appendChild(paHistCard(it)); });
+}
+function paLastFull() { var l = -1; PA.WK.forEach(function (w, i) { if (w[6] <= PA.ult) l = i; }); return l; }
+function paHistCard(it) {
+  var k = it.k, vals = [], nw = PA.WK.length, lf = paLastFull();
+  for (var i = 0; i < nw; i++) vals.push(paWval(k, i));
+  var mx = 0; vals.forEach(function (x) { if (x.v !== null && x.v > mx) mx = x.v; }); if (mx < 1) mx = 1;
+  function mean(a, b) { var s = 0, c = 0; for (var i = Math.max(a, 0); i <= b; i++) if (vals[i].v !== null) { s += vals[i].v; c++; } return c ? s / c : null; }
+  var cur = mean(lf - 3, lf), prev = mean(lf - 7, lf - 4);
+  var c = paEl('div', 'pa-hc'); c.appendChild(paEl('h4', '', it.n)); c.appendChild(paEl('small', '', it.s));
+  var tr = paEl('div', 'tr');
+  function fm(x) { return x.toFixed(1).replace('.', ','); }
+  if (cur !== null && prev !== null && prev > 0) { var pc = (cur - prev) / prev * 100, up = pc >= 0; tr.appendChild(paEl('b', up ? 'pa-up' : 'pa-dn', (up ? '▲ +' : '▼ ') + Math.round(pc) + '%')); tr.appendChild(paEl('span', '', 'últimas 4 semanas ' + fm(cur) + ' · 4 anteriores ' + fm(prev))); }
+  else if (cur !== null) tr.appendChild(paEl('span', '', 'últimas 4 semanas ' + fm(cur) + ' · sem base de comparação'));
+  else tr.appendChild(paEl('span', '', 'sem dados nas últimas 4 semanas'));
+  c.appendChild(tr);
+  var W = 320, Ht = 120, pl = 6, pr = 6, pt = 14, pb = 18, bw = (W - pl - pr) / nw, ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + Ht); svg.setAttribute('class', 'pa-ch'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', it.n + ' por semana');
+  function se(n, a, tx) { var e = document.createElementNS(ns, n); for (var q in a) e.setAttribute(q, a[q]); if (tx !== undefined) e.textContent = tx; svg.appendChild(e); return e; }
+  se('line', { x1: pl, x2: W - pr, y1: Ht - pb, y2: Ht - pb });
+  vals.forEach(function (x, i) {
+    var x0 = pl + i * bw + 2;
+    if (x.v !== null) {
+      var h = (Ht - pt - pb) * x.v / mx, r = se('rect', { x: x0, y: Ht - pb - h, width: bw - 4, height: Math.max(h, 1), 'class': 'b' + (i > lf ? ' part' : '') + (PA.hsel === k + '|' + i ? ' sel' : ''), tabindex: 0 });
+      r.addEventListener('click', function () { PA.hsel = k + '|' + i; paBuild(); paPickWeek(it, i, x); });
+      se('text', { x: x0 + (bw - 4) / 2, y: Ht - pb - h - 3, 'text-anchor': 'middle', 'class': 'v' }, (Math.round(x.v * 10) / 10).toString().replace('.', ','));
+    }
+    if (i % 3 === 0) se('text', { x: x0 + (bw - 4) / 2, y: Ht - 5, 'text-anchor': 'middle' }, paFd(PA.WK[i][0]));
+  });
+  c.appendChild(svg); return c;
+}
+function paPickWeek(it, i, x) {
+  var ds = PA.WK[i], pn = $('paPn'); pn.hidden = false; pn.innerHTML = '';
+  var a = it.k === 'ALL' ? paAgg(ds) : paAggRule(it.k, ds);
+  var h = paEl('h3'); h.appendChild(document.createTextNode(it.n + ' · semana ' + paLab(ds) + ' · ')); h.appendChild(paEl('em', '', it.k === 'ALL' ? a.u + ' atletas diferentes' : a.p + ' presenças em ' + x.n + ' treino' + (x.n === 1 ? '' : 's'))); pn.appendChild(h);
+  var ns = paEl('div', 'pa-names'), l = paNames(a.cnt);
+  if (l.length) l.forEach(function (n) { ns.appendChild(paEl('span', '', PA.E.N[n])); ns.lastChild.appendChild(paEl('b', '', a.cnt[n])); }); else ns.appendChild(paEl('span', 'pa-hint', 'Ninguém neste período.'));
+  pn.appendChild(ns); pn.scrollIntoView({ block: 'nearest' });
+}
+/* alertas de queda de frequência: base = 4 semanas, compara a última semana fechada */
+function paAlertas() {
+  var W = PA.WK, w = paLastFull(), n = PA.E.N.length, out = [];
+  if (w < 5) return { w: w, lista: [] };
+  var v = [], i, p, hol = [];
+  for (p = 0; p < n; p++) v.push([]);
+  for (i = 0; i <= w; i++) {
+    var h = 0; W[i].forEach(function (d) { if (PA.hol[d]) h++; });
+    var f = 7 / (7 - h), cnt = {};
+    W[i].forEach(function (d) { var o = paDayset(d); Object.keys(o).forEach(function (x) { cnt[x] = (cnt[x] || 0) + 1; }); });
+    for (p = 0; p < n; p++) v[p][i] = { raw: cnt[p] || 0, v: (cnt[p] || 0) * f };
+  }
+  function mean(a, from, to) { var s = 0; for (var j = from; j <= to; j++) s += a[j].v; return s / (to - from + 1); }
+  function sumr(a, from, to) { var s = 0; for (var j = from; j <= to; j++) s += a[j].raw; return s; }
+  for (p = 0; p < n; p++) {
+    var a = v[p], b1 = mean(a, w - 4, w - 1), b2 = mean(a, w - 5, w - 2), nivel = '';
+    if (sumr(a, w - 5, w - 2) >= 2 && a[w].v <= b2 * 0.5 && a[w - 1].v <= b2 * 0.5) nivel = 'red';
+    else if (sumr(a, w - 4, w - 1) >= 2 && a[w].v <= b1 * 0.5) nivel = 'yel';
+    if (!nivel) continue;
+    var rc = {}, best = '', bn = -1;
+    PA_R.forEach(function (r) { var c = 0; for (var j = w - 5; j <= w; j++) { W[j].forEach(function (d) { var x = paValid(d) && paCell(r.k, d); if (x && x.c.indexOf(p) >= 0) c++; }); } rc[r.k] = c; if (c > bn) { bn = c; best = r.k; } });
+    if (PA.E.minha.indexOf(best) < 0) continue;
+    out.push({ p: p, nivel: nivel, rule: best, vw: a[w].raw, v1: a[w - 1].raw, base: nivel === 'red' ? b2 : b1, hist: a.slice(w - 5, w + 1).map(function (x) { return x.raw; }) });
+  }
+  out.sort(function (x, y) { return (x.nivel === 'red' ? 0 : 1) - (y.nivel === 'red' ? 0 : 1) || y.base - x.base; });
+  return { w: w, lista: out };
+}
+function paAlertasTela() {
+  var R = paAlertas(), box = $('paAl'), W = PA.WK; box.innerHTML = ''; PA.msgs = [];
+  var nomeR = {}, nomeM = {}; PA_R.forEach(function (r) { nomeR[r.k] = r.n; nomeM[r.k] = r.m; });
+  var ref = R.w >= 0 ? paLab(W[R.w]) : '';
+  var cab = paEl('div', 'pa-panel'); var h = paEl('h3'); h.appendChild(document.createTextNode('Queda de frequência · ')); h.appendChild(paEl('em', '', R.lista.length + (R.lista.length === 1 ? ' atleta' : ' atletas'))); cab.appendChild(h);
+  cab.appendChild(paEl('div', 'pa-hint', 'Semana avaliada: ' + ref + '. Compara com a média das 4 semanas anteriores, só de quem treinava com a gente (pelo menos 2 presenças nessas 4 semanas). Amarelo: a semana ficou em metade da média ou menos. Vermelho: duas semanas seguidas assim. Semanas com feriado são ajustadas. ' + (S.perfil === 'Admin' ? 'Você vê todos os horários.' : 'Aparecem só os atletas do seu horário.')));
+  box.appendChild(cab);
+  if (!R.lista.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhuma queda de frequência para avisar nesta semana.')); return; }
+  R.lista.forEach(function (x, idx) {
+    var nome = PA.E.N[x.p], pri = nome.split(' ')[0], tr = nomeR[x.rule];
+    var msg = x.nivel === 'red'
+      ? 'Oi, ' + pri + ', tudo bem? Faz um tempinho que não te vejo ' + nomeM[x.rule] + '. Aconteceu alguma coisa? Se for horário ou rotina, a gente vê como encaixar melhor.'
+      : 'Oi, ' + pri + ', tudo bem? Senti sua falta ' + nomeM[x.rule] + ' esta semana. Está tudo certo por aí?';
+    PA.msgs.push(msg);
+    var c = paEl('div', 'pa-al ' + x.nivel);
+    var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', nome)); t.appendChild(paEl('span', 'tag ' + (x.nivel === 'red' ? '' : 'w'), (x.nivel === 'red' ? 'Vermelho' : 'Amarelo') + ' · ' + tr)); c.appendChild(t);
+    c.appendChild(paEl('div', 'pa-hint', 'Média das 4 semanas antes: ' + x.base.toFixed(1).replace('.', ',') + ' por semana · última semana: ' + x.vw + (x.nivel === 'red' ? ' · anterior: ' + x.v1 : '') + ' · 6 últimas semanas: ' + x.hist.join(' · ')));
+    c.appendChild(paEl('div', 'msg', msg));
+    var rw = paEl('div', 'row'), b = paEl('button', 'btn btn-sm btn-green', 'Copiar mensagem'); b.type = 'button'; b.onclick = (function (i, bt) { return function () { paCopia(PA.msgs[i], bt); }; })(idx, b); rw.appendChild(b);
+    var f = PA.E.F[x.p]; if (f) { var b2 = paEl('button', 'btn btn-sm', 'Abrir ficha'); b2.type = 'button'; b2.onclick = (function (f) { return function () { abrir(f); }; })(f); rw.appendChild(b2); }
+    c.appendChild(rw); box.appendChild(c);
+  });
+}
+function paCopia(txt, bt) {
+  function ok() { bt.textContent = 'Copiado'; setTimeout(function () { bt.textContent = 'Copiar mensagem'; }, 1800); }
+  function velho() { var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { aviso(txt); } document.body.removeChild(ta); }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, velho); else velho();
+}
+
 /* ---------- Cheguei: presen\u00e7a por localiza\u00e7\u00e3o ---------- */
 function cheguei() {
   S.aba2 = 'cheguei';
