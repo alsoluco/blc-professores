@@ -278,7 +278,7 @@ function menuAtualiza() {
     provas +
     it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
     it('\ud83e\udde0 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
-    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') : '') +
+    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Sa\u00fade dos atletas', 'saudeTela()', S.aba2 === 'sau') : '') +
     '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
     '</nav>';
 }
@@ -1472,6 +1472,67 @@ function paCopia(txt, bt) {
   function ok() { bt.textContent = 'Copiado'; setTimeout(function () { bt.textContent = 'Copiar mensagem'; }, 1800); }
   function velho() { var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) { aviso(txt); } document.body.removeChild(ta); }
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, velho); else velho();
+}
+
+/* ---------- Saúde dos atletas (só head coach) ---------- */
+var SA = { itens: [], data: '' };
+function saFmt(v, suf) { return v == null ? '–' : String(Math.round(v * 10) / 10).replace('.', ',') + (suf || ''); }
+function saVar(v, bom) {
+  if (v == null) return '<span class="pa-hint">–</span>';
+  var r = Math.round(v * 10) / 10, cor = Math.abs(r) < 10 ? 'inherit' : (bom * r > 0 ? 'var(--cyan)' : '#ff5a5a');
+  return '<b style="color:' + cor + '">' + (r > 0 ? '+' : '') + String(r).replace('.', ',') + '%</b>';
+}
+function saudeTela() {
+  S.aba2 = 'sau';
+  app(head(userBar()) + '<div class="spin">Carregando alertas de saúde…</div>');
+  call('saudeAlertas', {}).then(function (r) { SA.itens = r.itens || []; SA.data = r.data || ''; saudeDesenha(r.vazio); })
+    .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="saudeTela()">Tentar de novo</button>'); });
+}
+function saudeDesenha(vazio) {
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Head coach</div><h2>Saúde dos <em>atletas</em></h2></div>' +
+    '<div class="pa-hint">Só você vê esta tela. Compara a média de 7 dias de HRV, FC de repouso e body battery com a média das 4 semanas anteriores do próprio atleta. Alerta quando o HRV varia 10% ou mais. ' + (SA.data ? 'Análise de ' + paFd(SA.data) + '.' : '') + '</div>' +
+    '<div id="saBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
+  var box = $('saBox');
+  if (!SA.itens.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', vazio ? 'Ainda não há análise de saúde. Ela é gerada pela leitura diária das 8h40.' : 'Nenhum atleta com variação de HRV acima de 10% nesta análise.')); return; }
+  var ord = { 'Queda 2 dias': 1, 'Queda': 0, 'Alta': 2 };
+  SA.itens.sort(function (a, b) { return (b.pri ? 1 : 0) - (a.pri ? 1 : 0) || (a.contato ? 1 : 0) - (b.contato ? 1 : 0) || (ord[a.tipo] || 0) - (ord[b.tipo] || 0) || Math.abs(b.hrvV || 0) - Math.abs(a.hrvV || 0); });
+  SA.itens.forEach(function (x, idx) {
+    var c = paEl('div', 'pa-al ' + (x.pri ? 'red' : (x.tipo === 'Alta' ? '' : 'yel')));
+    if (x.contato) c.style.opacity = '.8';
+    var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome));
+    t.appendChild(paEl('span', 'tag ' + (x.pri ? '' : 'w'), (x.pri ? 'Prioridade · ' : '') + x.tipo)); c.appendChild(t);
+    var v = paEl('div', ''); v.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;font-size:.82rem';
+    v.innerHTML = '<div><span class="pa-hint">HRV (7 dias)</span><br>' + saFmt(x.hrv) + ' <span class="pa-hint">base ' + saFmt(x.hrvB) + '</span><br>' + saVar(x.hrvV, 1) + '</div>' +
+      '<div><span class="pa-hint">FC de repouso</span><br>' + saFmt(x.fc, ' bpm') + '<br>' + saVar(x.fcV, -1) + '</div>' +
+      '<div><span class="pa-hint">Body battery máx.</span><br>' + saFmt(x.bb) + '<br>' + saVar(x.bbV, 1) + '</div>';
+    c.appendChild(v);
+    if (x.hoje || x.amanha) c.appendChild(paEl('div', 'pa-hint', (x.hoje ? 'Hoje: ' + x.hoje : '') + (x.hoje && x.amanha ? ' · ' : '') + (x.amanha ? 'Amanhã: ' + x.amanha : '')));
+    if (x.contato) { var cc = paEl('div', '', (x.contato.tipo === 'Enviada' ? 'Mensagem enviada' : x.contato.tipo) + ' em ' + x.contato.quando); cc.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(cc); }
+    var ta = document.createElement('textarea'); ta.value = x.msg; ta.rows = 4; ta.setAttribute('aria-label', 'Mensagem para ' + x.nome);
+    ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
+    ta.oninput = function () { SA.itens[idx].msg = ta.value; };
+    c.appendChild(ta); c.appendChild(paEl('div', 'pa-hint', 'Edite o texto se quiser. Esta mensagem não é salva na ficha do atleta (dado de saúde).'));
+    var rw = paEl('div', 'row');
+    function bt(txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = function () { fn(b); }; rw.appendChild(b); }
+    var fone = cvFone(x.fone);
+    x.foneN = fone;
+    if (fone) bt(x.contato ? 'Enviar de novo no WhatsApp' : 'Enviar no WhatsApp', 'btn-green', function () { saudeZap(idx); });
+    else { rw.appendChild(paEl('span', 'pa-hint', 'Sem telefone cadastrado')); bt('Copiar mensagem', '', function (b) { paCopia(x.msg, b); }); bt('Já enviei', '', function () { saudeReg(idx, 'Enviada'); }); }
+    if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
+    c.appendChild(rw); box.appendChild(c);
+  });
+}
+function saudeReg(i, tipo) {
+  var x = SA.itens[i];
+  return call('saudeContato', { id: x.id, nome: x.nome, alerta: x.tipo, msg: x.msg, tipo: tipo }).then(function () {
+    aviso('Contato registrado.'); return call('saudeAlertas', {}, true).then(function (r) { SA.itens = r.itens || []; saudeDesenha(); });
+  }).catch(function (e) { aviso(e.message); });
+}
+function saudeZap(i) {
+  var x = SA.itens[i];
+  if (!String(x.msg || '').trim()) { aviso('Escreva a mensagem antes de enviar.'); return; }
+  window.open('https://wa.me/' + x.foneN + '?text=' + encodeURIComponent(x.msg), '_blank');
+  saudeReg(i, 'Enviada');
 }
 
 /* ---------- Cheguei: presen\u00e7a por localiza\u00e7\u00e3o ---------- */
