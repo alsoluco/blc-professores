@@ -1506,7 +1506,7 @@ function saudeDesenha(vazio) {
       '<div><span class="pa-hint">FC de repouso</span><br>' + saFmt(x.fc, ' bpm') + '<br>' + saVar(x.fcV, -1) + '</div>' +
       '<div><span class="pa-hint">Body battery máx.</span><br>' + saFmt(x.bb) + '<br>' + saVar(x.bbV, 1) + '</div>';
     c.appendChild(v);
-    if (x.hoje || x.amanha) c.appendChild(paEl('div', 'pa-hint', (x.hoje ? 'Hoje: ' + x.hoje : '') + (x.hoje && x.amanha ? ' · ' : '') + (x.amanha ? 'Amanhã: ' + x.amanha : '')));
+    c.appendChild(paEl('div', 'pa-hint', 'Treino de amanhã: ' + (x.amanha || 'sem treino planejado')));
     if (x.contato) { var cc = paEl('div', '', (x.contato.tipo === 'Enviada' ? 'Mensagem enviada' : x.contato.tipo) + ' em ' + x.contato.quando); cc.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(cc); }
     var ta = document.createElement('textarea'); ta.value = x.msg; ta.rows = 4; ta.setAttribute('aria-label', 'Mensagem para ' + x.nome);
     ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
