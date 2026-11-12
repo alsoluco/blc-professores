@@ -1543,7 +1543,7 @@ function saudeDesenha(vazio) {
       c.style.opacity = '.65';
       c.appendChild(paEl('div', 'pa-hint', 'HRV ' + saFmt(x.hrvV, '%') + ' · FC de repouso ' + saFmt(x.fcV, '%') + ' · body battery ' + saFmt(x.bbV, '%')));
       var ic = paEl('div', '', 'Alerta ignorado em ' + x.contato.quando + (x.contato.motivo ? ' · Motivo: ' + x.contato.motivo : '')); ic.style.cssText = 'font-weight:600;font-size:.78rem'; c.appendChild(ic);
-      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { saudeReab(idx); }; rwi.appendChild(bi); limBtnInat(rwi, idx); c.appendChild(rwi); box.appendChild(c); return;
+      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { saudeReab(idx); }; rwi.appendChild(bi); c.appendChild(rwi); box.appendChild(c); return;
     }
     var v = paEl('div', ''); v.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;font-size:.82rem';
     v.innerHTML = '<div><span class="pa-hint">HRV (7 dias)</span><br>' + saFmt(x.hrv) + ' <span class="pa-hint">base ' + saFmt(x.hrvB) + '</span><br>' + saVar(x.hrvV, 1) + '</div>' +
@@ -1551,6 +1551,8 @@ function saudeDesenha(vazio) {
       '<div><span class="pa-hint">Body battery máx.</span><br>' + saFmt(x.bb) + '<br>' + saVar(x.bbV, 1) + '</div>';
     c.appendChild(v);
     c.appendChild(paEl('div', 'pa-hint', 'Treino de amanhã: ' + (x.amanha || 'sem treino planejado')));
+    var cm = paEl('div', 'pa-hint', x.coment ? 'Comentários do atleta nos últimos 3 dias (leia antes de enviar): ' + x.coment : 'Comentários do atleta nos últimos 3 dias: nenhum.');
+    if (x.coment) cm.style.cssText = 'border-left:3px solid var(--cyan);padding-left:8px;white-space:pre-wrap;opacity:1'; c.appendChild(cm);
     if (x.contato) { var cc = paEl('div', '', (x.contato.tipo === 'Enviada' ? 'Mensagem enviada' : x.contato.tipo) + ' em ' + x.contato.quando); cc.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(cc); }
     var ta = document.createElement('textarea'); ta.value = x.msg; ta.rows = 4; ta.setAttribute('aria-label', 'Mensagem para ' + x.nome);
     ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
@@ -1628,7 +1630,7 @@ function limDesenha() {
     if (x.aviso) { c.appendChild(paEl('div', 'pa-hint', 'Só aviso. Este tipo de limiar não gera zonas nem e-mail para o atleta.')); }
     if (x.st && x.st.acao === 'Ignorado') {
       c.style.opacity = '.65'; var ic = paEl('div', '', 'Alerta ignorado em ' + x.st.quando + ' por ' + x.st.quem + (x.st.motivo ? ' · Motivo: ' + x.st.motivo : '')); ic.style.cssText = 'font-weight:600;font-size:.78rem'; c.appendChild(ic);
-      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { limAcao(idx, 'Reaberto'); }; rwi.appendChild(bi); c.appendChild(rwi); box.appendChild(c); return;
+      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { limAcao(idx, 'Reaberto'); }; rwi.appendChild(bi); limBtnInat(rwi, idx); c.appendChild(rwi); box.appendChild(c); return;
     }
     if (x.st && x.st.acao === 'Enviado') { var ec = paEl('div', '', 'E-mail enviado em ' + x.st.quando + ' por ' + x.st.quem); ec.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(ec); }
     if (!x.aviso) {
