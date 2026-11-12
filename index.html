@@ -1495,12 +1495,18 @@ function saudeDesenha(vazio) {
   var box = $('saBox');
   if (!SA.itens.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', vazio ? 'Ainda não há análise de saúde. Ela é gerada pela leitura diária das 8h40.' : 'Nenhum atleta com variação de HRV acima de 10% nesta análise.')); return; }
   var ord = { 'Queda 2 dias': 1, 'Queda': 0, 'Alta': 2 };
-  SA.itens.sort(function (a, b) { return (b.pri ? 1 : 0) - (a.pri ? 1 : 0) || (a.contato ? 1 : 0) - (b.contato ? 1 : 0) || (ord[a.tipo] || 0) - (ord[b.tipo] || 0) || Math.abs(b.hrvV || 0) - Math.abs(a.hrvV || 0); });
+  SA.itens.sort(function (a, b) { return (a.contato && a.contato.tipo === 'Ignorado' ? 1 : 0) - (b.contato && b.contato.tipo === 'Ignorado' ? 1 : 0) || (b.pri ? 1 : 0) - (a.pri ? 1 : 0) || (a.contato ? 1 : 0) - (b.contato ? 1 : 0) || (ord[a.tipo] || 0) - (ord[b.tipo] || 0) || Math.abs(b.hrvV || 0) - Math.abs(a.hrvV || 0); });
   SA.itens.forEach(function (x, idx) {
     var c = paEl('div', 'pa-al ' + (x.pri ? 'red' : (x.tipo === 'Alta' ? '' : 'yel')));
     if (x.contato) c.style.opacity = '.8';
     var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome));
     t.appendChild(paEl('span', 'tag ' + (x.pri ? '' : 'w'), (x.pri ? 'Prioridade · ' : '') + x.tipo)); c.appendChild(t);
+    if (x.contato && x.contato.tipo === 'Ignorado') {
+      c.style.opacity = '.65';
+      c.appendChild(paEl('div', 'pa-hint', 'HRV ' + saFmt(x.hrvV, '%') + ' · FC de repouso ' + saFmt(x.fcV, '%') + ' · body battery ' + saFmt(x.bbV, '%')));
+      var ic = paEl('div', '', 'Alerta ignorado em ' + x.contato.quando + (x.contato.motivo ? ' · Motivo: ' + x.contato.motivo : '')); ic.style.cssText = 'font-weight:600;font-size:.78rem'; c.appendChild(ic);
+      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { saudeReab(idx); }; rwi.appendChild(bi); c.appendChild(rwi); box.appendChild(c); return;
+    }
     var v = paEl('div', ''); v.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;font-size:.82rem';
     v.innerHTML = '<div><span class="pa-hint">HRV (7 dias)</span><br>' + saFmt(x.hrv) + ' <span class="pa-hint">base ' + saFmt(x.hrvB) + '</span><br>' + saVar(x.hrvV, 1) + '</div>' +
       '<div><span class="pa-hint">FC de repouso</span><br>' + saFmt(x.fc, ' bpm') + '<br>' + saVar(x.fcV, -1) + '</div>' +
@@ -1518,9 +1524,25 @@ function saudeDesenha(vazio) {
     x.foneN = fone;
     if (fone) bt(x.contato ? 'Enviar de novo no WhatsApp' : 'Enviar no WhatsApp', 'btn-green', function () { saudeZap(idx); });
     else { rw.appendChild(paEl('span', 'pa-hint', 'Sem telefone cadastrado')); bt('Copiar mensagem', '', function (b) { paCopia(x.msg, b); }); bt('Já enviei', '', function () { saudeReg(idx, 'Enviada'); }); }
+    bt('Ignorar alerta', '', function () { saudeIgn(idx); });
     if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
     c.appendChild(rw); box.appendChild(c);
   });
+}
+function saudeIgn(i) {
+  var x = SA.itens[i];
+  dlg('Ignorar o alerta de ' + x.nome + '? O alerta fica registrado e nenhuma mensagem é enviada ao atleta.', { ok: 'Ignorar', input: 'Motivo (opcional)' }).then(function (v) {
+    if (v === null || v === false) return;
+    call('saudeContato', { id: x.id, nome: x.nome, alerta: x.tipo, msg: String(v || ''), tipo: 'Ignorado' }).then(function () {
+      return call('saudeAlertas', {}, true).then(function (r) { SA.itens = r.itens || []; saudeDesenha(); });
+    }).catch(function (e) { aviso(e.message); });
+  });
+}
+function saudeReab(i) {
+  var x = SA.itens[i];
+  call('saudeContato', { id: x.id, nome: x.nome, alerta: x.tipo, msg: '', tipo: 'Reaberto' }).then(function () {
+    return call('saudeAlertas', {}, true).then(function (r) { SA.itens = r.itens || []; saudeDesenha(); });
+  }).catch(function (e) { aviso(e.message); });
 }
 function saudeReg(i, tipo) {
   var x = SA.itens[i];
