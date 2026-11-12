@@ -1543,7 +1543,7 @@ function saudeDesenha(vazio) {
       c.style.opacity = '.65';
       c.appendChild(paEl('div', 'pa-hint', 'HRV ' + saFmt(x.hrvV, '%') + ' · FC de repouso ' + saFmt(x.fcV, '%') + ' · body battery ' + saFmt(x.bbV, '%')));
       var ic = paEl('div', '', 'Alerta ignorado em ' + x.contato.quando + (x.contato.motivo ? ' · Motivo: ' + x.contato.motivo : '')); ic.style.cssText = 'font-weight:600;font-size:.78rem'; c.appendChild(ic);
-      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { saudeReab(idx); }; rwi.appendChild(bi); c.appendChild(rwi); box.appendChild(c); return;
+      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { saudeReab(idx); }; rwi.appendChild(bi); limBtnInat(rwi, idx); c.appendChild(rwi); box.appendChild(c); return;
     }
     var v = paEl('div', ''); v.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;font-size:.82rem';
     v.innerHTML = '<div><span class="pa-hint">HRV (7 dias)</span><br>' + saFmt(x.hrv) + ' <span class="pa-hint">base ' + saFmt(x.hrvB) + '</span><br>' + saVar(x.hrvV, 1) + '</div>' +
@@ -1600,7 +1600,7 @@ var LM = { itens: [] };
 function limTela() {
   S.aba2 = 'lim';
   app(head(userBar()) + '<div class="spin">Carregando novos limiares…</div>');
-  call('limiaresLista', {}).then(function (r) { LM.itens = r.itens || []; LM.acesso = r.acesso; limDesenha(); })
+  call('limiaresLista', {}).then(function (r) { LM.itens = r.itens || []; LM.inativos = r.inativos || []; LM.acesso = r.acesso; limDesenha(); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="limTela()">Tentar de novo</button>'); });
 }
 function limTab(linhas, cab) {
@@ -1612,12 +1612,15 @@ function limTab(linhas, cab) {
   });
   var w = paEl('div', ''); w.style.overflowX = 'auto'; w.appendChild(t); return w;
 }
+function limBtnInat(rw, idx) {
+  var b = paEl('button', 'btn btn-sm', 'Atleta inativo'); b.type = 'button'; b.title = 'Parar de mostrar os alertas deste atleta'; b.onclick = function () { limInat(idx); }; rw.appendChild(b);
+}
 function limDesenha() {
   app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + (LM.acesso === 'caio' ? 'Professor' : 'Head coach') + '</div><h2>Novos <em>limiares</em></h2></div>' +
     '<div class="pa-hint">Lidos do TrainingPeaks (sino → estrela) todo dia, de hoje até 2 dias atrás. O e-mail só sai quando você clicar em enviar, em nome da BLC. ' + (LM.acesso === 'caio' ? 'Você vê apenas os seus atletas.' : '') + '</div>' +
     '<div id="lmBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
   var box = $('lmBox');
-  if (!LM.itens.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhum limiar novo nos últimos dias.')); return; }
+  if (!LM.itens.length) box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhum limiar novo nos últimos dias.'));
   LM.itens.forEach(function (x, idx) {
     var c = paEl('div', 'pa-al ' + (x.st ? '' : 'yel'));
     var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome)); t.appendChild(paEl('span', 'tag w', x.rot)); if (x.pasta) t.appendChild(paEl('span', 'tag w', x.pasta)); c.appendChild(t);
@@ -1645,19 +1648,41 @@ function limDesenha() {
       if (x.email || x.fid) bt(x.st && x.st.acao === 'Enviado' ? 'Enviar de novo' : 'Enviar e-mail', 'btn-green', function () { limEnvia(idx); });
       else rw.appendChild(paEl('span', 'pa-hint', 'Sem e-mail cadastrado'));
       bt('Ignorar alerta', '', function () { limIgn(idx); });
+      bt('Atleta inativo', '', function () { limInat(idx); });
       if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
       c.appendChild(rw);
       c.appendChild(paEl('div', 'pa-hint', 'Depois de enviar, lembre-se de aplicar o limiar novo no TrainingPeaks. Ele não muda as zonas sozinho.'));
     } else {
-      var rw2 = paEl('div', 'row'); var b2 = paEl('button', 'btn btn-sm', 'Marcar como visto'); b2.type = 'button'; b2.onclick = function () { limAcao(idx, 'Ignorado', 'Visto'); }; rw2.appendChild(b2); c.appendChild(rw2);
+      var rw2 = paEl('div', 'row'); var b2 = paEl('button', 'btn btn-sm', 'Marcar como visto'); b2.type = 'button'; b2.onclick = function () { limAcao(idx, 'Ignorado', 'Visto'); }; rw2.appendChild(b2); limBtnInat(rw2, idx); c.appendChild(rw2);
     }
     box.appendChild(c);
   });
+  var ina = LM.inativos || [];
+  if (ina.length) {
+    var dI = document.createElement('details'); dI.className = 'pa-panel'; dI.appendChild(paEl('summary', 'pa-hint', 'Atletas inativos (' + ina.length + ') · alertas escondidos'));
+    ina.forEach(function (a) {
+      var ln = paEl('div', 'row'); ln.style.cssText = 'align-items:center;justify-content:space-between;gap:8px;margin-top:8px';
+      ln.appendChild(paEl('span', '', a.nome + (a.quando ? ' · desde ' + a.quando : '') + (a.quem ? ' por ' + a.quem : '') + (a.motivo ? ' · ' + a.motivo : '')));
+      var br = paEl('button', 'btn btn-sm', 'Reativar'); br.type = 'button'; br.onclick = function () { limAtiva(a.tp, a.nome); }; ln.appendChild(br); dI.appendChild(ln);
+    });
+    box.appendChild(dI);
+  }
+}
+function limRecarrega() { return call('limiaresLista', {}, true).then(function (d) { LM.itens = d.itens || []; LM.inativos = d.inativos || []; limDesenha(); }); }
+function limInat(i) {
+  var x = LM.itens[i];
+  dlg('Marcar ' + x.nome + ' como inativo? Os alertas de limiar dele deixam de aparecer aqui e no aviso diário, até você reativar.', { ok: 'Marcar como inativo', input: 'Motivo (opcional)' }).then(function (v) {
+    if (v === null || v === false) return;
+    call('limiaresInativo', { tp: x.tp, ativo: false, motivo: String(v || '') }).then(function () { aviso(x.nome + ' marcado como inativo.'); return limRecarrega(); }).catch(function (e) { aviso(e.message); });
+  });
+}
+function limAtiva(tp, nome) {
+  call('limiaresInativo', { tp: tp, ativo: true }).then(function () { aviso(nome + ' voltou a ficar ativo.'); return limRecarrega(); }).catch(function (e) { aviso(e.message); });
 }
 function limAcao(i, acao, motivo, texto) {
   var x = LM.itens[i];
   return call('limiaresAcao', { id: x.id, acao: acao, motivo: motivo || '', texto: texto || '' }).then(function (r) {
-    return call('limiaresLista', {}, true).then(function (d) { LM.itens = d.itens || []; limDesenha(); return r; });
+    return call('limiaresLista', {}, true).then(function (d) { LM.itens = d.itens || []; LM.inativos = d.inativos || []; limDesenha(); return r; });
   }).catch(function (e) { aviso(e.message); });
 }
 function limEnvia(i) {
