@@ -2252,8 +2252,13 @@ function cvSemInscritos(id, depois) {
   }).catch(function () { depois(); });
 }
 /* grupos do TrainingPeaks (vêm da conferência do Financeiro) para selecionar o grupo inteiro */
+function cvProfGrupo() {
+  var em = ['beto@equipeblc.com', 'caioluanfarias1903@gmail.com', 'edinhomarques3@gmail.com', 'beccaluppi@gmail.com', 'andretaxi016@gmail.com'];
+  var ids = S.cv.atletas.filter(function (a) { return a.prof || em.indexOf(String(a.email || '').toLowerCase().trim()) >= 0; }).map(function (a) { return a.id; });
+  return ids.length ? [{ g: 'Professores', ids: ids }] : [];
+}
 function cvGrupos(depois) {
-  S.cvG = [];
+  S.cvG = cvProfGrupo();
   var fim = function () { depois(); };
   call('financeiro').then(function (r) {
     var ds = (r && r.dados && r.dados.atletas) || [], mapa = {};
@@ -2269,7 +2274,7 @@ function cvGrupos(depois) {
       });
       if (achou) { a.grupo = achou.g; (mapa[achou.g] = mapa[achou.g] || []).push(a.id); }
     });
-    S.cvG = Object.keys(mapa).sort().map(function (g) { return { g: g, ids: mapa[g] }; });
+    S.cvG = cvProfGrupo().concat(Object.keys(mapa).sort().map(function (g) { return { g: g, ids: mapa[g] }; }));
     fim();
   }).catch(fim);
 }
