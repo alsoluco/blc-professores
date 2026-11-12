@@ -1244,6 +1244,40 @@ function paNomeBtn(n, num) {
   if (f) { s.type = 'button'; s.style.cssText = 'font:inherit;color:var(--fg);background:transparent;cursor:pointer;border:1px solid var(--line);padding:5px 10px;font-size:.78rem'; s.onclick = function () { abrir(f); }; }
   if (num !== undefined) s.appendChild(paEl('b', '', num)); return s;
 }
+function paPassou(pai, k, d, x) {
+  var aj = (PA.E.aj || []).filter(function (a) { return a.k === k && a.d === d; });
+  if (x && x.p.length) {
+    var q = paEl('div', 'pa-pass'); q.appendChild(paEl('b', '', 'Passou pelo local, não saiu com a gente'));
+    var l = paEl('div', ''); l.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:4px';
+    x.p.forEach(function (p) {
+      var b = paEl('button', '', PA.E.N[p[0]] + ' ' + p[1]); b.type = 'button';
+      b.style.cssText = 'font:inherit;font-size:.74rem;color:#ffb347;background:transparent;cursor:pointer;border:1px dashed #ffb347;padding:4px 9px;border-radius:6px';
+      b.title = 'Toque para marcar que treinou com a gente';
+      b.onclick = function () { paAjusta(k, d, p[0], 'saiu'); };
+      l.appendChild(b);
+    });
+    q.appendChild(l); q.appendChild(paEl('div', 'pa-hint', 'Toque no nome se a pessoa treinou com a gente (erro de dados ou chegou depois e se juntou ao grupo).')); pai.appendChild(q);
+  }
+  if (aj.length) {
+    var z = paEl('div', 'pa-hint'); z.style.marginTop = '6px'; z.appendChild(document.createTextNode('Marcados manualmente como presentes: '));
+    aj.forEach(function (a, n) {
+      var b = paEl('button', '', 'desfazer'); b.type = 'button'; b.style.cssText = 'font:inherit;font-size:.7rem;background:transparent;color:inherit;cursor:pointer;border:0;text-decoration:underline;padding:0 0 0 4px';
+      b.onclick = function () { paAjusta(k, d, a.i, 'desfazer'); };
+      z.appendChild(document.createTextNode((n ? ' · ' : '') + PA.E.N[a.i] + (a.m ? ' (' + a.m + ')' : ''))); z.appendChild(b);
+    });
+    pai.appendChild(z);
+  }
+}
+function paAjusta(k, d, n, acao) {
+  var nome = PA.E.N[n], fid = PA.E.F[n] || '';
+  var q = acao === 'saiu' ? 'Marcar que ' + nome + ' treinou com a gente em ' + paFd(d) + '? Ele passa a contar como presente. O registro fica guardado com o horário original.' : 'Desfazer a marcação e voltar ' + nome + ' para "passou pelo local" em ' + paFd(d) + '?';
+  dlg(q, acao === 'saiu' ? { ok: 'Treinou com a gente', input: 'Motivo (opcional): erro de dados, chegou depois…' } : { ok: 'Desfazer' }).then(function (v) {
+    if (v === null || v === false) return;
+    call('presAjuste', { data: d, treino: k, nome: nome, fid: fid, acao: acao, motivo: typeof v === 'string' ? v : '' }).then(function () {
+      return call('presAlunos', {}, true).then(function (r) { paInit(r); paDesenha(); if (PA.pick) PA.pick(); });
+    }).then(function () { aviso(acao === 'saiu' ? 'Presença registrada.' : 'Marcação desfeita.'); }).catch(function (e) { aviso(e.message); });
+  });
+}
 function paPickDay(r, d, i, key) {
   PA.sel = key; paBuild();
   var x = paCell(r.k, d) || { c: [], p: [] }, pn = $('paPn'); pn.innerHTML = '';
@@ -1252,9 +1286,11 @@ function paPickDay(r, d, i, key) {
   if (x.c.length) x.c.slice().sort(function (a, b) { return PA.E.N[a].localeCompare(PA.E.N[b], 'pt'); }).forEach(function (n) { var s = paNomeBtn(n); if (!PA.E.F[n]) s.style.cssText = ''; ns.appendChild(s); }); else ns.appendChild(paEl('span', 'pa-hint', 'Ninguém dentro da janela.'));
   pn.appendChild(ns);
   if (x.g) pn.appendChild(paEl('div', 'pa-pass', 'Uma turma de ' + x.g + ' chegou junta fora da janela.'));
-  if (x.p.length) { var q = paEl('div', 'pa-pass'); q.appendChild(paEl('b', '', 'Passou pelo local, não saiu com a gente')); q.appendChild(paEl('div', '', x.p.map(function (p) { return PA.E.N[p[0]] + ' ' + p[1]; }).join(' · '))); pn.appendChild(q); }
+  paPassou(pn, r.k, d, x);
+  PA.pick = function () { paPickDay(r, d, i, key); };
 }
 function paPickAgg(title, a, key) {
+  PA.pick = null;
   PA.sel = key; paBuild();
   var pn = $('paPn'); pn.innerHTML = '';
   var h = paEl('h3'); h.appendChild(document.createTextNode(title + ' · ')); h.appendChild(paEl('em', '', a.p + ' presenças · ' + a.u + ' atletas')); pn.appendChild(h);
@@ -1304,6 +1340,7 @@ function paAnoPainel(H) {
 }
 function paDiasLista() { var a = []; PA.WK.forEach(function (w) { w.forEach(function (d) { if (d >= PA.E.inicio && d <= PA.ult) a.push(d); }); }); return a; }
 function paBuildDia(tb) {
+  PA.pick = null;
   var L = paDiasLista(), d = PA.dia && L.indexOf(PA.dia) >= 0 ? PA.dia : PA.ult; PA.dia = d;
   var i = L.indexOf(d), dow = (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7;
   var nav = paEl('div', 'pa-mode');
@@ -1331,7 +1368,7 @@ function paBuildDia(tb) {
     if (x && x.c.length) x.c.slice().sort(function (a, b) { return PA.E.N[a].localeCompare(PA.E.N[b], 'pt'); }).forEach(function (n) { var sp = paNomeBtn(n); if (!PA.E.F[n]) sp.style.cssText = ''; ns.appendChild(sp); }); else ns.appendChild(paEl('span', 'pa-hint', 'Ninguém dentro da janela.'));
     c.appendChild(ns);
     if (x && x.g) c.appendChild(paEl('div', 'pa-pass', 'Uma turma de ' + x.g + ' chegou junta fora da janela.'));
-    if (x && x.p.length) { var q = paEl('div', 'pa-pass'); q.appendChild(paEl('b', '', 'Passou pelo local, não saiu com a gente')); q.appendChild(paEl('div', '', x.p.map(function (p) { return PA.E.N[p[0]] + ' ' + p[1]; }).join(' · '))); c.appendChild(q); }
+    paPassou(c, r.k, d, x);
     box.appendChild(c);
   });
   if (!algum) box.appendChild(paEl('div', 'pa-panel pa-hint', 'Sem treino presencial neste dia.'));
