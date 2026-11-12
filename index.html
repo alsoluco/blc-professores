@@ -1600,7 +1600,7 @@ function saudeZap(i) {
 /* ---------- Novos limiares (head coach e Caio) ---------- */
 var LM = { itens: [] };
 function limTela() {
-  S.aba2 = 'lim';
+  S.aba2 = 'lim'; LM.aba = 'pend';
   app(head(userBar()) + '<div class="spin">Carregando novos limiares…</div>');
   call('limiaresLista', {}).then(function (r) { LM.itens = r.itens || []; LM.inativos = r.inativos || []; LM.acesso = r.acesso; limDesenha(); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="limTela()">Tentar de novo</button>'); });
@@ -1617,58 +1617,78 @@ function limTab(linhas, cab) {
 function limBtnInat(rw, idx) {
   var b = paEl('button', 'btn btn-sm', 'Atleta inativo'); b.type = 'button'; b.title = 'Parar de mostrar os alertas deste atleta'; b.onclick = function () { limInat(idx); }; rw.appendChild(b);
 }
-function limDesenha() {
-  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + (LM.acesso === 'caio' ? 'Professor' : 'Head coach') + '</div><h2>Novos <em>limiares</em></h2></div>' +
-    '<div class="pa-hint">Lidos do TrainingPeaks (sino → estrela) todo dia, de hoje até 2 dias atrás. O e-mail só sai quando você clicar em enviar, em nome da BLC. ' + (LM.acesso === 'caio' ? 'Você vê apenas os seus atletas.' : '') + '</div>' +
-    '<div id="lmBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
-  var box = $('lmBox');
-  if (!LM.itens.length) box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhum limiar novo nos últimos dias.'));
-  LM.itens.forEach(function (x, idx) {
-    var c = paEl('div', 'pa-al ' + (x.st ? '' : 'yel'));
-    var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome)); t.appendChild(paEl('span', 'tag w', x.rot)); if (x.pasta) t.appendChild(paEl('span', 'tag w', x.pasta)); c.appendChild(t);
-    c.appendChild(paEl('div', '', 'Limiar novo: ' + x.novoT + ' (antes ' + x.antigoT + ') · ' + x.data));
-    if (x.aviso) { c.appendChild(paEl('div', 'pa-hint', 'Só aviso. Este tipo de limiar não gera zonas nem e-mail para o atleta.')); }
-    if (x.st && x.st.acao === 'Ignorado') {
-      c.style.opacity = '.65'; var ic = paEl('div', '', 'Alerta ignorado em ' + x.st.quando + ' por ' + x.st.quem + (x.st.motivo ? ' · Motivo: ' + x.st.motivo : '')); ic.style.cssText = 'font-weight:600;font-size:.78rem'; c.appendChild(ic);
-      var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Reabrir alerta'); bi.type = 'button'; bi.onclick = function () { limAcao(idx, 'Reaberto'); }; rwi.appendChild(bi); limBtnInat(rwi, idx); c.appendChild(rwi); box.appendChild(c); return;
-    }
-    if (x.st && x.st.acao === 'Enviado') { var ec = paEl('div', '', 'E-mail enviado em ' + x.st.quando + ' por ' + x.st.quem); ec.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(ec); }
-    if (!x.aviso) {
-      c.appendChild(paEl('div', 'pa-hint', 'Novas zonas · ' + x.nova.titulo)); c.appendChild(limTab(x.nova.linhas, true));
-      if (x.mantem && x.mantem.length) {
-        var d = document.createElement('details'); d.appendChild(paEl('summary', 'pa-hint', 'Zonas que continuam iguais (' + x.mantem.length + ')'));
-        x.mantem.forEach(function (m) { d.appendChild(paEl('div', 'pa-hint', m.t)); d.appendChild(limTab(m.linhas, false)); });
-        c.appendChild(d);
-      }
-      var ta = document.createElement('textarea'); ta.value = x.texto; ta.rows = 7; ta.setAttribute('aria-label', 'Texto do e-mail para ' + x.nome);
-      ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
-      ta.oninput = function () { LM.itens[idx].texto = ta.value; };
-      c.appendChild(ta);
-      c.appendChild(paEl('div', 'pa-hint', 'Edite o texto com as suas palavras. As tabelas de zonas entram no e-mail automaticamente. Assunto: ' + x.assunto + '. Destino: ' + (x.email || 'sem e-mail cadastrado') + '.'));
-      var rw = paEl('div', 'row');
-      function bt(txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = fn; rw.appendChild(b); }
-      if (x.email || x.fid) bt(x.st && x.st.acao === 'Enviado' ? 'Enviar de novo' : 'Enviar e-mail', 'btn-green', function () { limEnvia(idx); });
-      else rw.appendChild(paEl('span', 'pa-hint', 'Sem e-mail cadastrado'));
-      bt('Ignorar alerta', '', function () { limIgn(idx); });
-      bt('Atleta inativo', '', function () { limInat(idx); });
-      if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
-      c.appendChild(rw);
-      c.appendChild(paEl('div', 'pa-hint', 'Depois de enviar, lembre-se de aplicar o limiar novo no TrainingPeaks. Ele não muda as zonas sozinho.'));
-    } else {
-      var rw2 = paEl('div', 'row'); var b2 = paEl('button', 'btn btn-sm', 'Marcar como visto'); b2.type = 'button'; b2.onclick = function () { limAcao(idx, 'Ignorado', 'Visto'); }; rw2.appendChild(b2); limBtnInat(rw2, idx); c.appendChild(rw2);
-    }
-    box.appendChild(c);
-  });
-  var ina = LM.inativos || [];
-  if (ina.length) {
-    var dI = document.createElement('details'); dI.className = 'pa-panel'; dI.appendChild(paEl('summary', 'pa-hint', 'Atletas inativos (' + ina.length + ') · alertas escondidos'));
-    ina.forEach(function (a) {
-      var ln = paEl('div', 'row'); ln.style.cssText = 'align-items:center;justify-content:space-between;gap:8px;margin-top:8px';
-      ln.appendChild(paEl('span', '', a.nome + (a.quando ? ' · desde ' + a.quando : '') + (a.quem ? ' por ' + a.quem : '') + (a.motivo ? ' · ' + a.motivo : '')));
-      var br = paEl('button', 'btn btn-sm', 'Reativar'); br.type = 'button'; br.onclick = function () { limAtiva(a.tp, a.nome); }; ln.appendChild(br); dI.appendChild(ln);
-    });
-    box.appendChild(dI);
+function limEstado(x) { return !x.st ? 'pend' : (x.st.acao === 'Enviado' ? 'env' : 'ign'); }
+function limCard(x, idx, box, aba) {
+  var c = paEl('div', 'pa-al ' + (aba === 'pend' ? 'yel' : ''));
+  var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome)); t.appendChild(paEl('span', 'tag w', x.rot)); if (x.pasta) t.appendChild(paEl('span', 'tag w', x.pasta)); c.appendChild(t);
+  c.appendChild(paEl('div', '', 'Limiar novo: ' + x.novoT + ' (antes ' + x.antigoT + ') · ' + x.data));
+  if (x.aviso) c.appendChild(paEl('div', 'pa-hint', 'Só aviso. Este tipo de limiar não gera zonas nem e-mail para o atleta.'));
+  if (aba === 'ign') {
+    c.style.opacity = '.75'; var ic = paEl('div', '', 'Ignorado em ' + x.st.quando + ' por ' + x.st.quem + (x.st.motivo ? ' · Motivo: ' + x.st.motivo : '')); ic.style.cssText = 'font-weight:600;font-size:.78rem'; c.appendChild(ic);
+    var rwi = paEl('div', 'row'); var bi = paEl('button', 'btn btn-sm', 'Voltar para pendentes'); bi.type = 'button'; bi.onclick = function () { limAcao(idx, 'Reaberto'); }; rwi.appendChild(bi); limBtnInat(rwi, idx); c.appendChild(rwi); box.appendChild(c); return;
   }
+  if (aba === 'env') {
+    var ec = paEl('div', '', 'E-mail enviado em ' + x.st.quando + ' por ' + x.st.quem + (x.email ? ' · para ' + x.email : '')); ec.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(ec);
+    if (x.st.texto) { var dt = document.createElement('details'); dt.appendChild(paEl('summary', 'pa-hint', 'Ver o texto enviado')); var pt = paEl('div', 'pa-hint', x.st.texto); pt.style.whiteSpace = 'pre-wrap'; dt.appendChild(pt); c.appendChild(dt); }
+    if (x.nova) { var dz = document.createElement('details'); dz.appendChild(paEl('summary', 'pa-hint', 'Zonas enviadas · ' + x.nova.titulo)); dz.appendChild(limTab(x.nova.linhas, true)); c.appendChild(dz); }
+    c.appendChild(paEl('div', 'pa-hint', 'Lembre-se de aplicar o limiar novo no TrainingPeaks, se ainda não aplicou.'));
+    var rwe = paEl('div', 'row'); var be = paEl('button', 'btn btn-sm', 'Voltar para pendentes'); be.type = 'button'; be.onclick = function () { limAcao(idx, 'Reaberto'); }; rwe.appendChild(be); limBtnInat(rwe, idx); if (x.fid) { var bf = paEl('button', 'btn btn-sm', 'Abrir ficha'); bf.type = 'button'; bf.onclick = function () { abrir(x.fid); }; rwe.appendChild(bf); } c.appendChild(rwe); box.appendChild(c); return;
+  }
+  if (!x.aviso) {
+    c.appendChild(paEl('div', 'pa-hint', 'Novas zonas · ' + x.nova.titulo)); c.appendChild(limTab(x.nova.linhas, true));
+    if (x.mantem && x.mantem.length) {
+      var d = document.createElement('details'); d.appendChild(paEl('summary', 'pa-hint', 'Zonas que continuam iguais (' + x.mantem.length + ')'));
+      x.mantem.forEach(function (m) { d.appendChild(paEl('div', 'pa-hint', m.t)); d.appendChild(limTab(m.linhas, false)); });
+      c.appendChild(d);
+    }
+    var ta = document.createElement('textarea'); ta.value = x.texto; ta.rows = 7; ta.setAttribute('aria-label', 'Texto do e-mail para ' + x.nome);
+    ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
+    ta.oninput = function () { LM.itens[idx].texto = ta.value; };
+    c.appendChild(ta);
+    c.appendChild(paEl('div', 'pa-hint', 'Edite o texto com as suas palavras. As tabelas de zonas entram no e-mail automaticamente. Assunto: ' + x.assunto + '. Destino: ' + (x.email || 'sem e-mail cadastrado') + '.'));
+    var rw = paEl('div', 'row');
+    var bt = function (txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = fn; rw.appendChild(b); };
+    if (x.email || x.fid) bt('Enviar e-mail', 'btn-green', function () { limEnvia(idx); });
+    else rw.appendChild(paEl('span', 'pa-hint', 'Sem e-mail cadastrado'));
+    bt('Ignorar alerta', '', function () { limIgn(idx); });
+    bt('Atleta inativo', '', function () { limInat(idx); });
+    if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
+    c.appendChild(rw);
+    c.appendChild(paEl('div', 'pa-hint', 'Depois de enviar, lembre-se de aplicar o limiar novo no TrainingPeaks. Ele não muda as zonas sozinho.'));
+  } else {
+    var rw2 = paEl('div', 'row'); var b2 = paEl('button', 'btn btn-sm', 'Marcar como visto'); b2.type = 'button'; b2.onclick = function () { limAcao(idx, 'Ignorado', 'Visto'); }; rw2.appendChild(b2); limBtnInat(rw2, idx); c.appendChild(rw2);
+  }
+  box.appendChild(c);
+}
+function limDesenha() {
+  if (!LM.aba) LM.aba = 'pend';
+  var cont = { pend: 0, env: 0, ign: 0, ina: (LM.inativos || []).length };
+  LM.itens.forEach(function (x) { cont[limEstado(x)]++; });
+  var abas = [['pend', 'Pendentes'], ['env', 'E-mails enviados'], ['ign', 'Ignorados'], ['ina', 'Inativos']];
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + (LM.acesso === 'caio' ? 'Professor' : 'Head coach') + '</div><h2>Novos <em>limiares</em></h2></div>' +
+    '<div class="pa-hint">Lidos do TrainingPeaks (sino → estrela) todo dia, de hoje até 2 dias atrás. Os últimos 10 dias ficam nas abas. O e-mail só sai quando você clicar em enviar, em nome da BLC. ' + (LM.acesso === 'caio' ? 'Você vê apenas os seus atletas.' : '') + '</div>' +
+    '<div id="lmAbas" class="row" style="gap:6px;flex-wrap:wrap"></div>' +
+    '<div id="lmBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
+  var ab = $('lmAbas');
+  abas.forEach(function (a) {
+    var b = paEl('button', 'btn btn-sm' + (LM.aba === a[0] ? ' btn-green' : ''), a[1] + ' (' + cont[a[0]] + ')'); b.type = 'button';
+    b.onclick = function () { LM.aba = a[0]; limDesenha(); }; ab.appendChild(b);
+  });
+  var box = $('lmBox');
+  if (LM.aba === 'ina') {
+    var ina = LM.inativos || [];
+    if (!ina.length) box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhum atleta inativo. Atletas inativos não geram alertas aqui nem no aviso diário.'));
+    ina.forEach(function (a) {
+      var c = paEl('div', 'pa-al'); var ln = paEl('div', 'row'); ln.style.cssText = 'align-items:center;justify-content:space-between;gap:8px';
+      var tx = paEl('div', '', ''); tx.appendChild(paEl('b', '', a.nome)); tx.appendChild(paEl('div', 'pa-hint', (a.quando ? 'Inativo desde ' + a.quando : '') + (a.quem ? ' por ' + a.quem : '') + (a.motivo ? ' · ' + a.motivo : ''))); ln.appendChild(tx);
+      var br = paEl('button', 'btn btn-sm', 'Reativar'); br.type = 'button'; br.onclick = function () { limAtiva(a.tp, a.nome); }; ln.appendChild(br); c.appendChild(ln); box.appendChild(c);
+    });
+    return;
+  }
+  var vazio = { pend: 'Nenhum limiar pendente. Tudo que apareceu já foi enviado ou ignorado.', env: 'Nenhum e-mail de limiar enviado nos últimos 10 dias.', ign: 'Nenhum alerta ignorado nos últimos 10 dias.' };
+  var n = 0;
+  LM.itens.forEach(function (x, idx) { if (limEstado(x) === LM.aba) { n++; limCard(x, idx, box, LM.aba); } });
+  if (!n) box.appendChild(paEl('div', 'pa-panel pa-hint', vazio[LM.aba]));
 }
 function limRecarrega() { return call('limiaresLista', {}, true).then(function (d) { LM.itens = d.itens || []; LM.inativos = d.inativos || []; limDesenha(); }); }
 function limInat(i) {
