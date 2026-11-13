@@ -2188,6 +2188,7 @@ function ptCarrega() {
   call('inicio', { todos: true }).then(function (r) { S.ptAtl = r.atletas || []; if (S.insc && S.insc.participantes && $('ptq')) ptBusca(); }).catch(function () {});
 }
 function desenhaPart() {
+  S.ptSel = {};
   var r = S.insc, p = r.prova, n = r.participantes.length;
   var html = head(userBar()) + '<button class="back" onclick="listaProvas()">\u2190 Provas da BLC</button>' +
     '<div><div class="eyebrow">Participantes</div><h2>' + esc(p.nome) + ' <em>' + esc(p.data) + '</em></h2></div>' +
@@ -2196,7 +2197,7 @@ function desenhaPart() {
     (p.inscricao ? '<div class="small muted">Inscrição: ' + esc(p.inscricao) + '</div>' : '') +
     (p.linkProva ? '<div><a class="lnk" href="' + esc(p.linkProva) + '" target="_blank" rel="noopener">Abrir página da prova</a></div>' : '') +
     (r.admin ? '<button type="button" class="btn btn-sm" onclick="convidar(\'' + esc(p.id) + '\')">Convidar quem ainda não vai participar</button> <button type="button" class="btn btn-sm" onclick="provaConfigForm(\'' + esc(p.id) + '\')">Ligar formulário de inscrição</button> <button type="button" class="btn btn-sm" onclick="provaOculta(\'' + esc(p.id) + '\')">Tirar da lista</button>' : '') + '</div>' +
-    (r.admin ? '<div class="card"><div class="eyebrow cy">Adicionar participante</div><div class="small muted">Busque o atleta pelo nome e toque para incluir na lista desta prova.</div>' +
+    (r.admin ? '<div class="card"><div class="eyebrow cy">Adicionar participante</div><div class="small muted">Busque pelo nome, marque um ou vários atletas e toque em Incluir selecionados.</div>' +
       '<input id="ptq" type="search" placeholder="Digite o nome do atleta" autocomplete="off" oninput="ptBusca()"><div class="list" id="ptres"></div></div>' : '') +
     '<div class="list">' + (r.participantes.map(function (x) {
       return '<div class="card insrow"><div class="top"><b>' + esc(x.nome) + '</b>' + (r.admin ? '<button type="button" class="btn btn-sm" onclick="ptRem(\'' + esc(x.id) + '\')">Remover</button>' : '') + '</div>' +
@@ -2208,18 +2209,32 @@ function desenhaPart() {
 }
 function ptBusca() {
   var o = $('ptres'); if (!o) return;
+  S.ptSel = S.ptSel || {};
   var q = cvNorm($('ptq') ? $('ptq').value : '').trim();
-  if (!q) { o.innerHTML = '<div class="muted small">' + (S.ptAtl ? 'Digite o nome para buscar.' : 'Carregando atletas…') + '</div>'; return; }
   var ja = {}; S.insc.participantes.forEach(function (x) { ja[x.id] = 1; });
-  var res = (S.ptAtl || []).filter(function (a) { return !ja[a.id] && cvNorm(a.nome).indexOf(q) >= 0; });
+  var ids = Object.keys(S.ptSel), h = '';
+  if (ids.length) {
+    h += '<div class="card"><div class="eyebrow">Selecionados (' + ids.length + ')</div>' + ids.map(function (id) {
+      return '<div class="chk cvr" onclick="ptTog(\'' + esc(id) + '\')"><span><b>\u2713 ' + esc(S.ptSel[id]) + '</b><span class="small">toque para tirar</span></span></div>';
+    }).join('') + '<button type="button" class="btn" id="ptinc" onclick="ptIncluir()">Incluir selecionados (' + ids.length + ')</button></div>';
+  }
+  if (!q) { o.innerHTML = h + '<div class="muted small">' + (S.ptAtl ? 'Digite o nome para buscar e marque quantos quiser.' : 'Carregando atletas…') + '</div>'; return; }
+  var res = (S.ptAtl || []).filter(function (a) { return !ja[a.id] && !S.ptSel[a.id] && cvNorm(a.nome).indexOf(q) >= 0; });
   var tot = res.length; res = res.slice(0, 20);
-  o.innerHTML = res.map(function (a) {
-    return '<div class="chk cvr" onclick="ptAdd(\'' + esc(a.id) + '\')"><span><b>+ ' + esc(a.nome) + '</b>' + (a.status === 'Inativo' ? '<span class="small">atleta inativo</span>' : '') + '</span></div>';
-  }).join('') + (tot > 20 ? '<div class="muted small">Mostrando 20 de ' + tot + '. Digite mais letras.</div>' : '') || '<div class="muted small">Nenhum atleta encontrado (ou já está na lista).</div>';
+  o.innerHTML = h + (res.map(function (a) {
+    return '<div class="chk cvr" onclick="ptTog(\'' + esc(a.id) + '\')"><span><b>+ ' + esc(a.nome) + '</b>' + (a.status === 'Inativo' ? '<span class="small">atleta inativo</span>' : '') + '</span></div>';
+  }).join('') + (tot > 20 ? '<div class="muted small">Mostrando 20 de ' + tot + '. Digite mais letras.</div>' : '') || '<div class="muted small">Nenhum atleta encontrado (ou já está na lista).</div>');
 }
-function ptAdd(id) {
-  var pid = S.insc.prova.id;
-  call('partAdd', { id: pid, ids: [id] }).then(function () { inscritos(pid); }).catch(function (e) { aviso(e.message); });
+function ptTog(id) {
+  S.ptSel = S.ptSel || {};
+  if (S.ptSel[id]) delete S.ptSel[id];
+  else { var a = (S.ptAtl || []).filter(function (x) { return x.id === id; })[0]; if (a) S.ptSel[id] = a.nome; }
+  ptBusca();
+}
+function ptIncluir() {
+  var ids = Object.keys(S.ptSel || {}); if (!ids.length) return;
+  var pid = S.insc.prova.id, b = $('ptinc'); if (b) b.disabled = true;
+  call('partAdd', { id: pid, ids: ids }).then(function () { S.ptSel = {}; inscritos(pid); }).catch(function (e) { if (b) b.disabled = false; aviso(e.message); });
 }
 function ptRem(id) {
   var a = S.insc.participantes.filter(function (x) { return x.id === id; })[0], pid = S.insc.prova.id;
