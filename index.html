@@ -278,7 +278,7 @@ function menuAtualiza() {
     provas +
     it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
     it('\ud83e\udde0 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
-    (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Novos limiares', 'limTela()', S.aba2 === 'lim') : '') +
+    (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Novos limiares', 'limTela()', S.aba2 === 'lim') + it('Limiares dos atletas', 'lzTela()', S.aba2 === 'lz') : '') +
     (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Sa\u00fade dos atletas', 'saudeTela()', S.aba2 === 'sau') : '') +
     '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
     '</nav>';
@@ -1645,7 +1645,7 @@ function limCard(x, idx, box, aba) {
     ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
     ta.oninput = function () { LM.itens[idx].texto = ta.value; };
     c.appendChild(ta);
-    c.appendChild(paEl('div', 'pa-hint', 'Edite o texto com as suas palavras. As tabelas de zonas entram no e-mail automaticamente. Assunto: ' + x.assunto + '. Destino: ' + (x.email || 'sem e-mail cadastrado') + '.'));
+    c.appendChild(paEl('div', 'pa-hint', 'Edite o texto com as suas palavras. As tabelas de zonas e o card de stories (anexo) entram no e-mail automaticamente. Assunto: ' + x.assunto + '. Destino: ' + (x.email || 'sem e-mail cadastrado') + '.'));
     var rw = paEl('div', 'row');
     var bt = function (txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = fn; rw.appendChild(b); };
     if (x.email || x.fid) bt('Enviar e-mail', 'btn-green', function () { limEnvia(idx); });
@@ -1701,9 +1701,9 @@ function limInat(i) {
 function limAtiva(tp, nome) {
   call('limiaresInativo', { tp: tp, ativo: true }).then(function () { aviso(nome + ' voltou a ficar ativo.'); return limRecarrega(); }).catch(function (e) { aviso(e.message); });
 }
-function limAcao(i, acao, motivo, texto) {
+function limAcao(i, acao, motivo, texto, img) {
   var x = LM.itens[i];
-  return call('limiaresAcao', { id: x.id, acao: acao, motivo: motivo || '', texto: texto || '' }).then(function (r) {
+  return call('limiaresAcao', { id: x.id, acao: acao, motivo: motivo || '', texto: texto || '', img: img || '' }).then(function (r) {
     return call('limiaresLista', {}, true).then(function (d) { LM.itens = d.itens || []; LM.inativos = d.inativos || []; limDesenha(); return r; });
   }).catch(function (e) { aviso(e.message); });
 }
@@ -1712,7 +1712,11 @@ function limEnvia(i) {
   if (!String(x.texto || '').trim()) { aviso('Escreva o texto do e-mail antes de enviar.'); return; }
   dlg('Enviar o e-mail para ' + x.nome + (x.email ? ' (' + x.email + ')' : '') + ', em nome da BLC?', { ok: 'Enviar e-mail' }).then(function (v) {
     if (!v) return;
-    limAcao(i, 'Enviado', '', x.texto).then(function (r) { if (r && r.ok) aviso('E-mail enviado. Registro salvo' + (x.fid ? ' na ficha do atleta.' : '.')); });
+    carrega('Montando o card e enviando…');
+    var pn = String(x.nome).split(' ')[0]; pn = pn.charAt(0).toUpperCase() + pn.slice(1).toLowerCase();
+    var card = { etiqueta: 'Novo limiar', grupo: x.mod === 'Bike' ? 'Bike' : 'Corrida', titulo: x.nova.titulo, lim: x.nova.limiar, linhas: x.nova.linhas.map(function (l) { return [l[0], l[1]]; }) };
+    lzCard(card, pn).catch(function () { return ''; }).then(function (img) { return limAcao(i, 'Enviado', '', x.texto, img); })
+      .then(function (r) { carregaFim(); if (r && r.ok) aviso('E-mail enviado com o card de stories. Registro salvo' + (x.fid ? ' na ficha do atleta.' : '.')); }, function (e) { carregaFim(); aviso(e.message); });
   });
 }
 function limIgn(i) {
@@ -1720,6 +1724,148 @@ function limIgn(i) {
   dlg('Ignorar o alerta de ' + x.nome + '? Ele fica registrado e nenhum e-mail é enviado ao atleta.', { ok: 'Ignorar', input: 'Motivo (opcional)' }).then(function (v) {
     if (v === null || v === false) return;
     limAcao(i, 'Ignorado', String(v || ''));
+  });
+}
+
+/* ---------- Limiares dos atletas (head coach e Caio) ---------- */
+var LZ = { lista: [], q: '', det: null, sel: {}, imgs: {} };
+function lzNorm(s) { return String(s || '').toLowerCase().normalize ? String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : String(s || '').toLowerCase(); }
+function lzFonte() {
+  if (!document.fonts || !document.fonts.load) return Promise.resolve();
+  return Promise.all([document.fonts.load('200 40px Montserrat'), document.fonts.load('300 40px Montserrat'), document.fonts.load('400 40px Montserrat'), document.fonts.load('600 40px Montserrat')]).catch(function () {});
+}
+function lzTexto(ctx, txt, x, y, esp, alinha) {
+  var larg = 0, i;
+  for (i = 0; i < txt.length; i++) larg += ctx.measureText(txt.charAt(i)).width + esp;
+  larg -= esp;
+  var px = alinha === 'right' ? x - larg : x;
+  ctx.textAlign = 'left';
+  for (i = 0; i < txt.length; i++) { ctx.fillText(txt.charAt(i), px, y); px += ctx.measureText(txt.charAt(i)).width + esp; }
+}
+// Card de stories 1080x1920 na identidade da BLC. t = { grupo, titulo, lim, linhas:[[zona, faixa]], etiqueta }
+function lzCard(t, nome) {
+  return lzFonte().then(function () {
+    var c = document.createElement('canvas'); c.width = 1080; c.height = 1920;
+    var g = c.getContext('2d'), F = 'Montserrat,"Segoe UI",Arial,sans-serif', M = 90;
+    g.fillStyle = '#000'; g.fillRect(0, 0, 1080, 1920);
+    g.fillStyle = '#fff'; g.fillRect(M, 130, 64, 10);
+    g.fillStyle = '#00ffff'; g.fillRect(M, 146, 64, 10);
+    g.fillStyle = '#00ff00'; g.fillRect(M, 162, 64, 10);
+    g.fillStyle = '#fff'; g.font = '200 68px ' + F; g.textBaseline = 'alphabetic'; lzTexto(g, 'BLC', M + 92, 172, 14, 'left');
+    g.fillStyle = '#00ffff'; g.font = '600 30px ' + F; lzTexto(g, (t.etiqueta ? t.etiqueta + ' · ' : '') + String(t.grupo || '').toUpperCase(), M, 330, 7, 'left');
+    g.fillStyle = '#fff'; g.font = '300 78px ' + F; g.textAlign = 'left'; g.fillText(t.titulo, M, 430);
+    if (nome) { g.fillStyle = 'rgba(255,255,255,.58)'; g.font = '400 34px ' + F; g.fillText(nome, M, 492); }
+    var m = String(t.lim || '').match(/^(\S+)\s*(.*)$/), num = m ? m[1] : '', un = m ? m[2] : '';
+    g.fillStyle = 'rgba(255,255,255,.58)'; g.font = '600 26px ' + F; lzTexto(g, 'LIMIAR', M, 610, 6, 'left');
+    g.fillStyle = '#00ff00'; g.font = '200 190px ' + F; g.fillText(num, M, 790);
+    var w = g.measureText(num).width;
+    g.fillStyle = '#fff'; g.font = '300 52px ' + F; g.fillText(un, M + w + 24, 790);
+    var y0 = 880, rh = 112, n = t.linhas.length;
+    if (n > 7) rh = Math.floor(784 / n);
+    var cor = function (i) { var z = String(t.linhas[i][0]); var k = parseInt(z.replace(/\D/g, ''), 10) || (i + 1); return k <= 2 ? '#5a5a5a' : k === 3 ? '#ffffff' : k === 4 ? '#00ffff' : '#00ff00'; };
+    for (var i = 0; i < n; i++) {
+      var y = y0 + i * rh;
+      g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(M, y, 1080 - 2 * M, 2);
+      g.fillStyle = cor(i); g.fillRect(M, y + 24, 10, rh - 48);
+      g.fillStyle = '#fff'; g.font = '600 46px ' + F; g.fillText(t.linhas[i][0], M + 40, y + rh / 2 + 16);
+      g.fillStyle = 'rgba(255,255,255,.88)'; g.font = '300 40px ' + F; g.fillText(t.linhas[i][1], 330, y + rh / 2 + 14);
+    }
+    g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(M, y0 + n * rh, 1080 - 2 * M, 2);
+    g.fillStyle = '#fff'; g.font = '400 30px ' + F; lzTexto(g, '@equipeblc', M, 1830, 5, 'left');
+    g.fillStyle = 'rgba(255,255,255,.58)'; g.font = '400 26px ' + F; lzTexto(g, 'BLC · RIO DE JANEIRO', 1080 - M, 1830, 5, 'right');
+    return c.toDataURL('image/png');
+  });
+}
+function lzTela() {
+  S.aba2 = 'lz'; LZ.det = null;
+  app(head(userBar()) + '<div class="spin">Carregando atletas…</div>');
+  call('limAtletas', {}).then(function (r) { LZ.lista = r.atletas || []; LZ.acesso = r.acesso; lzDesenha(); })
+    .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="lzTela()">Tentar de novo</button>'); });
+}
+function lzDesenha() {
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + (LZ.acesso === 'caio' ? 'Professor' : 'Head coach') + '</div><h2>Limiares dos <em>atletas</em></h2></div>' +
+    '<div class="pa-hint">Busque um atleta para ver o limiar e as zonas que estão salvos e enviar tudo por e-mail, com os cards da BLC para os stories. Os valores vêm do TrainingPeaks.</div>' +
+    '<input id="lzQ" type="search" placeholder="Buscar atleta pelo nome" autocomplete="off" style="width:100%;box-sizing:border-box;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:inherit">' +
+    '<div id="lzBox" style="display:flex;flex-direction:column;gap:8px"></div></div>');
+  var q = $('lzQ'); q.value = LZ.q || '';
+  q.oninput = function () { LZ.q = q.value; lzLista(); };
+  lzLista();
+}
+function lzLista() {
+  var box = $('lzBox'); if (!box) return; box.innerHTML = '';
+  var qs = lzNorm(LZ.q).split(/\s+/).filter(Boolean), n = 0;
+  LZ.lista.forEach(function (a) {
+    var nm = lzNorm(a.nome); if (!qs.every(function (w) { return nm.indexOf(w) >= 0; })) return;
+    n++;
+    var b = paEl('button', 'btn'); b.type = 'button'; b.style.cssText = 'text-align:left;display:flex;justify-content:space-between;gap:8px;align-items:center';
+    b.appendChild(paEl('span', '', a.nome)); var tg = paEl('span', 'tag w', a.grupo || ''); b.appendChild(tg);
+    b.onclick = function () { lzAbre(a.tp); }; box.appendChild(b);
+  });
+  if (!n) box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhum atleta encontrado.'));
+}
+function lzAbre(tp) {
+  call('limAtletaDet', { tp: tp }).then(function (r) {
+    LZ.det = r; LZ.sel = {}; LZ.imgs = {};
+    r.tabelas.forEach(function (t) { LZ.sel[t.k] = true; });
+    var pn = String(r.atleta.nome).split(' ')[0]; pn = pn.charAt(0).toUpperCase() + pn.slice(1).toLowerCase();
+    LZ.texto = 'Oi, ' + pn + '! Segue o resumo dos seus limiares e das suas zonas de treino atuais na BLC.\n\nGuarde este e-mail e confira se as zonas no Garmin Connect, no Strava e nos outros aplicativos que você usa estão iguais às daqui. Se cada app tiver uma configuração diferente, cada lugar vai te mostrar um dado diferente.\n\nOs cards em anexo estão no formato de stories. Se quiser compartilhar, é só salvar e postar.';
+    LZ.comCards = true;
+    lzDet();
+  }).catch(function (e) { aviso(e.message); });
+}
+function lzDet() {
+  var d = LZ.det, a = d.atleta;
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + esc(a.grupo || 'Atleta') + '</div><h2>' + esc(a.nome) + '</h2></div><div id="lzDet" style="display:flex;flex-direction:column;gap:12px"></div></div>');
+  var box = $('lzDet');
+  var topo = paEl('div', 'row'); var bv = paEl('button', 'btn btn-sm', '← Voltar à busca'); bv.type = 'button'; bv.onclick = function () { lzDesenha(); }; topo.appendChild(bv);
+  if (a.fid) { var bf = paEl('button', 'btn btn-sm', 'Abrir ficha'); bf.type = 'button'; bf.onclick = function () { abrir(a.fid); }; topo.appendChild(bf); }
+  box.appendChild(topo);
+  box.appendChild(paEl('div', 'pa-hint', 'Valores salvos do TrainingPeaks em ' + (a.atual || '–') + '. ' + (a.email ? 'E-mail: ' + a.email : 'Este atleta não tem e-mail cadastrado.')));
+  if (!d.tabelas.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Não há zonas salvas para este atleta.')); return; }
+  d.tabelas.forEach(function (t) {
+    var c = paEl('div', 'pa-al'); var tt = paEl('label', 'ttl'); tt.style.cssText = 'display:flex;gap:8px;align-items:center;cursor:pointer';
+    var ck = document.createElement('input'); ck.type = 'checkbox'; ck.checked = !!LZ.sel[t.k]; ck.onchange = function () { LZ.sel[t.k] = ck.checked; };
+    tt.appendChild(ck); tt.appendChild(paEl('b', '', t.titulo)); tt.appendChild(paEl('span', 'tag w', 'limiar ' + t.lim)); c.appendChild(tt);
+    c.appendChild(limTab(t.linhas, false)); box.appendChild(c);
+  });
+  var ta = document.createElement('textarea'); ta.value = LZ.texto; ta.rows = 9; ta.setAttribute('aria-label', 'Texto do e-mail');
+  ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical';
+  ta.oninput = function () { LZ.texto = ta.value; }; box.appendChild(ta);
+  var lc = paEl('label', 'pa-hint'); lc.style.cssText = 'display:flex;gap:8px;align-items:center;cursor:pointer';
+  var cc = document.createElement('input'); cc.type = 'checkbox'; cc.checked = LZ.comCards; cc.onchange = function () { LZ.comCards = cc.checked; };
+  lc.appendChild(cc); lc.appendChild(document.createTextNode('Enviar também os cards da BLC em formato de stories (um por limiar marcado)')); box.appendChild(lc);
+  var pv = paEl('div', 'row'); pv.id = 'lzPrev'; pv.style.cssText = 'gap:8px;flex-wrap:wrap'; box.appendChild(pv);
+  var bp = paEl('button', 'btn btn-sm', 'Ver os cards'); bp.type = 'button'; bp.onclick = lzPrevias; box.appendChild(bp);
+  box.appendChild(paEl('div', 'pa-hint', 'Assunto: BLC · Seus limiares e zonas de treino. O e-mail só sai quando você clicar em enviar, em nome da BLC.'));
+  var rw = paEl('div', 'row'); var be = paEl('button', 'btn btn-sm btn-green', 'Enviar e-mail'); be.type = 'button'; be.onclick = lzEnvia;
+  if (a.email) rw.appendChild(be); else rw.appendChild(paEl('span', 'pa-hint', 'Sem e-mail cadastrado')); box.appendChild(rw);
+}
+function lzMarcadas() { return LZ.det.tabelas.filter(function (t) { return LZ.sel[t.k]; }); }
+function lzGeraCards(tabs) {
+  var pn = String(LZ.det.atleta.nome).split(' ')[0]; pn = pn.charAt(0).toUpperCase() + pn.slice(1).toLowerCase();
+  var out = {}, p = Promise.resolve();
+  tabs.forEach(function (t) { p = p.then(function () { return lzCard(t, pn).then(function (u) { out[t.k] = u; }); }); });
+  return p.then(function () { return out; });
+}
+function lzPrevias() {
+  var tabs = lzMarcadas(); if (!tabs.length) { aviso('Marque ao menos um limiar.'); return; }
+  carrega('Montando os cards…');
+  lzGeraCards(tabs).then(function (o) {
+    carregaFim(); var pv = $('lzPrev'); pv.innerHTML = '';
+    Object.keys(o).forEach(function (k) { var im = document.createElement('img'); im.src = o[k]; im.alt = 'Card ' + k; im.style.cssText = 'width:140px;height:auto;border:1px solid var(--line)'; pv.appendChild(im); });
+  }).catch(function (e) { carregaFim(); aviso('Não foi possível montar os cards: ' + e.message); });
+}
+function lzEnvia() {
+  var tabs = lzMarcadas(), a = LZ.det.atleta;
+  if (!tabs.length) { aviso('Marque ao menos um limiar para enviar.'); return; }
+  if (!String(LZ.texto || '').trim()) { aviso('Escreva o texto do e-mail antes de enviar.'); return; }
+  dlg('Enviar para ' + a.nome + ' (' + a.email + ') o e-mail com ' + tabs.length + ' limiar(es)' + (LZ.comCards ? ' e os cards de stories' : '') + ', em nome da BLC?', { ok: 'Enviar e-mail' }).then(function (v) {
+    if (!v) return;
+    carrega('Enviando o e-mail…');
+    (LZ.comCards ? lzGeraCards(tabs) : Promise.resolve({})).then(function (imgs) {
+      return call('limZonasEnvia', { tp: a.tp, keys: tabs.map(function (t) { return t.k; }), texto: LZ.texto, imgs: imgs });
+    }).then(function () { carregaFim(); aviso('E-mail enviado. Registro salvo' + (a.fid ? ' na ficha do atleta.' : '.')); })
+      .catch(function (e) { carregaFim(); aviso(e.message); });
   });
 }
 
