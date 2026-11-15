@@ -289,7 +289,7 @@ function dlg(msg, opts) {
   return new Promise(function (resolve) {
     var o = document.createElement('div');
     o.className = 'ov';
-    o.innerHTML = '<div class="dlg"><p>' + esc(msg) + '</p>' + (opts.input ? '<input id="dlgi" type="text" placeholder="' + esc(opts.input) + '">' : '') +
+    o.innerHTML = '<div class="dlg"><p>' + esc(msg) + '</p>' + (opts.input ? '<input id="dlgi" type="text" placeholder="' + esc(opts.input) + '" value="' + esc(opts.value || '') + '">' : '') +
       '<div class="row">' + (opts.cancel === false ? '' : '<button class="btn btn-sm" id="dlgn">Cancelar</button>') + '<button class="btn btn-sm btn-green" id="dlgy">' + esc(opts.ok || 'OK') + '</button></div></div>';
     document.body.appendChild(o);
     function fim(v) { document.body.removeChild(o); resolve(v); }
@@ -2552,6 +2552,157 @@ function cvEnvia2() {
 }
 
 
+/* ---------- financeiro de provas e venda de produtos (só head coach) ---------- */
+var FP = { filtro: 'todos' };
+function finSub(sec) {
+  function b(k, t, f) { return '<button class="btn btn-sm' + (sec === k ? ' btn-green' : '') + '" onclick="' + f + '">' + t + '</button>'; }
+  return '<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0">' + b('asaas', 'Cobranças', 'painelAsaas()') + b('provas', 'Provas e eventos', 'finProvas()') + b('prod', 'Venda de produtos', 'finProdutos()') + '</div>';
+}
+function finCab(sec, titulo) {
+  return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>' + titulo + '</em></h2></div>' + painelTabs('fin') + finSub(sec);
+}
+function finLinha(rot, v, cls) {
+  return '<div class="row" style="justify-content:space-between;gap:8px;margin:4px 0"><span class="small muted">' + rot + '</span><span class="tag ' + (cls || '') + '">' + finMoeda(v) + '</span></div>';
+}
+function finProvas() {
+  S.aba = 'fin'; S.aba2 = 'pnl';
+  app(finCab('provas', 'Provas e eventos') + '<div class="spin">Somando as provas…</div>');
+  call('finProvas', {}).then(function (r) {
+    var g = r.geral;
+    var topo = '<div class="card"><div class="eyebrow">Dinheiro de provas (todas)</div>' +
+      finLinha('Recebido (comprovantes + lançamentos)', g.recebido, 'g') + finLinha('Já repassado aos organizadores (baixa)', g.usado, '') +
+      (g.taxa ? finLinha('Fica com a BLC (taxa)', g.taxa, 'w') : '') + finLinha('Ainda em caixa para repassar', g.emCaixa, 'w') +
+      '<div class="small muted">' + g.pagaram + ' pagamento(s) em ' + g.inscritos + ' inscrição(ões). Todo o valor das provas é repassado ao organizador, exceto a taxa que você lançar.</div></div>';
+    var cards = r.provas.map(function (p) {
+      return '<div class="card insrow" style="cursor:pointer" onclick="finProva(\'' + esc(p.id) + '\')"><div class="top"><b>' + esc(p.nome) + '</b><span class="tag g">' + esc(String(p.data)) + '</span></div>' +
+        '<div class="small muted">' + p.pagaram + ' de ' + p.inscritos + ' inscritos pagaram' + (p.modo === 'manual' ? ' · lista manual' : '') + (p.aConferir ? ' · ' + p.aConferir + ' a conferir' : '') + '</div>' +
+        (p.erro ? '<div class="err small">' + esc(p.erro) + '</div>' : '') +
+        finLinha('Recebido', p.recebido, 'g') + finLinha('Já repassado', p.usado, '') + finLinha('Em caixa', p.emCaixa, 'w') + '</div>';
+    }).join('') || '<div class="muted small">Nenhuma prova cadastrada.</div>';
+    app(finCab('provas', 'Provas e eventos') + topo + '<div class="eyebrow">Por prova (toque para ver quem pagou)</div><div class="list">' + cards + '</div>');
+  }).catch(function (e) { app(finCab('provas', 'Provas e eventos') + '<div class="err">' + esc(e.message) + '</div>'); });
+}
+function finProva(id, filtro) {
+  if (filtro) FP.filtro = filtro;
+  S.aba = 'fin'; S.aba2 = 'pnl';
+  if (!filtro) FP.filtro = 'todos';
+  app(finCab('provas', 'Provas e eventos') + '<div class="spin">Abrindo a prova…</div>');
+  call('finProvaDet', { id: id }).then(function (r) { S.fpd = r.prova; finProvaDesenha(); })
+    .catch(function (e) { app(finCab('provas', 'Provas e eventos') + '<div class="err">' + esc(e.message) + '</div>'); });
+}
+function finProvaDesenha() {
+  var d = S.fpd, f = FP.filtro;
+  var pend = d.itens.filter(function (i) { return i.pago && i.valorConta - i.baixado > 0.004; });
+  var somaPend = 0; pend.forEach(function (i) { somaPend += i.valorConta - i.baixado; });
+  function fb(k, t) { return '<button class="btn btn-sm' + (f === k ? ' btn-green' : '') + '" onclick="finFiltro(\'' + k + '\')">' + t + '</button>'; }
+  var filtros = '<div class="row" style="gap:6px;flex-wrap:wrap">' + fb('todos', 'Todos') + fb('pagaram', 'Pagaram') + fb('pendentes', 'Não pagaram') + fb('semBaixa', 'Sem baixa') + fb('baixados', 'Com baixa') + '</div>';
+  var lista = d.itens.map(function (it, idx) { return { it: it, idx: idx }; }).filter(function (x) {
+    var i = x.it;
+    if (f === 'pagaram') return i.pago;
+    if (f === 'pendentes') return !i.pago;
+    if (f === 'semBaixa') return i.pago && i.valorConta - i.baixado > 0.004;
+    if (f === 'baixados') return i.baixado > 0;
+    return true;
+  });
+  var linhas = lista.map(function (x) {
+    var i = x.it, idx = x.idx;
+    var st = i.pago ? '<span class="tag g">Pagou</span>' : '<span class="tag r">Não pagou</span>';
+    var conf = i.pago ? (i.confere ? '<span class="tag">' + (i.origem === 'manual' ? 'lançado por você' : 'comprovante confere') + '</span>' : '<span class="tag w">a conferir</span>') : '';
+    var bx = i.baixado > 0 ? '<span class="tag w">Baixa ' + finMoeda(i.baixado) + '</span>' : '';
+    var acao = '';
+    if (i.pago && i.valorConta - i.baixado > 0.004) acao = '<button class="btn btn-sm btn-green" onclick="finBaixaUm(' + idx + ')">Dar baixa</button>';
+    else if (i.baixado > 0) acao = '<button class="btn btn-sm" onclick="finBaixaDesfaz(' + idx + ')">Desfazer baixa</button>';
+    if (!i.pago) acao = '<button class="btn btn-sm" onclick="finLanc(\'Recebido manual\', ' + idx + ')">Marcar como pago</button>';
+    var arqs = i.arquivos.map(function (u, k) { return '<a class="lnk" href="' + esc(u) + '" target="_blank" rel="noopener">Comprovante' + (i.arquivos.length > 1 ? ' ' + (k + 1) : '') + '</a>'; }).join(' · ');
+    return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(i.nome) + '</b><span class="tag w">' + (i.valor ? finMoeda(i.valor) : 'sem valor') + '</span></div>' +
+      '<div class="small muted">' + esc(i.categoria || '') + (i.quando ? ' · inscrito em ' + esc(i.quando) : '') + '</div>' +
+      '<div class="tags">' + st + conf + bx + '</div>' +
+      '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' + acao + (arqs ? arqs : '') + '</div></div>';
+  }).join('') || '<div class="muted small">Ninguém neste filtro.</div>';
+  var lancs = d.lancamentos.map(function (l) {
+    return '<div class="small" style="padding:6px 0;border-top:1px solid rgba(128,128,128,.25)"><b>' + esc(l.tipo) + '</b> · ' + finMoeda(l.valor) + (l.inscrito ? ' · ' + esc(l.inscrito) : '') + '<div class="muted">' + esc(l.quando) + (l.por ? ' · ' + esc(l.por) : '') + (l.obs ? ' · ' + esc(l.obs) : '') + '</div>' +
+      '<button class="btn btn-sm" onclick="finDesfaz(\'' + esc(l.id) + '\')">Desfazer este lançamento</button></div>';
+  }).join('');
+  app(finCab('provas', 'Provas e eventos') + '<button class="back" onclick="finProvas()">← Provas e eventos</button>' +
+    '<div class="card"><div class="top"><b>' + esc(d.nome) + '</b><span class="tag g">' + esc(String(d.data)) + '</span></div>' +
+    '<div class="small muted">' + d.pagaram + ' de ' + d.inscritos + ' inscritos pagaram' + (d.aConferir ? ' · ' + d.aConferir + ' com comprovante a conferir' : '') + '</div>' +
+    finLinha('Recebido', d.recebido, 'g') + (d.devolvido ? finLinha('Devolvido (já descontado)', d.devolvido, '') : '') + finLinha('Já repassado (baixa)', d.usado, '') +
+    (d.taxa ? finLinha('Fica com a BLC (taxa)', d.taxa, 'w') : '') + finLinha('Em caixa para repassar', d.emCaixa, 'w') + '</div>' +
+    '<div class="card"><div class="eyebrow cy">Baixa</div><div class="small muted">Dar baixa é dizer que o dinheiro já foi repassado ao organizador (inscrição feita). Ele sai do saldo em caixa.</div>' +
+    '<button class="btn btn-green" onclick="finBaixaTodos()" ' + (pend.length ? '' : 'disabled') + '>Dar baixa em todos (' + pend.length + ' · ' + finMoeda(somaPend) + ')</button>' +
+    '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-sm" onclick="finLanc(\'Pago ao organizador\')">Baixa por valor</button><button class="btn btn-sm" onclick="finLanc(\'Taxa BLC\')">Taxa que fica com a BLC</button>' +
+    '<button class="btn btn-sm" onclick="finLanc(\'Devolução\')">Devolução</button><button class="btn btn-sm" onclick="finLanc(\'Recebido manual\')">Recebimento manual</button></div></div>' +
+    '<div class="eyebrow">Inscritos</div>' + filtros + '<div class="list">' + linhas + '</div>' +
+    (lancs ? '<div class="eyebrow">Lançamentos desta prova</div><div class="card">' + lancs + '</div>' : ''));
+}
+function finFiltro(k) { FP.filtro = k; finProvaDesenha(); }
+function finRecarrega() { finProva(S.fpd.id, FP.filtro); }
+function finBaixaTodos() {
+  var d = S.fpd, pend = d.itens.filter(function (i) { return i.pago && i.valorConta - i.baixado > 0.004; }), t = 0;
+  pend.forEach(function (i) { t += i.valorConta - i.baixado; });
+  if (!pend.length) { aviso('Não há inscrições pagas esperando baixa.'); return; }
+  dlg('Dar baixa em ' + pend.length + ' inscrição(ões), total de ' + finMoeda(t) + '? Isso marca o dinheiro como já repassado ao organizador e tira esse valor do saldo em caixa.', { ok: 'Dar baixa' }).then(function (ok) {
+    if (!ok) return;
+    call('finBaixaTodos', { id: d.id }).then(function (r) { aviso('Baixa feita em ' + r.qtd + ' inscrição(ões): ' + finMoeda(r.valor) + '.').then(finRecarrega); }).catch(function (e) { aviso(e.message); });
+  });
+}
+function finBaixaUm(i) {
+  var d = S.fpd, it = d.itens[i];
+  dlg('Dar baixa de ' + finMoeda(it.valorConta - it.baixado) + ' de ' + it.nome + '? Significa que a inscrição já foi repassada ao organizador.', { ok: 'Dar baixa' }).then(function (ok) {
+    if (!ok) return;
+    call('finBaixaUm', { id: d.id, inscrito: it.nome }).then(finRecarrega).catch(function (e) { aviso(e.message); });
+  });
+}
+function finBaixaDesfaz(i) {
+  var d = S.fpd, it = d.itens[i];
+  dlg('Desfazer a baixa de ' + it.nome + '? O valor volta para o saldo em caixa.', { ok: 'Desfazer' }).then(function (ok) {
+    if (!ok) return;
+    call('finBaixaDesfaz', { id: d.id, inscrito: it.nome }).then(finRecarrega).catch(function (e) { aviso(e.message); });
+  });
+}
+var FIN_TXT = { 'Pago ao organizador': 'Valor já repassado ao organizador (R$)', 'Taxa BLC': 'Valor que fica com a BLC (R$)', 'Devolução': 'Valor devolvido ao atleta (R$)', 'Recebido manual': 'Valor recebido (R$)' };
+function finLanc(tipo, idx) {
+  var d = S.fpd, it = idx === undefined ? null : d.itens[idx];
+  function pedeValor(nome) {
+    dlg(FIN_TXT[tipo] + (nome ? ' — ' + nome : ''), { input: 'Ex.: 1850,00', ok: 'Salvar', value: it && it.valor ? String(it.valor).replace('.', ',') : '' }).then(function (v) {
+      if (v === null || v === undefined) return;
+      call('finProvaLanc', { id: d.id, tipo: tipo, valor: v, inscrito: nome || '' }).then(finRecarrega).catch(function (e) { aviso(e.message); });
+    });
+  }
+  if (it) { pedeValor(it.nome); return; }
+  if (tipo === 'Recebido manual') {
+    dlg('Nome de quem pagou (igual ao do formulário, se ele estiver lá)', { input: 'Nome do atleta', ok: 'Continuar' }).then(function (n) { if (n && n.trim()) pedeValor(n.trim()); });
+  } else pedeValor('');
+}
+function finDesfaz(lid) {
+  dlg('Desfazer este lançamento?', { ok: 'Desfazer' }).then(function (ok) {
+    if (!ok) return;
+    call('finProvaDesfaz', { lid: lid }).then(finRecarrega).catch(function (e) { aviso(e.message); });
+  });
+}
+
+function finProdutos(atualizar) {
+  S.aba = 'fin'; S.aba2 = 'pnl';
+  app(finCab('prod', 'Venda de produtos') + '<div class="spin">Buscando no Asaas…</div>');
+  call('finProdutos', { meses: 6, atualizar: !!atualizar }).then(function (r) {
+    S.fprod = r;
+    var topo = '<div class="card"><div class="eyebrow">Produtos (últimos ' + r.meses + ' meses)</div>' + finLinha('Recebido', r.tot.recebido, 'g') + finLinha('A receber', r.tot.areceber, 'w') + finLinha('Em atraso', r.tot.atraso, 'r') +
+      '<div class="small muted">' + r.tot.qtd + ' cobrança(s) de produto no Asaas, por data de vencimento. O produto é identificado pela descrição da cobrança (jersey, touca, camiseta, bermuda, boné, kit...). Atualizado em ' + esc(r.atualizadoEm) + '.</div>' +
+      '<button class="btn btn-sm" onclick="finProdutos(true)">Atualizar</button></div>';
+    var grupos = r.grupos.map(function (g, gi) {
+      var itens = g.itens.map(function (i) {
+        var st = i.g === 'recebido' ? '<span class="tag g">Pago' + (i.pagoEm ? ' em ' + esc(i.pagoEm.slice(8, 10) + '/' + i.pagoEm.slice(5, 7)) : '') + '</span>' : (i.g === 'atraso' ? '<span class="tag r">Em atraso</span>' : '<span class="tag w">A receber</span>');
+        return '<div class="small" style="padding:6px 0;border-top:1px solid rgba(128,128,128,.25)"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(i.nome) + '</b><span>' + finMoeda(i.valor) + '</span></div>' +
+          '<div class="muted">' + esc(i.desc || '(sem descrição)') + ' · vence ' + esc(i.venc.slice(8, 10) + '/' + i.venc.slice(5, 7) + '/' + i.venc.slice(0, 4)) + (AS_FORMA[i.forma] ? ' · ' + esc(AS_FORMA[i.forma]) : '') + '</div>' +
+          '<div class="row" style="gap:8px;align-items:center">' + st + (i.link ? '<a class="lnk" href="' + esc(i.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div></div>';
+      }).join('');
+      return '<details class="card"><summary><b>' + esc(g.produto) + '</b> <span class="small muted">· ' + g.qtd + ' venda(s)</span></summary>' +
+        finLinha('Recebido', g.recebido, 'g') + (g.areceber ? finLinha('A receber', g.areceber, 'w') : '') + (g.atraso ? finLinha('Em atraso', g.atraso, 'r') : '') + itens + '</details>';
+    }).join('') || '<div class="muted small">Nenhuma cobrança de produto encontrada no período.</div>';
+    app(finCab('prod', 'Venda de produtos') + topo + '<div class="eyebrow">Por produto (toque para ver quem comprou)</div><div class="list">' + grupos + '</div>');
+  }).catch(function (e) { app(finCab('prod', 'Venda de produtos') + '<div class="err">' + esc(e.message) + '</div>'); });
+}
+
 /* ---------- financeiro (só head coach): somente Asaas ao vivo ---------- */
 function finP2(n) { return (n < 10 ? '0' : '') + n; }
 function finMoeda(v) { if (v === null || v === undefined || v === '') return ''; var n = Number(v); return isFinite(n) ? 'R$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+,)/g, '.') : esc(v || ''); }
@@ -2566,7 +2717,7 @@ function asMesAtual() { var d = new Date(); return d.getFullYear() + '-' + finP2
 function asMesSoma(m, n) { var p = m.split('-'); var d = new Date(+p[0], +p[1] - 1 + n, 1); return d.getFullYear() + '-' + finP2(d.getMonth() + 1); }
 function asMesNome(m) { var p = m.split('-'); return AS_MESES[+p[1] - 1] + ' de ' + p[0]; }
 function cabAsaas() {
-  return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>Asaas ao vivo</em></h2></div>' + painelTabs('fin');
+  return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>Asaas ao vivo</em></h2></div>' + painelTabs('fin') + finSub('asaas');
 }
 function asPrimeiro(n) { var t = String(n || '').trim().split(/\s+/)[0].toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
 function asZap(x) {
