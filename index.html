@@ -2606,8 +2606,8 @@ function finProvaDesenha() {
   });
   var linhas = lista.map(function (x) {
     var i = x.it, idx = x.idx;
-    var st = i.pago ? '<span class="tag g">Pagou</span>' : '<span class="tag r">Não pagou</span>';
-    var conf = i.pago ? (i.confere ? '<span class="tag">' + (i.origem === 'manual' ? 'lançado por você' : 'comprovante confere') + '</span>' : '<span class="tag w">a conferir</span>') : '';
+    var st = i.pago ? '<span class="tag g">Pagou</span>' : (i.valor ? '<span class="tag r">Não pagou</span>' : '<span class="tag">Sem valor a pagar</span>');
+    var conf = i.pago ? (i.confere ? '<span class="tag">' + (i.origem === 'manual' ? 'lançado por você' : 'comprovante confere') + '</span>' : '<span class="tag w">' + (i.origem === 'informado' ? 'sem comprovante' : 'a conferir') + '</span>') : '';
     var bx = i.baixado > 0 ? '<span class="tag w">Baixa ' + finMoeda(i.baixado) + '</span>' : '';
     var acao = '';
     if (i.pago && i.valorConta - i.baixado > 0.004) acao = '<button class="btn btn-sm btn-green" onclick="finBaixaUm(' + idx + ')">Dar baixa</button>';
@@ -2627,7 +2627,7 @@ function finProvaDesenha() {
     '<div class="card"><div class="top"><b>' + esc(d.nome) + '</b><span class="tag g">' + esc(String(d.data)) + '</span></div>' +
     '<div class="small muted">' + d.pagaram + ' de ' + d.inscritos + ' inscritos pagaram' + (d.aConferir ? ' · ' + d.aConferir + ' com comprovante a conferir' : '') + '</div>' +
     finLinha('Recebido', d.recebido, 'g') + (d.devolvido ? finLinha('Devolvido (já descontado)', d.devolvido, '') : '') + finLinha('Já repassado (baixa)', d.usado, '') +
-    (d.taxa ? finLinha('Fica com a BLC (taxa)', d.taxa, 'w') : '') + finLinha('Em caixa para repassar', d.emCaixa, 'w') + '</div>' +
+    (d.taxa ? finLinha('Fica com a BLC (taxa)', d.taxa, 'w') : '') + finLinha('Em caixa para repassar', d.emCaixa, 'w') + (d.falta ? finLinha('Falta receber (inscritos que ainda não pagaram)', d.falta, 'r') : '') + '</div>' +
     '<div class="card"><div class="eyebrow cy">Baixa</div><div class="small muted">Dar baixa é dizer que o dinheiro já foi repassado ao organizador (inscrição feita). Ele sai do saldo em caixa.</div>' +
     '<button class="btn btn-green" onclick="finBaixaTodos()" ' + (pend.length ? '' : 'disabled') + '>Dar baixa em todos (' + pend.length + ' · ' + finMoeda(somaPend) + ')</button>' +
     '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-sm" onclick="finLanc(\'Pago ao organizador\')">Baixa por valor</button><button class="btn btn-sm" onclick="finLanc(\'Taxa BLC\')">Taxa que fica com a BLC</button>' +
@@ -2688,7 +2688,8 @@ function finProdutos(atualizar) {
     S.fprod = r;
     var topo = '<div class="card"><div class="eyebrow">Produtos (últimos ' + r.meses + ' meses)</div>' + finLinha('Recebido', r.tot.recebido, 'g') + finLinha('A receber', r.tot.areceber, 'w') + finLinha('Em atraso', r.tot.atraso, 'r') +
       '<div class="small muted">' + r.tot.qtd + ' cobrança(s) de produto no Asaas, por data de vencimento. O produto é identificado pela descrição da cobrança (jersey, touca, camiseta, bermuda, boné, kit...). Atualizado em ' + esc(r.atualizadoEm) + '.</div>' +
-      '<button class="btn btn-sm" onclick="finProdutos(true)">Atualizar</button></div>';
+      '<div class="small muted">A cobrança no Asaas só é gerada quando você registra uma venda manualmente, com confirmação, na tela de Produtos.</div>' +
+      '<div class="row" style="gap:8px"><button class="btn btn-sm" onclick="painelProd()">Registrar venda (Produtos)</button><button class="btn btn-sm" onclick="finProdutos(true)">Atualizar</button></div></div>';
     var grupos = r.grupos.map(function (g, gi) {
       var itens = g.itens.map(function (i) {
         var st = i.g === 'recebido' ? '<span class="tag g">Pago' + (i.pagoEm ? ' em ' + esc(i.pagoEm.slice(8, 10) + '/' + i.pagoEm.slice(5, 7)) : '') + '</span>' : (i.g === 'atraso' ? '<span class="tag r">Em atraso</span>' : '<span class="tag w">A receber</span>');
