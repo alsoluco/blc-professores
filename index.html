@@ -2570,14 +2570,13 @@ function finProvas() {
   call('finProvas', {}).then(function (r) {
     var g = r.geral;
     var topo = '<div class="card"><div class="eyebrow">Dinheiro de provas (todas)</div>' +
-      finLinha('Recebido (comprovantes + lançamentos)', g.recebido, 'g') + finLinha('Já repassado aos organizadores (baixa)', g.usado, '') +
-      (g.taxa ? finLinha('Fica com a BLC (taxa)', g.taxa, 'w') : '') + finLinha('Ainda em caixa para repassar', g.emCaixa, 'w') +
+      finLinha('Total que a BLC deve guardar (reservas + provas em aberto)', g.emCaixa, 'w') +
       '<div class="small muted">' + g.pagaram + ' pagamento(s) em ' + g.inscritos + ' inscrição(ões). Todo o valor das provas é repassado ao organizador, exceto a taxa que você lançar.</div></div>';
     var cards = r.provas.map(function (p) {
       return '<div class="card insrow" style="cursor:pointer" onclick="finProva(\'' + esc(p.id) + '\')"><div class="top"><b>' + esc(p.nome) + '</b><span class="tag g">' + esc(String(p.data)) + '</span></div>' +
         '<div class="small muted">' + p.pagaram + ' de ' + p.inscritos + ' inscritos pagaram' + (p.modo === 'manual' ? ' · lista manual' : '') + (p.aConferir ? ' · ' + p.aConferir + ' a conferir' : '') + '</div>' +
         (p.erro ? '<div class="err small">' + esc(p.erro) + '</div>' : '') +
-        finLinha('Recebido', p.recebido, 'g') + finLinha('Já repassado', p.usado, '') + finLinha('Em caixa', p.emCaixa, 'w') + '</div>';
+        (p.quitada ? (p.retidoPor ? finLinha('A guardar para a BLC (' + p.inscritos + ' × ' + finMoeda(p.retidoPor) + ')', p.emCaixa, 'w') + '<div class="small muted">Valor total das inscrições ' + finMoeda(p.totalInscricoes) + ' · já repassado ' + finMoeda(p.repassado) + '</div>' : '<div class="small muted">Quitada: tudo pago e repassado ao organizador. Nada a guardar.</div>') : finLinha('Recebido', p.recebido, 'g') + finLinha('Já repassado', p.usado, '') + finLinha('Em caixa', p.emCaixa, 'w')) + '</div>';
     }).join('') || '<div class="muted small">Nenhuma prova cadastrada.</div>';
     app(finCab('provas', 'Provas e eventos') + topo + '<div class="eyebrow">Por prova (toque para ver quem pagou)</div><div class="list">' + cards + '</div>');
   }).catch(function (e) { app(finCab('provas', 'Provas e eventos') + '<div class="err">' + esc(e.message) + '</div>'); });
@@ -2626,12 +2625,11 @@ function finProvaDesenha() {
   app(finCab('provas', 'Provas e eventos') + '<button class="back" onclick="finProvas()">← Provas e eventos</button>' +
     '<div class="card"><div class="top"><b>' + esc(d.nome) + '</b><span class="tag g">' + esc(String(d.data)) + '</span></div>' +
     '<div class="small muted">' + d.pagaram + ' de ' + d.inscritos + ' inscritos pagaram' + (d.aConferir ? ' · ' + d.aConferir + ' com comprovante a conferir' : '') + '</div>' +
-    finLinha('Recebido', d.recebido, 'g') + (d.devolvido ? finLinha('Devolvido (já descontado)', d.devolvido, '') : '') + finLinha('Já repassado (baixa)', d.usado, '') +
-    (d.quitada ? '<div class="small muted">Prova quitada: tudo pago e repassado ao organizador.</div>' : '') + (d.taxa ? finLinha(d.retidoPor ? 'Fica com a BLC (' + finMoeda(d.retidoPor) + ' por atleta: tenda e camisa)' : 'Fica com a BLC (taxa)', d.taxa, 'w') : '') + finLinha('Em caixa para repassar', d.emCaixa, 'w') + (d.falta ? finLinha('Falta receber (inscritos que ainda não pagaram)', d.falta, 'r') : '') + '</div>' +
-    '<div class="card"><div class="eyebrow cy">Baixa</div><div class="small muted">Dar baixa é dizer que o dinheiro já foi repassado ao organizador (inscrição feita). Ele sai do saldo em caixa.</div>' +
+    (d.quitada ? (d.retidoPor ? finLinha('A guardar para a BLC: ' + d.inscritos + ' inscritos × ' + finMoeda(d.retidoPor) + ' (tenda e camisa)', d.emCaixa, 'w') : '<div class="small"><b>Nada a guardar:</b> tudo foi pago e repassado ao organizador.</div>') + '<div class="small muted">Valor total das inscrições: ' + finMoeda(d.totalInscricoes) + ' · já repassado ao organizador: ' + finMoeda(d.repassado) + '</div>' : finLinha('Recebido', d.recebido, 'g') + (d.devolvido ? finLinha('Devolvido (já descontado)', d.devolvido, '') : '') + finLinha('Já repassado (baixa)', d.usado, '') + (d.taxa ? finLinha('Fica com a BLC (taxa)', d.taxa, 'w') : '') + finLinha('Em caixa para repassar', d.emCaixa, 'w')) + (d.falta ? finLinha('Falta receber (inscritos que ainda não pagaram)', d.falta, 'r') : '') + '</div>' +
+    (d.quitada ? '' : '<div class="card"><div class="eyebrow cy">Baixa</div><div class="small muted">Dar baixa é dizer que o dinheiro já foi repassado ao organizador (inscrição feita). Ele sai do saldo em caixa.</div>' +
     '<button class="btn btn-green" onclick="finBaixaTodos()" ' + (pend.length ? '' : 'disabled') + '>Dar baixa em todos (' + pend.length + ' · ' + finMoeda(somaPend) + ')</button>' +
     '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-sm" onclick="finLanc(\'Pago ao organizador\')">Baixa por valor</button><button class="btn btn-sm" onclick="finLanc(\'Taxa BLC\')">Taxa que fica com a BLC</button>' +
-    '<button class="btn btn-sm" onclick="finLanc(\'Devolução\')">Devolução</button><button class="btn btn-sm" onclick="finLanc(\'Recebido manual\')">Recebimento manual</button></div></div>' +
+    '<button class="btn btn-sm" onclick="finLanc(\'Devolução\')">Devolução</button><button class="btn btn-sm" onclick="finLanc(\'Recebido manual\')">Recebimento manual</button></div></div>') +
     '<div class="eyebrow">Inscritos</div>' + filtros + '<div class="list">' + linhas + '</div>' +
     (lancs ? '<div class="eyebrow">Lançamentos desta prova</div><div class="card">' + lancs + '</div>' : ''));
 }
@@ -2694,10 +2692,10 @@ function finProdutos(atualizar) {
       var itens = g.itens.map(function (i) {
         var st = i.g === 'recebido' ? '<span class="tag g">Pago' + (i.pagoEm ? ' em ' + esc(i.pagoEm.slice(8, 10) + '/' + i.pagoEm.slice(5, 7)) : '') + '</span>' : (i.g === 'atraso' ? '<span class="tag r">Em atraso</span>' : '<span class="tag w">A receber</span>');
         return '<div class="small" style="padding:6px 0;border-top:1px solid rgba(128,128,128,.25)"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(i.nome) + '</b><span>' + finMoeda(i.valor) + '</span></div>' +
-          '<div class="muted">' + esc(i.desc || '(sem descrição)') + ' · vence ' + esc(i.venc.slice(8, 10) + '/' + i.venc.slice(5, 7) + '/' + i.venc.slice(0, 4)) + (AS_FORMA[i.forma] ? ' · ' + esc(AS_FORMA[i.forma]) : '') + '</div>' +
+          '<div class="muted">' + esc(i.desc || '(sem descrição)') + (i.venc ? ' · vence ' + esc(i.venc.slice(8, 10) + '/' + i.venc.slice(5, 7) + '/' + i.venc.slice(0, 4)) : '') + (AS_FORMA[i.forma] ? ' · ' + esc(AS_FORMA[i.forma]) : '') + '</div>' +
           '<div class="row" style="gap:8px;align-items:center">' + st + (i.link ? '<a class="lnk" href="' + esc(i.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div></div>';
       }).join('');
-      return '<details class="card"><summary><b>' + esc(g.produto) + '</b> <span class="small muted">· ' + g.qtd + ' venda(s)</span></summary>' +
+      return '<details class="card"><summary><b>' + esc(g.produto) + '</b> <span class="small muted">· ' + (g.reserva ? esc(g.nota) : g.qtd + ' venda(s)') + '</span></summary>' +
         finLinha('Recebido', g.recebido, 'g') + (g.areceber ? finLinha('A receber', g.areceber, 'w') : '') + (g.atraso ? finLinha('Em atraso', g.atraso, 'r') : '') + itens + '</details>';
     }).join('') || '<div class="muted small">Nenhuma cobrança de produto encontrada no período.</div>';
     app(finCab('prod', 'Venda de produtos') + topo + '<div class="eyebrow">Por produto (toque para ver quem comprou)</div><div class="list">' + grupos + '</div>');
