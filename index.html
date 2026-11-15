@@ -2754,8 +2754,39 @@ function painelAsaas(mes, atualizar) {
       '<div class="eyebrow">Em atraso (' + atr.length + ')</div><div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso neste mês.</div>') + '</div>' +
       '<div class="eyebrow">A receber (' + rec.length + ')</div><div class="list">' + (rec.length ? rec.map(item).join('') : '<div class="muted small">Nada a receber neste mês.</div>') + '</div>';
     var saldo = '<div class="card"><div class="eyebrow">Saldo na conta Asaas</div><h2><span class="tag g">' + (r.saldo === null || r.saldo === undefined ? 'indisponível' : finMoeda(r.saldo)) + '</span></h2><div class="small muted">Valor disponível na conta agora (não depende do mês escolhido).</div></div>';
-    app(cabAsaas() + saldo + modos + nav + topo + corpo);
+    var nulo = function () { return null; };
+    Promise.all([call('finProvas', {}).catch(nulo), call('finProdutos', { meses: 6 }).catch(nulo), call('finExtra', { mes: AS.mes }).catch(nulo)]).then(function (x) {
+      app(cabAsaas() + finResumo(r, x[0], x[1], x[2], todos) + modos + nav + topo + corpo);
+    });
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
+}
+function finResumo(r, pv, pd, ex, todos) {
+  var mesOk = !todos && r.tot && r.tot.recebido;
+  var rec = mesOk ? r.tot.recebido.valor : 0, falta = mesOk ? (r.tot.areceber.valor + r.tot.atraso.valor) : 0;
+  var evt = pv ? pv.geral.emCaixa : null;
+  var prod = null;
+  if (pd) { prod = 0; pd.grupos.forEach(function (g) { if (g.reserva || /^Outros avulsos/.test(g.produto)) return; g.itens.forEach(function (i) { if (i.g === 'recebido' && String(i.pagoEm || i.venc).slice(0, 7) === AS.mes) prod += i.valor; }); }); prod = Math.round(prod * 100) / 100; }
+  var sem = ex ? ex.semCobranca.valor : 0;
+  var livre = (typeof r.saldo === 'number' && evt !== null && prod !== null) ? Math.round((r.saldo - evt - prod) * 100) / 100 : null;
+  var h = '<div class="card"><div class="eyebrow">Resumo financeiro · ' + esc(asMesNome(AS.mes)) + '</div>' +
+    finLinha('Saldo na conta Asaas agora', r.saldo === null || r.saldo === undefined ? '' : r.saldo, 'g') +
+    (evt !== null ? finLinha('Separar para eventos (reserva BLC + provas em aberto)', evt, 'w') : '<div class="small muted">Eventos: não consegui calcular agora.</div>') +
+    (prod !== null ? finLinha('Separar para produtos (vendas recebidas no mês)', prod, 'w') : '') +
+    (livre !== null ? finLinha('Saldo livre (saldo − eventos − produtos)', livre, livre < 0 ? 'r' : 'g') : '') +
+    '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">';
+  if (mesOk) {
+    h += finLinha('Já recebido no mês', rec, 'g') + finLinha('Falta receber no mês (no prazo + em atraso)', falta, 'w');
+    if (ex) h += finLinha('Renovações ainda sem cobrança no mês (assinaturas ativas)', sem, '') +
+      finLinha('Total previsto no mês, se todos os ativos renovarem', Math.round((rec + falta + sem) * 100) / 100, 'w') +
+      '<div class="small muted">' + ex.ativas.qtd + ' assinatura(s) ativa(s) no Asaas · valor mensal das ativas ' + finMoeda(ex.ativas.valorMensal) + '</div>';
+    else h += '<div class="small muted">Previsão de renovações indisponível agora.</div>';
+  } else h += '<div class="small muted">Escolha "Por mês" para ver recebido, a receber e a previsão do mês.</div>';
+  if (ex) {
+    var c = ex.cancelados;
+    h += c.length ? '<div class="err small" style="margin-top:10px"><b>' + c.length + ' aluno(s) pagaram em ' + esc(asMesNome(AS.mes)) + ' e já têm o contrato cancelado no Asaas:</b>' + c.map(function (i) { return '<div>' + esc(i.nome) + ' · pago ' + finMoeda(i.valorPago) + ' · ' + esc(i.status) + '</div>'; }).join('') + '</div>' :
+      '<div class="small muted" style="margin-top:10px">Nenhum aluno que pagou neste mês tem contrato cancelado no Asaas.</div>';
+  }
+  return h + '<div class="small muted" style="margin-top:6px">Valores por data de vencimento. Eventos: tudo o que não foi repassado. Produtos: cobranças de produto pagas no mês.</div></div>';
 }
 
 function painelProj(atualizar) {
