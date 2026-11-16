@@ -2790,6 +2790,8 @@ function finResumo(r, pv, pd, ex, todos) {
   h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">' +
     finLinha('Saldo na conta Asaas agora', r.saldo === null || r.saldo === undefined ? '' : r.saldo, 'g');
   if (livre !== null) h += finLinha('Saldo livre (saldo − o que está separado)', livre, livre < 0 ? 'r' : 'g');
+  if (typeof r.saldo === 'number') h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">' + finLinha('TOTAL: saldo no Asaas + tudo que falta receber' + (mesOk ? ' (no prazo + vencidas)' : ' (vencidas)'), Math.round((r.saldo + noPrazo + venc) * 100) / 100, 'g') +
+    '<div class="small muted">' + finMoeda(r.saldo) + ' no Asaas + ' + finMoeda(noPrazo + venc) + ' a receber</div>';
   if (mesOk && ex) h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">' +
     finLinha('Renovações ainda sem cobrança no mês', sem, '') +
     finLinha('Total previsto no mês, se todos os ativos renovarem', Math.round((rec + noPrazo + venc + sem) * 100) / 100, 'w') +
