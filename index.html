@@ -2612,6 +2612,10 @@ function finProvaDesenha() {
     if (i.pago && i.valorConta - i.baixado > 0.004) acao = '<button class="btn btn-sm btn-green" onclick="finBaixaUm(' + idx + ')">Dar baixa</button>';
     else if (i.baixado > 0) acao = '<button class="btn btn-sm" onclick="finBaixaDesfaz(' + idx + ')">Desfazer baixa</button>';
     if (!i.pago) acao = '<button class="btn btn-sm" onclick="finLanc(\'Recebido manual\', ' + idx + ')">Marcar como pago</button>';
+    if (d.quitada && d.retidoPor) {
+      bx = i.retirado > 0 ? '<span class="tag w">Reserva retirada ' + finMoeda(i.retirado) + '</span>' : '';
+      acao = i.retido <= 0 ? '' : (i.retido - i.retirado > 0.004 ? '<button class="btn btn-sm btn-green" onclick="finReservaUm(' + idx + ')">Dar baixa na reserva (' + finMoeda(i.retido - i.retirado) + ')</button>' : '<button class="btn btn-sm" onclick="finReservaDesfaz(' + idx + ')">Desfazer baixa da reserva</button>');
+    }
     var arqs = i.arquivos.map(function (u, k) { return '<a class="lnk" href="' + esc(u) + '" target="_blank" rel="noopener">Comprovante' + (i.arquivos.length > 1 ? ' ' + (k + 1) : '') + '</a>'; }).join(' · ');
     return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(i.nome) + '</b><span class="tag w">' + (i.valor ? finMoeda(i.valor) : 'sem valor') + '</span></div>' +
       '<div class="small muted">' + esc(i.categoria || '') + (i.quando ? ' · inscrito em ' + esc(i.quando) : '') + '</div>' +
@@ -2626,6 +2630,7 @@ function finProvaDesenha() {
     '<div class="card"><div class="top"><b>' + esc(d.nome) + '</b><span class="tag g">' + esc(String(d.data)) + '</span></div>' +
     '<div class="small muted">' + d.pagaram + ' de ' + d.inscritos + ' inscritos pagaram' + (d.aConferir ? ' · ' + d.aConferir + ' com comprovante a conferir' : '') + '</div>' +
     (d.quitada ? (d.retidoPor ? finLinha('A guardar para a BLC: ' + (d.retidoQtd || 0) + ' inscritos × ' + finMoeda(d.retidoPor) + ' (tenda e camisa)', d.emCaixa, 'w') + (d.inscritos > d.retidoQtd ? '<div class="small">' + (d.inscritos - d.retidoQtd) + ' nome(s) na planilha sem dados de pagamento/kit não entram na conta.</div>' : '') : '<div class="small"><b>Nada a guardar:</b> tudo foi pago e repassado ao organizador.</div>') + '<div class="small muted">Valor total das inscrições: ' + finMoeda(d.totalInscricoes) + ' · já repassado ao organizador: ' + finMoeda(d.repassado) + '</div>' : finLinha('Recebido', d.recebido, 'g') + (d.devolvido ? finLinha('Devolvido (já descontado)', d.devolvido, '') : '') + finLinha('Já repassado (baixa)', d.usado, '') + (d.taxa ? finLinha('Fica com a BLC (taxa)', d.taxa, 'w') : '') + finLinha('Em caixa para repassar', d.emCaixa, 'w')) + (d.falta ? finLinha('Falta receber (inscritos que ainda não pagaram)', d.falta, 'r') : '') + '</div>' +
+    (d.quitada && d.retidoPor ? '<div class="card"><div class="eyebrow cy">Reserva da BLC</div><div class="small muted">Dar baixa na reserva é dizer que você já retirou esse dinheiro. Ele sai do que ainda precisa ser guardado.</div><button class="btn btn-green" onclick="finReservaTodos()" ' + (d.emCaixa > 0.004 ? '' : 'disabled') + '>Dar baixa em toda a reserva (' + finMoeda(d.emCaixa) + ')</button><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-sm" onclick="finLanc(\'Reserva retirada\')">Baixa por valor</button></div></div>' : '') +
     (d.quitada ? '' : '<div class="card"><div class="eyebrow cy">Baixa</div><div class="small muted">Dar baixa é dizer que o dinheiro já foi repassado ao organizador (inscrição feita). Ele sai do saldo em caixa.</div>' +
     '<button class="btn btn-green" onclick="finBaixaTodos()" ' + (pend.length ? '' : 'disabled') + '>Dar baixa em todos (' + pend.length + ' · ' + finMoeda(somaPend) + ')</button>' +
     '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-sm" onclick="finLanc(\'Pago ao organizador\')">Baixa por valor</button><button class="btn btn-sm" onclick="finLanc(\'Taxa BLC\')">Taxa que fica com a BLC</button>' +
@@ -2651,6 +2656,27 @@ function finBaixaUm(i) {
     call('finBaixaUm', { id: d.id, inscrito: it.nome }).then(finRecarrega).catch(function (e) { aviso(e.message); });
   });
 }
+function finReservaTodos() {
+  var d = S.fpd;
+  dlg('Dar baixa em toda a reserva (' + finMoeda(d.emCaixa) + ')? Significa que você já retirou esse dinheiro; ele deixa de aparecer como "a guardar".', { ok: 'Dar baixa' }).then(function (ok) {
+    if (!ok) return;
+    call('finReservaTodos', { id: d.id }).then(function (r) { aviso('Baixa feita em ' + r.qtd + ' atleta(s): ' + finMoeda(r.total) + '.').then(finRecarrega); }).catch(function (e) { aviso(e.message); });
+  });
+}
+function finReservaUm(i) {
+  var d = S.fpd, it = d.itens[i];
+  dlg('Dar baixa de ' + finMoeda(it.retido - it.retirado) + ' da reserva de ' + it.nome + '?', { ok: 'Dar baixa' }).then(function (ok) {
+    if (!ok) return;
+    call('finReservaUm', { id: d.id, inscrito: it.nome }).then(finRecarrega).catch(function (e) { aviso(e.message); });
+  });
+}
+function finReservaDesfaz(i) {
+  var d = S.fpd, it = d.itens[i];
+  dlg('Desfazer a baixa da reserva de ' + it.nome + '? O valor volta para "a guardar".', { ok: 'Desfazer' }).then(function (ok) {
+    if (!ok) return;
+    call('finBaixaDesfaz', { id: d.id, inscrito: it.nome, reserva: true }).then(finRecarrega).catch(function (e) { aviso(e.message); });
+  });
+}
 function finBaixaDesfaz(i) {
   var d = S.fpd, it = d.itens[i];
   dlg('Desfazer a baixa de ' + it.nome + '? O valor volta para o saldo em caixa.', { ok: 'Desfazer' }).then(function (ok) {
@@ -2658,7 +2684,7 @@ function finBaixaDesfaz(i) {
     call('finBaixaDesfaz', { id: d.id, inscrito: it.nome }).then(finRecarrega).catch(function (e) { aviso(e.message); });
   });
 }
-var FIN_TXT = { 'Pago ao organizador': 'Valor já repassado ao organizador (R$)', 'Taxa BLC': 'Valor que fica com a BLC (R$)', 'Devolução': 'Valor devolvido ao atleta (R$)', 'Recebido manual': 'Valor recebido (R$)' };
+var FIN_TXT = { 'Reserva retirada': 'Valor da reserva já retirado (R$)',  'Pago ao organizador': 'Valor já repassado ao organizador (R$)', 'Taxa BLC': 'Valor que fica com a BLC (R$)', 'Devolução': 'Valor devolvido ao atleta (R$)', 'Recebido manual': 'Valor recebido (R$)' };
 function finLanc(tipo, idx) {
   var d = S.fpd, it = idx === undefined ? null : d.itens[idx];
   function pedeValor(nome) {

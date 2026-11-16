@@ -1,5 +1,5 @@
 /* BLC · Professores: cache simples do "casco" do app. Os dados vêm sempre da rede. */
-var V = 'blc-v75';
+var V = 'blc-v76';
 var CASCO = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(V).then(function (c) { return c.addAll(CASCO); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) {
@@ -8,7 +8,7 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   var r = e.request;
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
-  e.respondWith(fetch(r).then(function (resp) {
+  e.respondWith(fetch(r, { cache: 'no-store' }).then(function (resp) {
     var cp = resp.clone(); caches.open(V).then(function (c) { c.put(r, cp); }); return resp;
   }).catch(function () { return caches.match(r).then(function (m) { return m || caches.match('index.html'); }); }));
 });
