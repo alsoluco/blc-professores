@@ -2762,31 +2762,44 @@ function painelAsaas(mes, atualizar) {
 }
 function finResumo(r, pv, pd, ex, todos) {
   var mesOk = !todos && r.tot && r.tot.recebido;
-  var rec = mesOk ? r.tot.recebido.valor : 0, falta = mesOk ? (r.tot.areceber.valor + r.tot.atraso.valor) : 0;
-  var evt = pv ? pv.geral.emCaixa : null;
+  var rec = mesOk ? r.tot.recebido.valor : 0, noPrazo = mesOk ? r.tot.areceber.valor : 0, venc = r.tot && r.tot.atraso ? r.tot.atraso.valor : 0;
+  var aberto = null, reserva = null, abertas = [];
+  if (pv) {
+    aberto = 0; reserva = 0;
+    pv.provas.forEach(function (x) {
+      if (x.quitada) reserva += x.emCaixa || 0;
+      else if ((x.emCaixa || 0) > 0.004) { aberto += x.emCaixa; abertas.push(x); }
+    });
+    aberto = Math.round(aberto * 100) / 100; reserva = Math.round(reserva * 100) / 100;
+  }
   var prod = null;
   if (pd) { prod = 0; pd.grupos.forEach(function (g) { if (g.reserva || /^Outros avulsos/.test(g.produto)) return; g.itens.forEach(function (i) { if (i.g === 'recebido' && String(i.pagoEm || i.venc).slice(0, 7) === AS.mes) prod += i.valor; }); }); prod = Math.round(prod * 100) / 100; }
   var sem = ex ? ex.semCobranca.valor : 0;
-  var livre = (typeof r.saldo === 'number' && evt !== null && prod !== null) ? Math.round((r.saldo - evt - prod) * 100) / 100 : null;
-  var h = '<div class="card"><div class="eyebrow">Resumo financeiro · ' + esc(asMesNome(AS.mes)) + '</div>' +
-    finLinha('Saldo na conta Asaas agora', r.saldo === null || r.saldo === undefined ? '' : r.saldo, 'g') +
-    (evt !== null ? finLinha('Separar para eventos (reserva BLC + provas em aberto)', evt, 'w') : '<div class="small muted">Eventos: não consegui calcular agora.</div>') +
-    (prod !== null ? finLinha('Separar para produtos (vendas recebidas no mês)', prod, 'w') : '') +
-    (livre !== null ? finLinha('Saldo livre (saldo − eventos − produtos)', livre, livre < 0 ? 'r' : 'g') : '') +
-    '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">';
-  if (mesOk) {
-    h += finLinha('Já recebido no mês', rec, 'g') + finLinha('Falta receber no mês (no prazo + em atraso)', falta, 'w');
-    if (ex) h += finLinha('Renovações ainda sem cobrança no mês (assinaturas ativas)', sem, '') +
-      finLinha('Total previsto no mês, se todos os ativos renovarem', Math.round((rec + falta + sem) * 100) / 100, 'w') +
-      '<div class="small muted">' + ex.ativas.qtd + ' assinatura(s) ativa(s) no Asaas · valor mensal das ativas ' + finMoeda(ex.ativas.valorMensal) + '</div>';
-    else h += '<div class="small muted">Previsão de renovações indisponível agora.</div>';
-  } else h += '<div class="small muted">Escolha "Por mês" para ver recebido, a receber e a previsão do mês.</div>';
+  var sep = (aberto !== null ? aberto + reserva : 0) + (prod || 0);
+  var livre = (typeof r.saldo === 'number' && aberto !== null) ? Math.round((r.saldo - sep) * 100) / 100 : null;
+  var h = '<div class="card"><div class="eyebrow">Resumo financeiro · ' + esc(asMesNome(AS.mes)) + '</div>';
+  if (mesOk) h += finLinha('Já recebido no mês', rec, 'g') + finLinha('A receber, ainda no prazo', noPrazo, 'w') + finLinha('Mensalidades vencidas (em atraso)', venc, venc ? 'r' : '');
+  else h += finLinha('Mensalidades vencidas (todas, qualquer mês)', venc, venc ? 'r' : '') + '<div class="small muted">Escolha "Por mês" para ver recebido e a receber no prazo.</div>';
+  h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">';
+  if (aberto !== null) {
+    h += finLinha('Separar para pagar provas e eventos (recebido, ainda sem baixa)', aberto, 'w') +
+      (abertas.length ? '<div class="small muted">' + abertas.map(function (x) { return esc(x.nome) + ': ' + finMoeda(x.emCaixa); }).join(' · ') + '</div>' : '<div class="small muted">Todas as provas estão com baixa dada.</div>') +
+      (reserva ? finLinha('Reserva da BLC já retida nas inscrições (tenda e camisa)', reserva, 'w') : '');
+  } else h += '<div class="small muted">Provas: não consegui calcular agora.</div>';
+  if (prod !== null) h += finLinha('Separar para produtos (vendas recebidas no mês)', prod, 'w');
+  h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">' +
+    finLinha('Saldo na conta Asaas agora', r.saldo === null || r.saldo === undefined ? '' : r.saldo, 'g');
+  if (livre !== null) h += finLinha('Saldo livre (saldo − o que está separado)', livre, livre < 0 ? 'r' : 'g');
+  if (mesOk && ex) h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">' +
+    finLinha('Renovações ainda sem cobrança no mês', sem, '') +
+    finLinha('Total previsto no mês, se todos os ativos renovarem', Math.round((rec + noPrazo + venc + sem) * 100) / 100, 'w') +
+    '<div class="small muted">' + ex.ativas.qtd + ' assinatura(s) ativa(s) · valor mensal das ativas ' + finMoeda(ex.ativas.valorMensal) + '</div>';
   if (ex) {
     var c = ex.cancelados;
     h += c.length ? '<div class="err small" style="margin-top:10px"><b>' + c.length + ' aluno(s) pagaram em ' + esc(asMesNome(AS.mes)) + ' e já têm o contrato cancelado no Asaas:</b>' + c.map(function (i) { return '<div>' + esc(i.nome) + ' · pago ' + finMoeda(i.valorPago) + ' · ' + esc(i.status) + '</div>'; }).join('') + '</div>' :
       '<div class="small muted" style="margin-top:10px">Nenhum aluno que pagou neste mês tem contrato cancelado no Asaas.</div>';
   }
-  return h + '<div class="small muted" style="margin-top:6px">Valores por data de vencimento. Eventos: tudo o que não foi repassado. Produtos: cobranças de produto pagas no mês.</div></div>';
+  return h + '<div class="small muted" style="margin-top:6px">Valores por data de vencimento. O que está "sem baixa" sai da conta de provas à medida que você dá baixa em Provas e eventos.</div></div>';
 }
 
 function painelProj(atualizar) {
