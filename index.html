@@ -3066,7 +3066,11 @@ document.addEventListener('visibilitychange', function () {
   if (S.telaMural) carregaMural(false);
 });
 if (S.token) { call('abriu').catch(function () {}); inicio(); } else telaLogin();
-if ('serviceWorker' in navigator) { window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); }); }
+if ('serviceWorker' in navigator) {
+  var teveSW = !!navigator.serviceWorker.controller, jaRecarregou = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function () { if (teveSW && !jaRecarregou) { jaRecarregou = true; location.reload(); } });
+  window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').then(function (reg) { try { reg.update(); } catch (e) {} }).catch(function () {}); });
+}
 </script>
 </body>
 </html>
