@@ -2786,6 +2786,11 @@ function painelAsaas(mes, atualizar) {
     });
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
+function emailTeste() {
+  call('emailTeste', {}).then(function (r) {
+    aviso(r.via === 'contato' ? 'Funcionou: o e-mail de teste saiu de contato@equipeblc.com. Veja na sua caixa de entrada.' : 'O e-mail saiu pela conta principal, não pelo contato@. ' + (r.aliasEncontrado ? 'O alias foi encontrado, mas o envio falhou: ' + (r.erro || '') : 'O app ainda não enxerga o alias (falta autorizar o acesso ao Gmail no Apps Script). ' + (r.erroAlias || '')));
+  }).catch(function (e) { aviso(e.message); });
+}
 function finResumo(r, pv, pd, ex, todos) {
   var mesOk = !todos && r.tot && r.tot.recebido;
   var rec = mesOk ? r.tot.recebido.valor : 0, noPrazo = mesOk ? r.tot.areceber.valor : 0, venc = r.tot && r.tot.atraso ? r.tot.atraso.valor : 0;
@@ -2827,7 +2832,7 @@ function finResumo(r, pv, pd, ex, todos) {
     h += c.length ? '<div class="err small" style="margin-top:10px"><b>' + c.length + ' aluno(s) pagaram em ' + esc(asMesNome(AS.mes)) + ' e já têm o contrato cancelado no Asaas:</b>' + c.map(function (i) { return '<div>' + esc(i.nome) + ' · pago ' + finMoeda(i.valorPago) + ' · ' + esc(i.status) + '</div>'; }).join('') + '</div>' :
       '<div class="small muted" style="margin-top:10px">Nenhum aluno que pagou neste mês tem contrato cancelado no Asaas.</div>';
   }
-  return h + '<div class="small muted" style="margin-top:6px">Valores por data de vencimento. O que está "sem baixa" sai da conta de provas à medida que você dá baixa em Provas e eventos.</div></div>';
+  return h + '<div class="small muted" style="margin-top:6px">Valores por data de vencimento. O que está "sem baixa" sai da conta de provas à medida que você dá baixa em Provas e eventos.</div><div style="margin-top:8px"><button class="btn btn-sm" onclick="emailTeste()">Testar envio de e-mail (contato@)</button></div></div>';
 }
 
 function painelProj(atualizar) {
