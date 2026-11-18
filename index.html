@@ -785,6 +785,7 @@ function desenhaAtleta(r) {
     '<div class="card"><div class="eyebrow">Presença nos treinos da equipe' + (r.presencas.length ? ' · ' + r.presencas.length + ' desde 03/08' : '') + '</div>' +
     (r.presencas.length ? r.presencas.slice(0, 15).map(function (p) { return '<div class="hist"><div class="meta">' + esc(p.data) + (p.inicio ? ' · início ' + esc(p.inicio) : '') + '</div><div class="txt">' + esc(p.local) + (p.duracao ? ' · ' + esc(p.duracao) + ' min' : '') + (p.modalidade ? ' · ' + esc(p.modalidade) : '') + '</div></div>'; }).join('') :
       '<div class="muted small">Nenhum treino presencial registrado desde 03/08 (leitura do TrainingPeaks).</div>') + '</div>' +
+    (S.perfil === 'Admin' ? '<button class="btn btn-sm" onclick="editarAtleta()">Editar dados do atleta</button> ' : '') +
     (S.perfil === 'Admin' ? '<button class="btn btn-sm" onclick="statusAtleta(\'' + esc(f['ID']) + '\',' + (f['Status'] === 'Inativo') + ')">' + (f['Status'] === 'Inativo' ? 'Reativar atleta' : 'Marcar atleta como inativo') + '</button>' : '') +
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
 
@@ -802,6 +803,29 @@ function desenhaAtleta(r) {
   observaVistos();
 }
 
+var ATL_CAMPOS = [['Nome', 'Nome'], ['E-mail', 'E-mail'], ['Telefone', 'Telefone'], ['Nascimento', 'Nascimento (dd/mm/aaaa)'], ['Instagram', 'Instagram'], ['Contato emergência', 'Contato de emergência (nome)'], ['Telefone emergência', 'Telefone de emergência'], ['Federação', 'Federação'], ['Limitação física', 'Limitação física'], ['Alergia/doença', 'Alergia / doença'], ['Obs. saúde', 'Observações de saúde'], ['Último exame', 'Último exame físico'], ['Objetivo', 'Objetivo'], ['Camisa', 'Camisa']];
+function editarAtleta() {
+  if (S.perfil !== 'Admin' || !S.ficha) return;
+  var f = S.ficha.ficha;
+  app(head(userBar()) + '<button class="back" onclick="abrir(\'' + esc(f['ID']) + '\')">← Voltar à ficha</button>' +
+    '<div><div class="eyebrow">Somente head coach</div><h2>Editar <em>' + esc(f['Nome']) + '</em></h2></div>' +
+    '<form class="card hot" id="fe">' + ATL_CAMPOS.map(function (c, i) {
+      return '<div><label for="fe' + i + '">' + esc(c[1]) + '</label><input id="fe' + i + '" type="text" value="' + esc(f[c[0]] || '') + '" autocomplete="off"></div>';
+    }).join('') +
+    '<button class="btn btn-green" type="submit">Salvar alterações</button>' +
+    '<p class="small muted">Só você pode editar estes dados. Cada alteração fica registrada com data, hora e o valor antigo.</p></form>' +
+    '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
+  $('fe').onsubmit = function (ev) {
+    ev.preventDefault();
+    var campos = {};
+    ATL_CAMPOS.forEach(function (c, i) { var v = $('fe' + i).value.trim(); if (v !== String(f[c[0]] || '')) campos[c[0]] = v; });
+    if (!Object.keys(campos).length) { aviso('Nada foi alterado.'); return; }
+    call('atletaEditar', { id: f['ID'], campos: JSON.stringify(campos) }).then(function (r) {
+      if (campos['Nome'] && S.atletas) S.atletas.forEach(function (a) { if (a.id === f['ID']) a.nome = campos['Nome']; });
+      aviso(r.alterados + ' campo(s) atualizado(s).').then(function () { abrir(f['ID']); });
+    }).catch(function (e) { aviso(e.message); });
+  };
+}
 function statusAtleta(id, ativar) {
   call('statusAtleta', { id: id, ativo: ativar }).then(function () { abrir(id); }).catch(function (e) { aviso(e.message); });
 }
