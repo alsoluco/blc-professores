@@ -735,6 +735,21 @@ function histItem(h, mostraAtleta) {
     (h.resolvido ? '<div class="meta">Resolvida em ' + esc(h.resolvido.quando) + ' por ' + esc(h.resolvido.professor) + (h.resolvido.nota ? ': ' + esc(h.resolvido.nota) : '') + '</div>' : '') + '</div>';
 }
 
+function saudeHistCard(r) {
+  if (S.perfil !== 'Admin' || !r.saude) return '';
+  var ev = r.saude, nA = ev.filter(function (e) { return e.ev === 'alerta'; }).length;
+  var pc = function (v) { return v === '' ? '' : ' (' + (parseFloat(v) > 0 ? '+' : '') + esc(v) + '%)'; };
+  var corpo = ev.length ? ev.slice(0, 30).map(function (e) {
+    if (e.ev === 'alerta') {
+      return '<div class="hist"><div class="meta">' + esc(e.data) + ' · alerta: ' + esc(e.tipo) + (e.prio ? ' · prioridade' : '') + '</div><div class="txt">' +
+        (e.hrv !== '' ? 'HRV ' + esc(e.hrv) + pc(e.hrvVar) + ' · ' : '') + (e.fc !== '' ? 'FC rep ' + esc(e.fc) + pc(e.fcVar) + ' · ' : '') + (e.bb !== '' ? 'Body battery ' + esc(e.bb) + pc(e.bbVar) : '') +
+        (e.hoje ? '<br>Treino de hoje: ' + esc(e.hoje) : '') + (e.coment ? '<br>Comentário do atleta: ' + esc(e.coment) : '') + '</div></div>';
+    }
+    return '<div class="hist"><div class="meta">' + esc(e.data) + ' · ' + esc(e.tipo) + (e.quem ? ' · ' + esc(e.quem) : '') + '</div><div class="txt">' + (e.msg ? esc(e.msg) : '<span class="muted">sem texto</span>') + '</div></div>';
+  }).join('') + (ev.length > 30 ? '<div class="muted small">Mostrando os 30 mais recentes de ' + ev.length + '.</div>' : '')
+  : '<div class="muted small">Nenhum alerta de saúde registrado ainda. Daqui para frente cada alerta e cada mensagem ficam guardados aqui.</div>';
+  return '<div class="card"><div class="eyebrow">Histórico de saúde (só você vê)' + (nA ? ' · ' + nA + ' alerta' + (nA > 1 ? 's' : '') : '') + '</div>' + corpo + '</div>';
+}
 function desenhaAtleta(r) {
   var f = r.ficha;
   S.tipos = r.tipos || S.tipos; if (r.membros) S.membros = r.membros;
@@ -782,6 +797,7 @@ function desenhaAtleta(r) {
 
     '<div class="card"><div class="eyebrow">Contato</div><div class="kv two">' + kv('Telefone', f['Telefone']) + kv('E-mail', f['E-mail']) + kv('Instagram', f['Instagram']) + kv('Nascimento', f['Nascimento']) + kv('Camisa', f['Camisa']) + kv('Autoriza imagem', f['Autoriza imagem']) + '</div>' + foneBtns(f['Telefone']) + '</div>' +
 
+    saudeHistCard(r) +
     '<div class="card"><div class="eyebrow">Presença nos treinos da equipe' + (r.presencas.length ? ' · ' + r.presencas.length + ' desde 03/08' : '') + '</div>' +
     (r.presencas.length ? r.presencas.slice(0, 15).map(function (p) { return '<div class="hist"><div class="meta">' + esc(p.data) + (p.inicio ? ' · início ' + esc(p.inicio) : '') + '</div><div class="txt">' + esc(p.local) + (p.duracao ? ' · ' + esc(p.duracao) + ' min' : '') + (p.modalidade ? ' · ' + esc(p.modalidade) : '') + '</div></div>'; }).join('') :
       '<div class="muted small">Nenhum treino presencial registrado desde 03/08 (leitura do TrainingPeaks).</div>') + '</div>' +
