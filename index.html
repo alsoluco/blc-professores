@@ -1562,7 +1562,9 @@ function saudeDesenha(vazio) {
     var c = paEl('div', 'pa-al ' + (x.pri ? 'red' : (x.tipo === 'Alta' ? '' : 'yel')));
     if (x.contato) c.style.opacity = '.8';
     var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome));
-    t.appendChild(paEl('span', 'tag ' + (x.pri ? '' : 'w'), (x.pri ? 'Prioridade · ' : '') + x.tipo)); c.appendChild(t);
+    t.appendChild(paEl('span', 'tag ' + (x.pri ? '' : 'w'), (x.pri ? 'Prioridade · ' : '') + x.tipo));
+    t.appendChild(paEl('span', 'tag ' + (x.dias > 1 ? 'w' : ''), x.dias > 1 ? 'Segue em alerta há ' + x.dias + ' dias (desde ' + x.desde + ')' : 'NOVO alerta de ' + (x.dataAlerta || ''))); c.appendChild(t);
+    if (x.anterior && !x.contato) { var ant = paEl('div', 'pa-hint', 'Mensagem anterior: ' + (x.anterior.tipo === 'Enviada' ? 'enviada' : x.anterior.tipo.toLowerCase()) + ' em ' + x.anterior.quando + ' (alerta antigo). Para este alerta ainda não há mensagem enviada.'); ant.style.cssText = 'opacity:.85'; c.appendChild(ant); }
     if (x.contato && x.contato.tipo === 'Ignorado') {
       c.style.opacity = '.65';
       c.appendChild(paEl('div', 'pa-hint', 'HRV ' + saFmt(x.hrvV, '%') + ' · FC de repouso ' + saFmt(x.fcV, '%') + ' · body battery ' + saFmt(x.bbV, '%')));
@@ -1577,7 +1579,7 @@ function saudeDesenha(vazio) {
     c.appendChild(paEl('div', 'pa-hint', 'Treino de amanhã: ' + (x.amanha || 'sem treino planejado')));
     var cm = paEl('div', 'pa-hint', x.coment ? 'Comentários do atleta nos últimos 3 dias (leia antes de enviar): ' + x.coment : 'Comentários do atleta nos últimos 3 dias: nenhum.');
     if (x.coment) cm.style.cssText = 'border-left:3px solid var(--cyan);padding-left:8px;white-space:pre-wrap;opacity:1'; c.appendChild(cm);
-    if (x.contato) { var cc = paEl('div', '', (x.contato.tipo === 'Enviada' ? 'Mensagem enviada' : x.contato.tipo) + ' em ' + x.contato.quando); cc.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(cc); }
+    if (x.contato) { var cc = paEl('div', '', (x.contato.tipo === 'Enviada' ? 'Mensagem deste alerta enviada' : x.contato.tipo) + ' em ' + x.contato.quando); cc.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(cc); }
     var ta = document.createElement('textarea'); ta.value = x.msg; ta.rows = 4; ta.setAttribute('aria-label', 'Mensagem para ' + x.nome);
     ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
     ta.oninput = function () { SA.itens[idx].msg = ta.value; };
