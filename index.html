@@ -1660,6 +1660,42 @@ function limBtnInat(rw, idx) {
   var b = paEl('button', 'btn btn-sm', 'Atleta inativo'); b.type = 'button'; b.title = 'Parar de mostrar os alertas deste atleta'; b.onclick = function () { limInat(idx); }; rw.appendChild(b);
 }
 function limEstado(x) { return !x.st ? 'pend' : (x.st.acao === 'Enviado' ? 'env' : 'ign'); }
+function limGraficoPng(x) {
+  return lzFonte().then(function () {
+    var tr = x.treino, pts = tr.serie || [], W = 1200, H = 560, L0 = 70, R0 = 70, T0 = 90, B0 = 60;
+    var c = document.createElement('canvas'); c.width = W; c.height = H; var g = c.getContext('2d'), F = 'Montserrat,"Segoe UI",Arial,sans-serif';
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#fff'; g.font = '300 26px ' + F; g.textAlign = 'left'; g.fillText(String(tr.nome).replace(/\s*\(.*\)\s*$/, ''), L0, 42);
+    g.fillStyle = '#00ffff'; g.font = '400 16px ' + F; g.fillText('FC (vermelho) e velocidade (verde) ao longo do treino', L0, 68);
+    var tmax = pts[pts.length - 1][0] || 1, hmin = 999, hmax = 0, vmax = 10;
+    pts.forEach(function (p) { if (p[1]) { hmin = Math.min(hmin, p[1]); hmax = Math.max(hmax, p[1]); } vmax = Math.max(vmax, p[2]); });
+    hmin = Math.floor((hmin - 10) / 10) * 10; hmax = Math.ceil((hmax + 5) / 10) * 10; vmax = Math.ceil(vmax / 10) * 10 + 10;
+    var X = function (t) { return L0 + (W - L0 - R0) * t / tmax; };
+    var YH = function (v) { return T0 + (H - T0 - B0) * (1 - (v - hmin) / (hmax - hmin)); };
+    var YV = function (v) { return T0 + (H - T0 - B0) * (1 - v / vmax); };
+    ((x.analise && x.analise.trechos) || []).forEach(function (r) {
+      g.fillStyle = 'rgba(255,80,80,.18)'; g.fillRect(X(r.t0), T0, Math.max(3, X(r.t1) - X(r.t0)), H - T0 - B0);
+      g.fillStyle = '#ff9a9a'; g.font = '400 15px ' + F; g.fillText('trecho a conferir', X(r.t0) + 6, T0 + 18);
+    });
+    g.font = '400 14px ' + F;
+    for (var q = hmin; q <= hmax; q += 20) { g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 1; g.beginPath(); g.moveTo(L0, YH(q)); g.lineTo(W - R0, YH(q)); g.stroke(); g.fillStyle = '#ff6b6b'; g.textAlign = 'left'; g.fillText(q, W - R0 + 8, YH(q) + 5); }
+    for (var v = 0; v <= vmax; v += 10) { g.fillStyle = '#4ade80'; g.textAlign = 'right'; g.fillText(v, L0 - 8, YV(v) + 5); }
+    g.fillStyle = 'rgba(255,255,255,.65)'; g.textAlign = 'center';
+    for (var h = 0; h <= tmax; h += 1200) g.fillText(Math.floor(h / 3600) + ':' + ('0' + Math.floor(h % 3600 / 60)).slice(-2), X(h), H - 22);
+    var linha = function (idxv, yf, cor) {
+      g.strokeStyle = cor; g.lineWidth = 2.4; g.lineJoin = 'round'; var on = false, last = null;
+      pts.forEach(function (p) {
+        var ok = p[idxv] > 0;
+        if (!ok || (last !== null && p[0] - last > 90)) { if (on) g.stroke(); on = false; }
+        if (ok) { if (!on) { g.beginPath(); g.moveTo(X(p[0]), yf(p[idxv])); on = true; } else g.lineTo(X(p[0]), yf(p[idxv])); last = p[0]; }
+      });
+      if (on) g.stroke();
+    };
+    linha(2, YV, '#4ade80'); linha(1, YH, '#ff6b6b');
+    g.fillStyle = '#8a8a8a'; g.font = '400 13px ' + F; g.textAlign = 'right'; g.fillText('BLC Assessoria Esportiva · tempo decorrido (h:min)', W - R0, H - 6);
+    return c.toDataURL('image/png');
+  });
+}
 function limGrafico(x) {
   var tr = x.treino, S1 = 'http://www.w3.org/2000/svg';
   var d = document.createElement('details'); d.open = true;
@@ -1692,11 +1728,17 @@ function limGrafico(x) {
       });
       if (seg.length > 1) el('polyline', { points: seg.join(' '), fill: 'none', stroke: cor, 'stroke-width': 1.5, 'stroke-linejoin': 'round' });
     };
+    ((x.analise && x.analise.trechos) || []).forEach(function (r) {
+      el('rect', { x: X(r.t0), y: T0, width: Math.max(2, X(r.t1) - X(r.t0)), height: H - T0 - B0, fill: 'rgba(255,80,80,.16)' });
+      el('text', { x: X(r.t0) + 3, y: T0 + 11, fill: '#ff9a9a', 'font-size': 10 }, 'trecho a conferir');
+    });
     linha(2, YV, '#4ade80', function (v) { return v > 0; });
     linha(1, YH, '#ff6b6b', function (v) { return v > 0; });
     var pk = null; pts.forEach(function (p) { if (p[1] && (!pk || p[1] > pk[1])) pk = p; });
     if (pk) { el('circle', { cx: X(pk[0]), cy: YH(pk[1]), r: 3.5, fill: '#fff' }); el('text', { x: Math.min(X(pk[0]) + 6, W - R0 - 60), y: YH(pk[1]) + 4, fill: '#fff', 'font-size': 10 }, 'máx. ' + pk[1] + ' bpm'); }
     d.appendChild(svg);
+    if (x.analise && x.analise.suspeito) { var bx = paEl('div', 'pa-hint', 'Análise automática: FC incompatível com a velocidade. ' + x.analise.resumo + ' Pode ser leitura ruim do sensor (punho) ou esforço real; vale perguntar ao atleta.'); bx.style.cssText = 'border-left:3px solid #ff6b6b;padding-left:10px;margin:6px 0'; d.appendChild(bx); }
+    else if (x.analise) d.appendChild(paEl('div', 'pa-hint', 'Análise automática: não encontrei trecho em que a FC fique muito acima do esperado para a velocidade.'));
     d.appendChild(paEl('div', 'pa-hint', 'Vermelho: FC (bpm, eixo da direita). Verde: velocidade (km/h, eixo da esquerda). Tempo decorrido em h:min. Linhas tracejadas: limiar novo e antigo. Picos isolados muito acima do resto costumam ser erro do sensor.'));
   }
   if (tr.link) { var a = document.createElement('a'); a.href = tr.link; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Abrir a atleta no TrainingPeaks (calendário)'; a.style.cssText = 'font-size:.8rem;color:var(--cyan)'; d.appendChild(a); }
@@ -1715,7 +1757,7 @@ function limCard(x, idx, box, aba) {
   if (aba === 'env') {
     var ec = paEl('div', '', 'E-mail enviado em ' + x.st.quando + ' por ' + x.st.quem + (x.email ? ' · para ' + x.email : '')); ec.style.cssText = 'color:var(--cyan);font-weight:600;font-size:.78rem'; c.appendChild(ec);
     if (x.st.texto) { var dt = document.createElement('details'); dt.appendChild(paEl('summary', 'pa-hint', 'Ver o texto enviado')); var pt = paEl('div', 'pa-hint', x.st.texto); pt.style.whiteSpace = 'pre-wrap'; dt.appendChild(pt); c.appendChild(dt); }
-    if (x.nova) { var dz = document.createElement('details'); dz.appendChild(paEl('summary', 'pa-hint', 'Zonas enviadas · ' + x.nova.titulo)); dz.appendChild(limTab(x.nova.linhas, true)); c.appendChild(dz); }
+    if (x.nova && !/Antes de atualizarmos/.test(String(x.st.texto || ''))) { var dz = document.createElement('details'); dz.appendChild(paEl('summary', 'pa-hint', 'Zonas enviadas · ' + x.nova.titulo)); dz.appendChild(limTab(x.nova.linhas, true)); c.appendChild(dz); }
     c.appendChild(paEl('div', 'pa-hint', 'Lembre-se de aplicar o limiar novo no TrainingPeaks, se ainda não aplicou.'));
     var rwe = paEl('div', 'row'); var be = paEl('button', 'btn btn-sm', 'Voltar para pendentes'); be.type = 'button'; be.onclick = function () { limAcao(idx, 'Reaberto'); }; rwe.appendChild(be); limBtnInat(rwe, idx); if (x.fid) { var bf = paEl('button', 'btn btn-sm', 'Abrir ficha'); bf.type = 'button'; bf.onclick = function () { abrir(x.fid); }; rwe.appendChild(bf); } c.appendChild(rwe); box.appendChild(c); return;
   }
@@ -1726,14 +1768,20 @@ function limCard(x, idx, box, aba) {
       x.mantem.forEach(function (m) { d.appendChild(paEl('div', 'pa-hint', m.t)); d.appendChild(limTab(m.linhas, false)); });
       c.appendChild(d);
     }
+    var emDuv = x.duvida && x.modo !== 'padrao';
+    if (x.duvida) {
+      var al = paEl('div', 'pa-hint', emDuv ? 'O gráfico tem um trecho suspeito. O texto abaixo já pergunta ao atleta se usou FC no punho ou cinta no peito e se o trecho foi esforço real. Ele só recebe as zonas depois da resposta.' : 'Você escolheu o texto padrão, com as zonas novas, sem a pergunta sobre o gráfico.');
+      al.style.cssText = 'border-left:3px solid #ff6b6b;padding-left:10px;margin:6px 0'; c.appendChild(al);
+      var bm = paEl('button', 'btn btn-sm', emDuv ? 'Usar o texto padrão com as zonas (sem a pergunta)' : 'Voltar ao texto com a pergunta'); bm.type = 'button'; bm.onclick = function () { limModo(idx); }; c.appendChild(bm);
+    }
     var ta = document.createElement('textarea'); ta.value = x.texto; ta.rows = 7; ta.setAttribute('aria-label', 'Texto do e-mail para ' + x.nome);
     ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.9rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
     ta.oninput = function () { LM.itens[idx].texto = ta.value; };
     c.appendChild(ta);
-    c.appendChild(paEl('div', 'pa-hint', 'Edite o texto com as suas palavras. As tabelas de zonas e o card de stories (anexo) entram no e-mail automaticamente. Assunto: ' + x.assunto + '. Destino: ' + (x.email || 'sem e-mail cadastrado') + '.'));
+    c.appendChild(paEl('div', 'pa-hint', 'Edite o texto com as suas palavras. ' + (emDuv ? 'Neste modo o e-mail leva só o texto e o gráfico do treino (sem tabelas de zonas e sem card de stories).' : 'As tabelas de zonas e o card de stories (anexo) entram no e-mail automaticamente.') + ' Assunto: ' + x.assunto + '. Destino: ' + (x.email || 'sem e-mail cadastrado') + '.'));
     var rw = paEl('div', 'row');
     var bt = function (txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = fn; rw.appendChild(b); };
-    if (x.email || x.fid) bt('Enviar e-mail', 'btn-green', function () { limEnvia(idx); });
+    if (x.email || x.fid) bt(emDuv ? 'Enviar pergunta ao atleta' : 'Enviar e-mail', 'btn-green', function () { limEnvia(idx); });
     else rw.appendChild(paEl('span', 'pa-hint', 'Sem e-mail cadastrado'));
     bt('Ignorar alerta', '', function () { limIgn(idx); });
     bt('Atleta inativo', '', function () { limInat(idx); });
@@ -1786,17 +1834,29 @@ function limInat(i) {
 function limAtiva(tp, nome) {
   call('limiaresInativo', { tp: tp, ativo: true }).then(function () { aviso(nome + ' voltou a ficar ativo.'); return limRecarrega(); }).catch(function (e) { aviso(e.message); });
 }
-function limAcao(i, acao, motivo, texto, img) {
+function limAcao(i, acao, motivo, texto, img, modo) {
   var x = LM.itens[i];
-  return call('limiaresAcao', { id: x.id, acao: acao, motivo: motivo || '', texto: texto || '', img: img || '' }).then(function (r) {
+  return call('limiaresAcao', { id: x.id, acao: acao, motivo: motivo || '', texto: texto || '', img: img || '', modo: modo || '' }).then(function (r) {
     return call('limiaresLista', {}, true).then(function (d) { LM.itens = d.itens || []; LM.inativos = d.inativos || []; limDesenha(); return r; });
   }).catch(function (e) { aviso(e.message); });
+}
+function limModo(i) {
+  var x = LM.itens[i];
+  if (x.modo === 'padrao') { x.textoPadrao = x.texto; x.texto = x.textoDuvida; x.assunto = x.assuntoDuvida; x.modo = 'duvida'; }
+  else { x.textoDuvida = x.texto; x.texto = x.textoPadrao; x.assunto = x.assuntoPadrao; x.modo = 'padrao'; }
+  limDesenha();
 }
 function limEnvia(i) {
   var x = LM.itens[i];
   if (!String(x.texto || '').trim()) { aviso('Escreva o texto do e-mail antes de enviar.'); return; }
   dlg('Enviar o e-mail para ' + x.nome + (x.email ? ' (' + x.email + ')' : '') + ', em nome da BLC?', { ok: 'Enviar e-mail' }).then(function (v) {
     if (!v) return;
+    if (x.duvida && x.modo !== 'padrao' && x.treino) {
+      carrega('Montando o gráfico e enviando…');
+      limGraficoPng(x).then(function (img) { return limAcao(i, 'Enviado', '', x.texto, img, 'duvida'); })
+        .then(function (r) { carregaFim(); if (r && r.ok) aviso('Pergunta enviada ao atleta com o gráfico. O alerta foi para "E-mails enviados"; quando ele responder, toque em "Voltar para pendentes" e envie as zonas novas.'); }, function (e) { carregaFim(); aviso(e.message); });
+      return;
+    }
     carrega('Montando o card e enviando…');
     var pn = String(x.nome).split(' ')[0]; pn = pn.charAt(0).toUpperCase() + pn.slice(1).toLowerCase();
     var card = { etiqueta: 'Novo limiar', grupo: x.mod === 'Bike' ? 'Bike' : 'Corrida', titulo: x.nova.titulo, lim: x.nova.limiar, linhas: x.nova.linhas.map(function (l) { return [l[0], l[1]]; }) };
