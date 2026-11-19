@@ -2520,7 +2520,7 @@ function desenhaConvidar() {
     '<div class="list" id="cvres"></div></div>' +
     '<div class="card"><div class="eyebrow cy" id="cvsn"></div><div class="list" id="cvsel"></div></div>' +
     '<div class="card"><div class="eyebrow cy">Mensagem do convite</div><div class="small" style="border-left:2px solid var(--green);padding-left:12px">' + esc(cvTextoPadrao(r.prova)) + '</div>' +
-    '<div class="small muted">Esse convite sempre vai no e-mail e no WhatsApp, com o link da inscrição. Se quiser, acrescente um recado:</div>' +
+    '<div class="small muted">E-mail: vai o texto acima e, depois, o seu recado. WhatsApp: se você escrever um recado, vai SOMENTE o recado (escreva nele o link e o Pix); sem recado, vai o texto acima. Use [nome] para o primeiro nome do atleta.</div>' +
     '<textarea id="cvt" rows="9" maxlength="723" placeholder="Recado extra (opcional). Pode colar emojis. Use *asteriscos* para negrito.">' + esc(txt) + '</textarea>' +
     '<div class="eyebrow cy" id="cvpara"></div><div class="small" id="cvparal"></div>' +
     '<button type="button" class="btn btn-green" id="cvb" onclick="cvEnvia()"></button></div>');
@@ -2547,11 +2547,12 @@ function cvLista() {
 }
 function cvTodosVer() { S.cvAll = !S.cvAll; $('cvq').value = ''; cvLista(); }
 function cvToggle(id) { if (S.cvSel[id]) delete S.cvSel[id]; else S.cvSel[id] = 1; cvLista(); }
-function cvMsg() { var x = ($('cvt').value || '').trim(); return cvTextoPadrao(S.cv.prova) + (x ? '\n\n' + x : ''); }
+function cvRecado() { return ($('cvt').value || '').trim(); }
+function cvMsg() { var x = cvRecado().replace(/,\s*\[nome\]/gi, '').replace(/\[nome\]/gi, ''); return cvTextoPadrao(S.cv.prova) + (x ? '\n\n' + x : ''); }
 function cvZap(id) {
   var a = cvAtl(id); if (!a) return;
-  var t = cvMsg(), link = S.cv.prova.link;
-  var msg = 'Olá, ' + String(a.nome).split(' ')[0] + '! ' + t + (t.indexOf(link) < 0 ? '\n\nFormulário de inscrição: ' + link : '') + (S.cv.prova.linkProva && S.cv.prova.linkProva !== link ? '\n\nMais detalhes sobre a prova: ' + S.cv.prova.linkProva : '');
+  var t = cvMsg(), link = S.cv.prova.link, rec = cvRecado();
+  var msg = rec ? rec.replace(/\[nome\]/gi, String(a.nome).split(' ')[0]) : 'Olá, ' + String(a.nome).split(' ')[0] + '! ' + t + (t.indexOf(link) < 0 ? '\n\nFormulário de inscrição: ' + link : '') + (S.cv.prova.linkProva && S.cv.prova.linkProva !== link ? '\n\nMais detalhes sobre a prova: ' + S.cv.prova.linkProva : '');
   window.open('https://wa.me/' + cvFone(a.telefone) + '?text=' + encodeURIComponent(msg), '_blank');
 }
 function cvComEmail() { return Object.keys(S.cvSel).filter(function (id) { var a = cvAtl(id); return a && a.email; }); }
