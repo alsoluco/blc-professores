@@ -1285,12 +1285,12 @@ function paWd(d) { return (new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7; }
 function paFm(x) { return x === null ? '–' : (Math.round(x * 10) / 10).toFixed(1).replace('.', ','); }
 function paMedRule(r, dates, wd) {
   var n = 0, p = 0;
-  dates.forEach(function (d) { if (!paValid(d)) return; var w = paWd(d); if (wd !== undefined ? w !== wd : r.d.indexOf(w) < 0) return; var c = paCell(r.k, d); n++; p += c ? c.c.length : 0; });
+  dates.forEach(function (d) { if (!paValid(d)) return; var w = paWd(d); if (wd !== undefined ? w !== wd : r.d.indexOf(w) < 0) return; var c = paCell(r.k, d); if (!c || !c.c.length) return; n++; p += c.c.length; });
   return { n: n, p: p, avg: n ? p / n : null };
 }
 function paMedDia(dates, wd) {
   var n = 0, p = 0;
-  dates.forEach(function (d) { if (!paValid(d)) return; if (wd !== undefined && paWd(d) !== wd) return; n++; p += Object.keys(paDayset(d)).length; });
+  dates.forEach(function (d) { if (!paValid(d)) return; if (wd !== undefined && paWd(d) !== wd) return; var q = Object.keys(paDayset(d)).length; if (!q) return; n++; p += q; });
   return { n: n, p: p, avg: n ? p / n : null };
 }
 function paBuildMedia() {
@@ -1317,7 +1317,7 @@ function paBuildMedia() {
     var s = paEl('tr', 'sum'); s.appendChild(paEl('td', 'l', 'Atletas no dia (média)'));
     for (var j = 0; j < 7; j++) { var a2 = paMedDia(all, j), t2 = paEl('td'); t2.appendChild(paEl('b', '', paFm(a2.avg))); t2.appendChild(paEl('small', '', a2.n + ' dias')); s.appendChild(t2); }
     T.appendChild(s);
-    note = 'Média de presenças em cada treino, por dia da semana, desde ' + paFd(PA.E.inicio) + ' até ' + paFd(PA.ult) + '. Feriados e dias sem leitura não entram. Dia sem ninguém conta como zero.';
+    note = 'Média de presenças em cada treino, por dia da semana, desde ' + paFd(PA.E.inicio) + ' até ' + paFd(PA.ult) + '. Só entram os dias em que houve treino coletivo (com gente saindo): feriado, chuva ou treino cancelado não contam.';
   } else {
     var grupos = PA.mm === 'sem' ? PA.WK.map(function (ds) { return { l: paLab(ds), d: ds }; }) : PA.MON.map(function (x) { return { l: PA_MNF[x.m], d: x.d }; });
     h.appendChild(paEl('th', 'l', PA.mm === 'sem' ? 'Semana' : 'Mês'));
@@ -1329,7 +1329,7 @@ function paBuildMedia() {
       var t = paMedDia(g.d), tt = paEl('td', 'tt'); tt.appendChild(paEl('b', '', paFm(t.avg))); tt.appendChild(paEl('small', '', t.n + ' dias')); tr.appendChild(tt);
       T.appendChild(tr);
     });
-    note = 'Cada treino mostra a média de presenças por vez que aconteceu. "Média por dia" é a média de atletas diferentes por dia de treino. Feriados e dias sem leitura não entram.';
+    note = 'Cada treino mostra a média de presenças por vez que aconteceu. "Média por dia" é a média de atletas diferentes por dia de treino. Só entram os dias em que houve treino coletivo (com gente saindo); treino cancelado não conta.';
   }
   box.appendChild(paEl('p', 'pa-hint', note));
 }
