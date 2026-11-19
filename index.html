@@ -2547,12 +2547,17 @@ function cvLista() {
 }
 function cvTodosVer() { S.cvAll = !S.cvAll; $('cvq').value = ''; cvLista(); }
 function cvToggle(id) { if (S.cvSel[id]) delete S.cvSel[id]; else S.cvSel[id] = 1; cvLista(); }
+var CNPJ_BLC = '';
+function cvConfra(p, nome) {
+  return 'Oi, ' + nome + '! Tudo bem? Estou passando para te convidar para a nossa confraternização.\n\nSerá neste domingo, dia 22, às 13h, na Rua Mena Barreto, 161. Um rodízio de pizza, e fazemos questão da sua presença! Hoje é o último dia para passarmos ao buffet a quantidade de pessoas. Você pode confirmar? Ficaremos imensamente honrados em contar com você.\n\nPreencha o formulário e anexe o comprovante:\n' + p.link +
+    (CNPJ_BLC ? '\n\nPix (CNPJ): ' + CNPJ_BLC : '') + '\n\nUm abraço, Equipe BLC';
+}
 function cvRecado() { return ($('cvt').value || '').trim(); }
 function cvMsg() { var x = cvRecado().replace(/,\s*\[nome\]/gi, '').replace(/\[nome\]/gi, ''); return cvTextoPadrao(S.cv.prova) + (x ? '\n\n' + x : ''); }
 function cvZap(id) {
   var a = cvAtl(id); if (!a) return;
   var t = cvMsg(), link = S.cv.prova.link, rec = cvRecado();
-  var msg = rec ? rec.replace(/\[nome\]/gi, String(a.nome).split(' ')[0]) : 'Olá, ' + String(a.nome).split(' ')[0] + '! ' + t + (t.indexOf(link) < 0 ? '\n\nFormulário de inscrição: ' + link : '') + (S.cv.prova.linkProva && S.cv.prova.linkProva !== link ? '\n\nMais detalhes sobre a prova: ' + S.cv.prova.linkProva : '');
+  var msg = (!rec && S.cv.prova.id === 'P013') ? cvConfra(S.cv.prova, String(a.nome).split(' ')[0]) : rec ? rec.replace(/\[nome\]/gi, String(a.nome).split(' ')[0]) : 'Olá, ' + String(a.nome).split(' ')[0] + '! ' + t + (t.indexOf(link) < 0 ? '\n\nFormulário de inscrição: ' + link : '') + (S.cv.prova.linkProva && S.cv.prova.linkProva !== link ? '\n\nMais detalhes sobre a prova: ' + S.cv.prova.linkProva : '');
   window.open('https://wa.me/' + cvFone(a.telefone) + '?text=' + encodeURIComponent(msg), '_blank');
 }
 function cvComEmail() { return Object.keys(S.cvSel).filter(function (id) { var a = cvAtl(id); return a && a.email; }); }
