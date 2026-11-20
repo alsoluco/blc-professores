@@ -260,14 +260,16 @@ function micInit(id) {
       setInd('#d92b2b', '🔴 Ouvindo sua voz…');
     };
     rec.onerror = function (ev) {
-      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { parar(); setInd('#d92b2b', 'Permita o microfone nas configurações do navegador.'); }
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { parar(); setInd('#d92b2b', 'O microfone está bloqueado. Toque no cadeado ao lado do endereço do site, escolha Microfone > Permitir e recarregue a página. No Mac/Windows, confira também se o navegador tem permissão de microfone nas configurações do sistema.'); }
+      else if (ev.error === 'audio-capture') { parar(); setInd('#d92b2b', 'Não encontrei nenhum microfone neste computador. Conecte um microfone ou escolha a entrada de áudio nas configurações do sistema.'); }
+      else if (ev.error === 'network') { parar(); setInd('#d92b2b', 'O ditado precisa de internet e não conseguiu conectar. Tente de novo.'); }
       else if (ev.error !== 'no-speech' && ev.error !== 'aborted') { setInd('#d92b2b', 'Erro no microfone (' + ev.error + ').'); }
     };
     rec.onend = function () { rec = null; if (want) { setTimeout(function () { if (want) { try { inicia(); } catch (e) { parar(); } } }, 200); } };
     rec.start();
   }
   bt.onclick = function () {
-    if (!SR) { setInd('#d92b2b', 'Seu navegador não tem ditado aqui. Use o microfone do teclado do celular.'); return; }
+    if (!SR) { setInd('#d92b2b', 'Este navegador não tem ditado por voz. No computador use o Google Chrome ou o Microsoft Edge; no iPhone, o microfone do teclado.'); return; }
     if (want) { parar(); setInd('#2a9d4a', 'Gravação parada. Toque em Falar para continuar.'); return; }
     want = true; visual(true); try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
     try { inicia(); } catch (e) { parar(); return; }
@@ -1704,7 +1706,7 @@ function fbFd(d) { return d ? d.slice(8) + '/' + d.slice(5, 7) : ''; }
 function fbTela() {
   S.aba2 = 'fb'; if (!FB.fim) { FB.fim = fbHoje(); FB.ini = fbMenos(FB.fim, 6); }
   app(head(userBar()) + '<div class="spin">Carregando grupos…</div>');
-  call('fbGrupos', {}).then(function (r) { FB.d = r.grupos || []; fbDesenha(); })
+  call('fbGrupos', {}).then(function (r) { FB.d = r.grupos || []; return call('fbSalvos', {}).then(function (q) { FB.sv = q.itens || []; }, function () { FB.sv = []; }); }).then(function () { fbDesenha(); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="fbTela()">Tentar de novo</button>'); });
 }
 function fbDesenha() {
@@ -1714,6 +1716,13 @@ function fbDesenha() {
     '<div style="flex:1;min-width:140px"><label for="fbIni">De</label><input type="date" id="fbIni" value="' + FB.ini + '"></div>' +
     '<div style="flex:1;min-width:140px"><label for="fbFim">Até</label><input type="date" id="fbFim" value="' + FB.fim + '"></div></div>' +
     '<div class="small muted" style="margin-top:6px">Começa automático: os 7 dias até hoje. Mudando o “Até”, o “De” acompanha. Você também pode ajustar os dois.</div></div>';
+  var sv = FB.sv || [];
+  h += '<div class="card"><button type="button" class="btn btn-sm' + (FB.svAberto ? ' btn-green' : '') + '" style="width:100%;text-align:left" onclick="FB.svAberto=!FB.svAberto;fbDesenha()">Para enviar · ' + sv.length + (sv.length ? ' guardado(s)' : '') + ' ' + (FB.svAberto ? '▲' : '▼') + '</button>';
+  if (FB.svAberto) {
+    if (!sv.length) h += '<div class="small muted" style="margin-top:8px">Nenhum feedback guardado. Abra um atleta, edite a mensagem e toque em “Salvar sem enviar”.</div>';
+    else { h += '<div class="list" style="margin-top:8px">'; sv.forEach(function (x, k) { h += '<div class="row" style="padding:6px 0;border-top:1px solid var(--line)"><button type="button" class="btn btn-sm btn-line" style="flex:1;text-align:left" onclick="fbSv(' + k + ')">' + esc(x.nome) + '<span class="small muted" style="display:block">' + esc(x.grupo) + ' · ' + fbFd(x.ini) + ' a ' + fbFd(x.fim) + ' · salvo ' + esc(x.salvo) + '</span></button></div>'; }); h += '</div>'; }
+  }
+  h += '</div>';
   FB.d.forEach(function (g, gi) {
     var aberto = FB.g === gi;
     h += '<div class="card"><button type="button" class="btn btn-sm' + (aberto ? ' btn-green' : '') + '" style="width:100%;text-align:left" onclick="fbGrupo(' + gi + ')">' + esc(g.nome) + ' · ' + g.atletas.length + ' atletas ' + (aberto ? '▲' : '▼') + '</button>';
@@ -1771,7 +1780,7 @@ function fbDet() {
     h += '<div class="card"><div class="eyebrow">Feedback · ' + fbFd(f.ini) + ' a ' + fbFd(f.fim) + '</div><div style="white-space:pre-wrap;line-height:1.55">' + esc(f.texto) + '</div><div class="small muted" style="margin-top:8px">Gerado em ' + esc(f.gerado) + (f.obs ? ' · ' + esc(f.obs) : '') + '</div></div>' +
       '<div class="card"><div class="eyebrow">Mensagem para o atleta (pode editar)</div><textarea id="fbz" style="min-height:180px">' + esc(f.zap) + '</textarea>' +
       (cvFone(r.telefone) ? '<div class="small muted" style="margin-top:6px">WhatsApp: +' + cvFone(r.telefone) + '</div>' : '<div class="small" style="margin-top:6px;color:var(--red,#d92b2b)">Sem telefone na ficha deste atleta.</div>') +
-      '<div style="margin-top:10px"><button type="button" class="btn btn-green" onclick="fbZap()">Enviar pelo WhatsApp</button></div></div>';
+      '<div style="margin-top:10px"><button type="button" class="btn btn-green" onclick="fbZap()">Enviar pelo WhatsApp</button> <button type="button" class="btn" onclick="fbGuarda()">Salvar sem enviar</button></div></div>';
   }
   h += '</div>';
   app(head(userBar()) + h);
@@ -1786,8 +1795,39 @@ function fbZap() {
   window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
   var f0 = FB.det.r.feedbacks[FB.det.i] || {};
   call('fbEnviado', { tp: FB.det.a.tp, ini: f0.ini || FB.ini, fim: f0.fim || FB.fim, texto: msg, sugerido: f0.zap || '' }, true)
-    .then(function (r) { aviso(r.naFicha ? 'Mensagem salva na ficha do atleta.' : 'Mensagem guardada no histórico, mas não achei a ficha do atleta.'); })
+    .then(function (r) { FB.sv = (FB.sv || []).filter(function (y) { return !(y.tp === FB.det.a.tp && y.ini === (f0.ini || FB.ini) && y.fim === (f0.fim || FB.fim)); }); aviso(r.naFicha ? 'Mensagem salva na ficha do atleta.' : 'Mensagem guardada no histórico, mas não achei a ficha do atleta.'); })
     .catch(function (e) { aviso('Não consegui salvar na ficha: ' + e.message); });
+}
+function fbGuarda() {
+  var D = FB.det, msg = $('fbz').value.trim(), f0 = D.r.feedbacks[D.i] || {};
+  if (!msg) { aviso('A mensagem está vazia.'); return; }
+  call('fbSalvar', { tp: D.a.tp, ini: f0.ini || FB.ini, fim: f0.fim || FB.fim, texto: msg, sugerido: f0.zap || '' }, true)
+    .then(function () { aviso('Guardado em “Para enviar”. Nada foi enviado ao atleta.').then(function () { fbTela(); }); })
+    .catch(function (e) { aviso('Não consegui guardar: ' + e.message); });
+}
+function fbSv(k) {
+  var x = FB.sv[k]; FB.svi = k;
+  app(head(userBar()) + '<div class="pa"><button type="button" class="btn btn-sm btn-line" onclick="fbDesenha()">← Voltar</button><div><div class="eyebrow">' + esc(x.grupo) + ' · guardado em ' + esc(x.salvo) + '</div><h2>' + esc(x.nome) + '</h2></div>' +
+    '<div class="card"><div class="eyebrow">Feedback de ' + fbFd(x.ini) + ' a ' + fbFd(x.fim) + ' (pode editar)</div><textarea id="fbz" style="min-height:220px">' + esc(x.texto) + '</textarea>' +
+    (cvFone(x.telefone) ? '<div class="small muted" style="margin-top:6px">WhatsApp: +' + cvFone(x.telefone) + '</div>' : '<div class="small" style="margin-top:6px;color:var(--red,#d92b2b)">Sem telefone na ficha deste atleta.</div>') +
+    '<div style="margin-top:10px"><button type="button" class="btn btn-green" onclick="fbZapSv()">Enviar pelo WhatsApp</button> <button type="button" class="btn" onclick="fbSvSalva()">Salvar alteração</button></div></div></div>');
+  micInit('fbz');
+}
+function fbSvSalva() {
+  var x = FB.sv[FB.svi], msg = $('fbz').value.trim();
+  if (!msg) { aviso('A mensagem está vazia.'); return; }
+  call('fbSalvar', { tp: x.tp, ini: x.ini, fim: x.fim, texto: msg, sugerido: x.sugerido }, true)
+    .then(function () { x.texto = msg; aviso('Alteração guardada.'); })
+    .catch(function (e) { aviso('Não consegui guardar: ' + e.message); });
+}
+function fbZapSv() {
+  var x = FB.sv[FB.svi], fone = cvFone(x.telefone), msg = $('fbz').value.trim();
+  if (!fone) { aviso('Não achei o telefone deste atleta na ficha.'); return; }
+  if (!msg) { aviso('A mensagem está vazia.'); return; }
+  window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
+  call('fbEnviado', { tp: x.tp, ini: x.ini, fim: x.fim, texto: msg, sugerido: x.sugerido || '' }, true)
+    .then(function (r) { FB.sv.splice(FB.svi, 1); aviso((r.naFicha ? 'Marcado como enviado e salvo na ficha do atleta.' : 'Marcado como enviado.')).then(function () { fbDesenha(); }); })
+    .catch(function (e) { aviso('Não consegui marcar como enviado: ' + e.message); });
 }
 function saudeTela() {
   S.aba2 = 'sau';
