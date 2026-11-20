@@ -207,36 +207,65 @@ try { var t0 = localStorage.getItem('blc_t'); if (t0) { S.token = t0; S.nome = l
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function $(id) { return document.getElementById(id); }
+function micOrganiza(txt) {
+  var t = txt.replace(/\b(?:novo|próximo|proximo) t[óo]pico\b[.,]?/gi, '\n').replace(/^\s*[•\-]\s*/gm, '').replace(/[ \t]*\n[ \t]*/g, '\n');
+  var partes = [];
+  t.split('\n').forEach(function (ln) {
+    ln.split(/(?<=[.!?])\s+|\s+(?=(?:aquecimento|parte principal|desaquecimento|volta à calma|observa[çc][ãa]o|observa[çc][õo]es|aten[çc][ãa]o|por fim)\b)/i).forEach(function (fr) {
+      fr = fr.trim(); if (!fr) return;
+      if (fr.length > 110) fr.split(/,\s+|\s+(?=(?:depois|em seguida|na sequência|aí|mas|porém)\s)/i).forEach(function (x) { x = x.trim(); if (x) partes.push(x); });
+      else partes.push(fr);
+    });
+  });
+  return partes.map(function (x) { x = x.replace(/[.,;]+$/, '').trim(); return x ? '• ' + x.charAt(0).toUpperCase() + x.slice(1) : ''; }).filter(Boolean).join('\n');
+}
 function micInit(id) {
   var ta = $(id); if (!ta || ta.getAttribute('data-mic')) return; ta.setAttribute('data-mic', '1');
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var box = document.createElement('div'); box.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px';
-  var st = document.createElement('span'); st.className = 'small muted';
+  if (!$('micCss')) { var st0 = document.createElement('style'); st0.id = 'micCss'; st0.textContent = '@keyframes micp{0%{box-shadow:0 0 0 0 rgba(230,40,40,.7)}100%{box-shadow:0 0 0 14px rgba(230,40,40,0)}}'; document.head.appendChild(st0); }
+  var wrap = document.createElement('div'); wrap.style.marginTop = '8px';
+  var box = document.createElement('div'); box.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+  var ind = document.createElement('div'); ind.className = 'small'; ind.style.cssText = 'margin-top:8px;min-height:1.2em';
+  var live = document.createElement('div'); live.className = 'small muted'; live.style.cssText = 'margin-top:4px;font-style:italic';
   var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'btn btn-sm'; bt.textContent = '🎤 Falar';
   var bo = document.createElement('button'); bo.type = 'button'; bo.className = 'btn btn-sm'; bo.textContent = 'Organizar em tópicos';
-  var rec = null, base = '';
-  function para() { if (rec) { try { rec.stop(); } catch (e) {} } }
-  bt.onclick = function () {
-    if (!SR) { st.textContent = 'Seu navegador não tem ditado aqui. Use o microfone do teclado do celular.'; return; }
-    if (rec) { para(); return; }
+  var rec = null, want = false, base = '', fin = '', last = 0, tm = null;
+  function setInd(cor, txt) { ind.style.color = cor; ind.textContent = txt; }
+  function cap(t) { t = t.trim(); if (!t) return ''; t = t.charAt(0).toUpperCase() + t.slice(1); return /[.!?]$/.test(t) ? t : t + '.'; }
+  function visual(on) {
+    bt.textContent = on ? '⏹ Parar gravação' : '🎤 Falar';
+    bt.style.background = on ? '#d92b2b' : ''; bt.style.color = on ? '#fff' : ''; bt.style.animation = on ? 'micp 1.2s infinite' : '';
+    ta.style.borderColor = on ? '#d92b2b' : '';
+  }
+  function parar() { want = false; clearInterval(tm); tm = null; if (rec) { try { rec.stop(); } catch (e) {} } visual(false); live.textContent = ''; if (/🔴|🎙|⚠/.test(ind.textContent)) setInd('', ''); try { navigator.vibrate && navigator.vibrate(40); } catch (e) {} }
+  function inicia() {
     rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
-    base = ta.value ? ta.value.replace(/\s+$/, '') + ' ' : '';
-    var fin = '';
+    base = ta.value ? ta.value.replace(/\s+$/, '') + ' ' : ''; fin = '';
+    rec.onstart = function () { last = Date.now(); setInd('#e0a000', '🎙 Microfone ligado — pode falar'); };
+    rec.onspeechstart = function () { last = Date.now(); setInd('#d92b2b', '🔴 Ouvindo sua voz…'); };
+    rec.onspeechend = function () { setInd('#e0a000', '🎙 Microfone ligado — aguardando você falar'); };
     rec.onresult = function (ev) {
-      var tmp = ''; for (var i = ev.resultIndex; i < ev.results.length; i++) { var t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fin += t + ' '; else tmp += t; }
-      ta.value = base + fin + tmp;
+      last = Date.now(); var tmp = '';
+      for (var i = ev.resultIndex; i < ev.results.length; i++) { var t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fin += cap(t) + ' '; else tmp += t; }
+      ta.value = base + fin + tmp; ta.scrollTop = ta.scrollHeight; live.textContent = tmp ? '“' + tmp + '”' : '';
+      setInd('#d92b2b', '🔴 Ouvindo sua voz…');
     };
-    rec.onerror = function (ev) { st.textContent = ev.error === 'not-allowed' ? 'Permita o microfone nas configurações do navegador.' : 'Erro no microfone (' + ev.error + ').'; };
-    rec.onend = function () { rec = null; bt.textContent = '🎤 Falar'; if (!/Permita|Erro/.test(st.textContent)) st.textContent = ''; };
-    try { rec.start(); bt.textContent = '⏹ Parar'; st.textContent = 'Ouvindo… fale o resumo.'; } catch (e) { rec = null; }
+    rec.onerror = function (ev) {
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { parar(); setInd('#d92b2b', 'Permita o microfone nas configurações do navegador.'); }
+      else if (ev.error !== 'no-speech' && ev.error !== 'aborted') { setInd('#d92b2b', 'Erro no microfone (' + ev.error + ').'); }
+    };
+    rec.onend = function () { rec = null; if (want) { setTimeout(function () { if (want) { try { inicia(); } catch (e) { parar(); } } }, 200); } };
+    rec.start();
+  }
+  bt.onclick = function () {
+    if (!SR) { setInd('#d92b2b', 'Seu navegador não tem ditado aqui. Use o microfone do teclado do celular.'); return; }
+    if (want) { parar(); setInd('#2a9d4a', 'Gravação parada. Toque em Falar para continuar.'); return; }
+    want = true; visual(true); try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+    try { inicia(); } catch (e) { parar(); return; }
+    tm = setInterval(function () { var n = Math.round((Date.now() - last) / 1000); if (want && n >= 6 && !/🔴/.test(ind.textContent)) setInd('#e0a000', '⚠ Não estou captando voz há ' + n + ' s. Fale mais perto do celular.'); }, 1000);
   };
-  bo.onclick = function () {
-    para();
-    var t = ta.value.replace(/^\s*[•\-]\s*/gm, '').replace(/\s+/g, ' ').trim(); if (!t) return;
-    var fr = t.split(/(?<=[.!?])\s+|\s+(?=(?:Aquecimento|Parte principal|Principal|Desaquecimento|Observa[çc][ãa]o|Observa[çc][õo]es)\b)/).map(function (x) { return x.trim(); }).filter(Boolean);
-    ta.value = fr.map(function (x) { x = x.replace(/[.]+$/, ''); return '• ' + x.charAt(0).toUpperCase() + x.slice(1); }).join('\n');
-  };
-  box.appendChild(bt); box.appendChild(bo); box.appendChild(st); ta.parentNode.appendChild(box);
+  bo.onclick = function () { if (want) parar(); var r = micOrganiza(ta.value); if (r) { ta.value = r; setInd('#2a9d4a', 'Organizado em tópicos. Confira antes de enviar.'); } };
+  box.appendChild(bt); box.appendChild(bo); wrap.appendChild(box); wrap.appendChild(ind); wrap.appendChild(live); ta.parentNode.appendChild(wrap);
 }
 var timers = [];
 function pararTimers() { timers.forEach(clearInterval); timers = []; }
