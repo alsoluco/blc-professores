@@ -347,7 +347,7 @@ function menuAtualiza() {
     it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
     it('\ud83e\udde0 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
     (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Novos limiares', 'limTela()', S.aba2 === 'lim') + it('Limiares dos atletas', 'lzTela()', S.aba2 === 'lz') : '') +
-    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Sa\u00fade dos atletas', 'saudeTela()', S.aba2 === 'sau') : '') +
+    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Sa\u00fade dos atletas', 'saudeTela()', S.aba2 === 'sau') + it('Feedback do treinador', 'fbTela()', S.aba2 === 'fb') : '') +
     '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
     '</nav>';
 }
@@ -1680,6 +1680,95 @@ function saVar(v, bom) {
   if (v == null) return '<span class="pa-hint">–</span>';
   var r = Math.round(v * 10) / 10, cor = Math.abs(r) < 10 ? 'inherit' : (bom * r > 0 ? 'var(--cyan)' : '#ff5a5a');
   return '<b style="color:' + cor + '">' + (r > 0 ? '+' : '') + String(r).replace('.', ',') + '%</b>';
+}
+/* ---------- feedback do treinador (só Admin) ---------- */
+var FB = { g: null, d: null, sel: {}, ini: '', fim: '', det: null };
+function fbHoje() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+function fbMenos(d, n) { var t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - n); return t.toISOString().slice(0, 10); }
+function fbFd(d) { return d ? d.slice(8) + '/' + d.slice(5, 7) : ''; }
+function fbTela() {
+  S.aba2 = 'fb'; if (!FB.fim) { FB.fim = fbHoje(); FB.ini = fbMenos(FB.fim, 6); }
+  app(head(userBar()) + '<div class="spin">Carregando grupos…</div>');
+  call('fbGrupos', {}).then(function (r) { FB.d = r.grupos || []; fbDesenha(); })
+    .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="fbTela()">Tentar de novo</button>'); });
+}
+function fbDesenha() {
+  var h = '<div class="pa"><div><div class="eyebrow">Head coach</div><h2>Feedback do <em>treinador</em></h2></div>' +
+    '<div class="pa-hint">Só você vê esta tela. Escolha o período, marque os atletas (ou o grupo todo) e peça o feedback. O Claude lê o TrainingPeaks, escreve o feedback e, quando ficar pronto, ele aparece aqui junto com um texto para você mandar pelo WhatsApp.</div>' +
+    '<div class="card"><div class="eyebrow">Período do feedback</div><div class="row" style="gap:10px;flex-wrap:wrap">' +
+    '<div style="flex:1;min-width:140px"><label for="fbIni">De</label><input type="date" id="fbIni" value="' + FB.ini + '"></div>' +
+    '<div style="flex:1;min-width:140px"><label for="fbFim">Até</label><input type="date" id="fbFim" value="' + FB.fim + '"></div></div>' +
+    '<div class="small muted" style="margin-top:6px">Começa automático: os 7 dias até hoje. Mudando o “Até”, o “De” acompanha. Você também pode ajustar os dois.</div></div>';
+  FB.d.forEach(function (g, gi) {
+    var aberto = FB.g === gi;
+    h += '<div class="card"><button type="button" class="btn btn-sm' + (aberto ? ' btn-green' : '') + '" style="width:100%;text-align:left" onclick="fbGrupo(' + gi + ')">' + esc(g.nome) + ' · ' + g.atletas.length + ' atletas ' + (aberto ? '▲' : '▼') + '</button>';
+    if (aberto) {
+      var n = 0; g.atletas.forEach(function (a) { if (FB.sel[a.tp]) n++; });
+      h += '<div class="row" style="gap:8px;flex-wrap:wrap;margin:10px 0"><button type="button" class="btn btn-sm btn-green" onclick="fbPedirGrupo(' + gi + ')">Pedir do grupo todo</button>' +
+        '<button type="button" class="btn btn-sm" onclick="fbPedirSel(' + gi + ')">Pedir dos marcados (' + n + ')</button>' +
+        '<button type="button" class="btn btn-sm btn-line" onclick="fbMarcaTodos(' + gi + ')">Marcar todos</button></div><div class="list">';
+      g.atletas.forEach(function (a, ai) {
+        var st = a.pend ? '⏳ pedido na fila' : (a.ultimo ? 'último: ' + fbFd(a.ultimo.ini) + ' a ' + fbFd(a.ultimo.fim) : 'sem feedback ainda');
+        h += '<div class="row" style="align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)"><input type="checkbox" style="width:auto" ' + (FB.sel[a.tp] ? 'checked ' : '') + 'onchange="fbMarca(\'' + a.tp + '\',this.checked)">' +
+          '<button type="button" class="btn btn-sm btn-line" style="flex:1;text-align:left" onclick="fbAtleta(' + gi + ',' + ai + ')">' + esc(a.nome) + '<span class="small muted" style="display:block">' + esc(st) + '</span></button></div>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+  });
+  h += '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer></div>';
+  app(head(userBar()) + h);
+  $('fbIni').onchange = function () { FB.ini = this.value; };
+  $('fbFim').onchange = function () { FB.fim = this.value; if (FB.fim) { FB.ini = fbMenos(FB.fim, 6); $('fbIni').value = FB.ini; } };
+}
+function fbGrupo(gi) { FB.g = FB.g === gi ? null : gi; fbDesenha(); }
+function fbMarca(tp, v) { if (v) FB.sel[tp] = 1; else delete FB.sel[tp]; fbDesenha(); }
+function fbMarcaTodos(gi) { FB.d[gi].atletas.forEach(function (a) { FB.sel[a.tp] = 1; }); fbDesenha(); }
+function fbPedirGrupo(gi) { var g = FB.d[gi]; fbPedirLista(g.atletas.map(function (a) { return { grupo: g.nome, atleta: a.nome, tp: a.tp }; }), 'do grupo ' + g.nome); }
+function fbPedirSel(gi) {
+  var g = FB.d[gi], it = g.atletas.filter(function (a) { return FB.sel[a.tp]; }).map(function (a) { return { grupo: g.nome, atleta: a.nome, tp: a.tp }; });
+  if (!it.length) { aviso('Marque pelo menos um atleta.'); return; }
+  fbPedirLista(it, it.length === 1 ? 'de ' + it[0].atleta : 'dos ' + it.length + ' atletas marcados');
+}
+function fbPedirLista(itens, quem) {
+  if (!FB.ini || !FB.fim) { aviso('Escolha as duas datas.'); return Promise.resolve(); }
+  if (FB.ini > FB.fim) { aviso('A data “De” está depois da data “Até”.'); return Promise.resolve(); }
+  return dlg('Pedir o feedback ' + quem + ', de ' + fbFd(FB.ini) + ' a ' + fbFd(FB.fim) + '? São ' + itens.length + ' pedido(s). O Claude atende e o feedback aparece aqui depois.', { ok: 'Pedir' }).then(function (v) {
+    if (!v) return;
+    return call('fbPedir', { itens: itens, ini: FB.ini, fim: FB.fim }).then(function (r) {
+      aviso(r.criados + ' pedido(s) na fila.' + (r.repetidos ? ' ' + r.repetidos + ' já estavam na fila.' : '') + ' Quando o Claude atender, o feedback aparece na ficha do atleta nesta tela.').then(function () { FB.sel = {}; fbTela(); });
+    }).catch(function (e) { aviso(e.message); });
+  });
+}
+function fbAtleta(gi, ai) {
+  var a = FB.d[gi].atletas[ai]; app(head(userBar()) + '<div class="spin">Carregando feedback…</div>');
+  call('fbVer', { tp: a.tp }).then(function (r) { FB.det = { a: a, g: FB.d[gi].nome, r: r, i: 0 }; fbDet(); })
+    .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="fbDesenha()">Voltar</button>'); });
+}
+function fbDet() {
+  var D = FB.det, r = D.r, f = r.feedbacks[D.i];
+  var h = '<div class="pa"><button type="button" class="btn btn-sm btn-line" onclick="fbDesenha()">← Voltar</button><div><div class="eyebrow">' + esc(D.g) + '</div><h2>' + esc(D.a.nome) + '</h2></div>';
+  if (r.pendentes.length) h += '<div class="card"><div class="small">' + r.pendentes.map(function (p) { return '⏳ ' + fbFd(p.ini) + ' a ' + fbFd(p.fim) + ' · ' + esc(p.status === 'Erro' ? 'deu erro, peça de novo' : 'na fila'); }).join('<br>') + '</div></div>';
+  h += '<div class="card"><div class="small muted" style="margin-bottom:8px">Período para um novo pedido: ' + fbFd(FB.ini) + ' a ' + fbFd(FB.fim) + ' (muda na tela anterior)</div><button type="button" class="btn btn-sm btn-green" onclick="fbPedirUm()">Pedir novo feedback deste atleta</button></div>';
+  if (!f) h += '<div class="card"><div class="muted small">Nenhum feedback pronto ainda para este atleta.</div></div>';
+  else {
+    if (r.feedbacks.length > 1) h += '<div class="row" style="gap:6px;flex-wrap:wrap">' + r.feedbacks.map(function (x, k) { return '<button type="button" class="btn btn-sm' + (k === D.i ? ' btn-green' : ' btn-line') + '" onclick="fbSel(' + k + ')">' + fbFd(x.ini) + '–' + fbFd(x.fim) + '</button>'; }).join('') + '</div>';
+    h += '<div class="card"><div class="eyebrow">Feedback · ' + fbFd(f.ini) + ' a ' + fbFd(f.fim) + '</div><div style="white-space:pre-wrap;line-height:1.55">' + esc(f.texto) + '</div><div class="small muted" style="margin-top:8px">Gerado em ' + esc(f.gerado) + (f.obs ? ' · ' + esc(f.obs) : '') + '</div></div>' +
+      '<div class="card"><div class="eyebrow">Mensagem para o atleta (pode editar)</div><textarea id="fbz" style="min-height:180px">' + esc(f.zap) + '</textarea>' +
+      (cvFone(r.telefone) ? '<div class="small muted" style="margin-top:6px">WhatsApp: +' + cvFone(r.telefone) + '</div>' : '<div class="small" style="margin-top:6px;color:var(--red,#d92b2b)">Sem telefone na ficha deste atleta.</div>') +
+      '<div style="margin-top:10px"><button type="button" class="btn btn-green" onclick="fbZap()">Enviar pelo WhatsApp</button></div></div>';
+  }
+  h += '</div>';
+  app(head(userBar()) + h);
+  if ($('fbz')) micInit('fbz');
+}
+function fbSel(k) { FB.det.i = k; fbDet(); }
+function fbPedirUm() { var D = FB.det; fbPedirLista([{ grupo: D.g, atleta: D.a.nome, tp: D.a.tp }], 'de ' + D.a.nome); }
+function fbZap() {
+  var fone = cvFone(FB.det.r.telefone), msg = $('fbz').value.trim();
+  if (!fone) { aviso('Não achei o telefone deste atleta na ficha.'); return; }
+  if (!msg) { aviso('A mensagem está vazia.'); return; }
+  window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
 }
 function saudeTela() {
   S.aba2 = 'sau';
