@@ -207,6 +207,37 @@ try { var t0 = localStorage.getItem('blc_t'); if (t0) { S.token = t0; S.nome = l
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function $(id) { return document.getElementById(id); }
+function micInit(id) {
+  var ta = $(id); if (!ta || ta.getAttribute('data-mic')) return; ta.setAttribute('data-mic', '1');
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var box = document.createElement('div'); box.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px';
+  var st = document.createElement('span'); st.className = 'small muted';
+  var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'btn btn-sm'; bt.textContent = '🎤 Falar';
+  var bo = document.createElement('button'); bo.type = 'button'; bo.className = 'btn btn-sm'; bo.textContent = 'Organizar em tópicos';
+  var rec = null, base = '';
+  function para() { if (rec) { try { rec.stop(); } catch (e) {} } }
+  bt.onclick = function () {
+    if (!SR) { st.textContent = 'Seu navegador não tem ditado aqui. Use o microfone do teclado do celular.'; return; }
+    if (rec) { para(); return; }
+    rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
+    base = ta.value ? ta.value.replace(/\s+$/, '') + ' ' : '';
+    var fin = '';
+    rec.onresult = function (ev) {
+      var tmp = ''; for (var i = ev.resultIndex; i < ev.results.length; i++) { var t = ev.results[i][0].transcript; if (ev.results[i].isFinal) fin += t + ' '; else tmp += t; }
+      ta.value = base + fin + tmp;
+    };
+    rec.onerror = function (ev) { st.textContent = ev.error === 'not-allowed' ? 'Permita o microfone nas configurações do navegador.' : 'Erro no microfone (' + ev.error + ').'; };
+    rec.onend = function () { rec = null; bt.textContent = '🎤 Falar'; if (!/Permita|Erro/.test(st.textContent)) st.textContent = ''; };
+    try { rec.start(); bt.textContent = '⏹ Parar'; st.textContent = 'Ouvindo… fale o resumo.'; } catch (e) { rec = null; }
+  };
+  bo.onclick = function () {
+    para();
+    var t = ta.value.replace(/^\s*[•\-]\s*/gm, '').replace(/\s+/g, ' ').trim(); if (!t) return;
+    var fr = t.split(/(?<=[.!?])\s+|\s+(?=(?:Aquecimento|Parte principal|Principal|Desaquecimento|Observa[çc][ãa]o|Observa[çc][õo]es)\b)/).map(function (x) { return x.trim(); }).filter(Boolean);
+    ta.value = fr.map(function (x) { x = x.replace(/[.]+$/, ''); return '• ' + x.charAt(0).toUpperCase() + x.slice(1); }).join('\n');
+  };
+  box.appendChild(bt); box.appendChild(bo); box.appendChild(st); ta.parentNode.appendChild(box);
+}
 var timers = [];
 function pararTimers() { timers.forEach(clearInterval); timers = []; }
 function app(html, semNav) { pararTimers(); S.telaMural = false; S.rp = null; $('app').innerHTML = html; window.scrollTo(0, 0); desenhaNav(!semNav && !!S.token && !S.troca); }
@@ -806,7 +837,7 @@ function desenhaAtleta(r) {
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
 
   S.fm = {}; ligaChips('fchips', S.fm);
-  ligaArroba('tx');
+  ligaArroba('tx'); micInit('tx');
   $('pr').onchange = function () { $('pc').className = 'chk' + ($('pr').checked ? ' on' : ''); };
   $('fi').onsubmit = function (e) {
     e.preventDefault();
@@ -877,7 +908,7 @@ function desenhaNova() {
     '<label class="chk" id="npc"><input type="checkbox" id="np"><span><b>Prioridade</b><span class="small muted">Fica em destaque para todos até ser resolvida. Sem ninguém marcado, todos recebem e-mail.</span></span></label>' +
     '<button class="btn btn-green" id="ns" type="submit">Enviar</button></form>');
   ligaChips('nchips', S.nm.marc);
-  ligaArroba('nt');
+  ligaArroba('nt'); micInit('nt');
   desenhaTipos();
   $('ntp').onchange = dicaTipo;
   $('nq').oninput = function () {
