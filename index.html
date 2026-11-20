@@ -223,6 +223,9 @@ function micInit(id) {
   var ta = $(id); if (!ta || ta.getAttribute('data-mic')) return; ta.setAttribute('data-mic', '1');
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!$('micCss')) { var st0 = document.createElement('style'); st0.id = 'micCss'; st0.textContent = '@keyframes micp{0%{box-shadow:0 0 0 0 rgba(230,40,40,.7)}100%{box-shadow:0 0 0 14px rgba(230,40,40,0)}}'; document.head.appendChild(st0); }
+  ta.style.minHeight = '300px'; ta.style.resize = 'vertical'; ta.style.lineHeight = '1.45';
+  function grow() { if (!document.body.contains(ta)) { clearInterval(gt); return; } ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 6, 300), Math.round(window.innerHeight * 0.75)) + 'px'; }
+  var gt = setInterval(grow, 400); ta.addEventListener('input', grow); grow();
   var wrap = document.createElement('div'); wrap.style.marginTop = '8px';
   var box = document.createElement('div'); box.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
   var ind = document.createElement('div'); ind.className = 'small'; ind.style.cssText = 'margin-top:8px;min-height:1.2em';
