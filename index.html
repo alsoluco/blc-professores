@@ -362,7 +362,7 @@ function menuAtualiza() {
     it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
     it('\ud83e\udde0 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
     (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Novos limiares', 'limTela()', S.aba2 === 'lim') + it('Limiares dos atletas', 'lzTela()', S.aba2 === 'lz') : '') +
-    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Sa\u00fade dos atletas', 'saudeTela()', S.aba2 === 'sau') + it('Feedback do treinador', 'fbTela()', S.aba2 === 'fb') : '') +
+    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Sa\u00fade dos atletas', 'saudeTela()', S.aba2 === 'sau') + it('Feedback do treinador', 'fbTela()', S.aba2 === 'fb') + it('Uso da IA', 'iaTela()', S.aba2 === 'ia') : '') +
     '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
     '</nav>';
 }
@@ -3162,6 +3162,41 @@ function painelAsaas(mes, atualizar) {
     });
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
+function iaTela() {
+  S.aba2 = 'ia';
+  app(head(userBar()) + '<div class="spin">Carregando…</div>');
+  call('iaStatus', {}).then(function (r) {
+    var usd = function (v) { return 'US$ ' + (Math.round(v * 1000) / 1000).toFixed(3).replace('.', ','); };
+    var pct = r.credito > 0 ? Math.max(0, Math.min(100, Math.round(r.saldoUsd / r.credito * 100))) : 0;
+    var cor = pct <= 15 ? '#d92b2b' : pct <= 35 ? '#e0a000' : '#2a9d4a';
+    var qs = Object.keys(r.prof || {}).map(function (k) { return '<div class="small">' + esc(k) + ': ' + r.prof[k] + ' hoje</div>'; }).join('') || '<div class="small muted">Ninguém usou hoje.</div>';
+    var h = '<div class="pa"><div><div class="eyebrow">Head coach</div><h2>Uso da <em>IA</em></h2></div>' +
+      '<div class="pa-hint">Ferramenta que organiza o resumo de treino. O saldo abaixo é uma <b>estimativa</b>: a Anthropic não deixa o app ler o saldo oficial. O valor real fica em platform.claude.com, em Billing.</div></div>' +
+      '<div class="card"><div class="eyebrow">Saldo estimado</div>' +
+      '<div style="font-size:34px;font-weight:600;color:' + cor + ';margin:6px 0">' + usd(r.saldoUsd) + '</div>' +
+      '<div style="height:10px;background:rgba(255,255,255,.12)"><div style="height:10px;width:' + pct + '%;background:' + cor + '"></div></div>' +
+      '<div class="small muted" style="margin-top:6px">' + pct + '% do crédito restante' + (pct <= 15 ? ' · <b style="color:#d92b2b">saldo baixo, vale recarregar</b>' : '') + '</div></div>' +
+      '<div class="card"><div class="eyebrow">Gasto</div>' +
+      '<div class="small">Gasto estimado até agora: <b>' + usd(r.custoUsd) + '</b></div>' +
+      '<div class="small">Crédito considerado: <b>' + usd(r.credito) + '</b></div>' +
+      '<div class="small muted" style="margin-top:6px">Tokens: ' + r.tInTot + ' de entrada · ' + r.tOutTot + ' de saída (preço do Haiku: US$ 0,10 por milhão de entrada e US$ 0,50 por milhão de saída).</div></div>' +
+      '<div class="card"><div class="eyebrow">Usos</div>' +
+      '<div class="small">Em ' + esc(r.mes) + ': <b>' + r.usoMes + '</b> de ' + r.limMes + ' (limite do mês)</div>' +
+      '<div class="small">Limite por professor por dia: ' + r.limDia + '</div><div style="margin-top:6px">' + qs + '</div></div>' +
+      '<div class="card"><div class="eyebrow">Atualizar o saldo</div>' +
+      '<div class="small muted">Depois de recarregar, ou para acertar a estimativa com o saldo que aparece no Console, digite aqui quanto você tem agora em dólares.</div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px"><input id="iaCred" type="text" inputmode="decimal" placeholder="Ex.: 4,80"><button type="button" class="btn btn-sm btn-green" onclick="iaSalvaCred()">Salvar</button></div></div>' +
+      '<div class="card"><div class="eyebrow">Liga e desliga</div>' +
+      '<div class="small">A IA está <b>' + (r.on ? 'LIGADA' : 'DESLIGADA') + '</b>' + (r.chave ? '' : ' · <b style="color:#d92b2b">chave não configurada</b>') + '.</div>' +
+      '<button type="button" class="btn btn-sm" style="margin-top:8px" onclick="iaLiga(' + (!r.on) + ')">' + (r.on ? 'Desligar a IA' : 'Ligar a IA') + '</button></div>';
+    app(head(userBar()) + h);
+  }).catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="iaTela()">Tentar de novo</button>'); });
+}
+function iaSalvaCred() {
+  var v = ($('iaCred').value || '').trim(); if (!v) { aviso('Digite o valor em dólares.'); return; }
+  call('iaConfig', { credito: v }).then(function () { aviso('Saldo atualizado.'); iaTela(); }).catch(function (e) { aviso(e.message); });
+}
+function iaLiga(on) { call('iaConfig', { on: on }).then(function () { aviso('IA ' + (on ? 'ligada' : 'desligada') + '.'); iaTela(); }).catch(function (e) { aviso(e.message); }); }
 function iaUso() {
   call('iaStatus', {}).then(function (r) {
     var qs = Object.keys(r.prof || {}).map(function (k) { return k + ': ' + r.prof[k]; }).join('; ') || 'ninguém usou hoje';
