@@ -1784,6 +1784,10 @@ function fbZap() {
   if (!fone) { aviso('Não achei o telefone deste atleta na ficha.'); return; }
   if (!msg) { aviso('A mensagem está vazia.'); return; }
   window.open('https://wa.me/' + fone + '?text=' + encodeURIComponent(msg), '_blank');
+  var f0 = FB.det.r.feedbacks[FB.det.i] || {};
+  call('fbEnviado', { tp: FB.det.a.tp, ini: f0.ini || FB.ini, fim: f0.fim || FB.fim, texto: msg, sugerido: f0.zap || '' }, true)
+    .then(function (r) { aviso(r.naFicha ? 'Mensagem salva na ficha do atleta.' : 'Mensagem guardada no histórico, mas não achei a ficha do atleta.'); })
+    .catch(function (e) { aviso('Não consegui salvar na ficha: ' + e.message); });
 }
 function saudeTela() {
   S.aba2 = 'sau';
