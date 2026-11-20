@@ -1704,12 +1704,13 @@ function fbHoje() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimez
 function fbMenos(d, n) { var t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() - n); return t.toISOString().slice(0, 10); }
 function fbFd(d) { return d ? d.slice(8) + '/' + d.slice(5, 7) : ''; }
 function fbTela() {
-  S.aba2 = 'fb'; if (!FB.fim) { FB.fim = fbHoje(); FB.ini = fbMenos(FB.fim, 6); }
+  FB.y = 0; S.aba2 = 'fb'; if (!FB.fim) { FB.fim = fbHoje(); FB.ini = fbMenos(FB.fim, 6); }
   app(head(userBar()) + '<div class="spin">Carregando grupos…</div>');
   call('fbGrupos', {}).then(function (r) { FB.d = r.grupos || []; return call('fbSalvos', {}).then(function (q) { FB.sv = q.itens || []; }, function () { FB.sv = []; }); }).then(function () { fbDesenha(); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="fbTela()">Tentar de novo</button>'); });
 }
 function fbDesenha() {
+  if ($('fbIni')) FB.y = window.scrollY;
   var h = '<div class="pa"><div><div class="eyebrow">Head coach</div><h2>Feedback do <em>treinador</em></h2></div>' +
     '<div class="pa-hint">Só você vê esta tela. Escolha o período, marque os atletas (ou o grupo todo) e peça o feedback. O Claude lê o TrainingPeaks, escreve o feedback e, quando ficar pronto, ele aparece aqui junto com um texto para você mandar pelo WhatsApp.</div>' +
     '<div class="card"><div class="eyebrow">Período do feedback</div><div class="row" style="gap:10px;flex-wrap:wrap">' +
@@ -1741,7 +1742,7 @@ function fbDesenha() {
     h += '</div>';
   });
   h += '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer></div>';
-  app(head(userBar()) + h);
+  app(head(userBar()) + h); window.scrollTo(0, FB.y || 0);
   $('fbIni').onchange = function () { FB.ini = this.value; };
   $('fbFim').onchange = function () { FB.fim = this.value; if (FB.fim) { FB.ini = fbMenos(FB.fim, 6); $('fbIni').value = FB.ini; } };
 }
@@ -1765,6 +1766,7 @@ function fbPedirLista(itens, quem) {
   });
 }
 function fbAtleta(gi, ai) {
+  FB.y = window.scrollY;
   var a = FB.d[gi].atletas[ai]; app(head(userBar()) + '<div class="spin">Carregando feedback…</div>');
   call('fbVer', { tp: a.tp }).then(function (r) { FB.det = { a: a, g: FB.d[gi].nome, r: r, i: 0 }; fbDet(); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="fbDesenha()">Voltar</button>'); });
@@ -1806,6 +1808,7 @@ function fbGuarda() {
     .catch(function (e) { aviso('Não consegui guardar: ' + e.message); });
 }
 function fbSv(k) {
+  FB.y = window.scrollY;
   var x = FB.sv[k]; FB.svi = k;
   app(head(userBar()) + '<div class="pa"><button type="button" class="btn btn-sm btn-line" onclick="fbDesenha()">← Voltar</button><div><div class="eyebrow">' + esc(x.grupo) + ' · guardado em ' + esc(x.salvo) + '</div><h2>' + esc(x.nome) + '</h2></div>' +
     '<div class="card"><div class="eyebrow">Feedback de ' + fbFd(x.ini) + ' a ' + fbFd(x.fim) + ' (pode editar)</div><textarea id="fbz" style="min-height:220px">' + esc(x.texto) + '</textarea>' +
