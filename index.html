@@ -2016,10 +2016,42 @@ function limGrafico(x) {
   if (tr.link) { var a = document.createElement('a'); a.href = tr.link; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Abrir a atleta no TrainingPeaks (calendário)'; a.style.cssText = 'font-size:.8rem;color:var(--cyan)'; d.appendChild(a); }
   return d;
 }
+function limPedidoBloco(c, x, idx) {
+  var q = x.pedido;
+  if (q) {
+    var cor = q.status === 'Aplicado' ? 'var(--green)' : (q.status === 'Falhou' || q.atrasado ? '#ff6b6b' : 'var(--cyan)');
+    var tx = '';
+    if (q.status === 'Aplicado') tx = 'Mudado no TrainingPeaks em ' + q.quando + '. ' + (q.detalhe || '');
+    else if (q.status === 'Falhou') tx = 'NÃO foi mudado no TrainingPeaks (' + q.quando + '): ' + (q.detalhe || 'sem detalhe') + ' Peça ao Claude para aplicar de novo.';
+    else if (q.atrasado) tx = 'NÃO foi mudado ainda: pedido de ' + q.criado + ' e a rotina das 8h40 não aplicou. Peça ao Claude: "aplicar limiares pendentes".';
+    else tx = 'Pedido enviado em ' + q.criado + '. A rotina das 8h40 aplica no TrainingPeaks. Se não rodar, peça ao Claude: "aplicar limiares pendentes".';
+    var d = paEl('div', '', tx); d.style.cssText = 'font-weight:600;font-size:.8rem;border-left:3px solid ' + cor + ';padding-left:10px;margin:6px 0;color:' + cor; c.appendChild(d);
+  }
+  if (!x.pedivel) return;
+  var rw = paEl('div', 'row');
+  if (!q || q.status === 'Falhou') {
+    var b = paEl('button', 'btn btn-sm', q ? 'Pedir de novo no TrainingPeaks' : 'Mude no TrainingPeaks'); b.type = 'button'; b.title = 'A rotina diária muda o limiar deste atleta no TrainingPeaks'; b.onclick = function () { limPedir(idx); }; rw.appendChild(b);
+  } else if (q.status === 'Pendente') {
+    var bc = paEl('button', 'btn btn-sm', 'Cancelar pedido'); bc.type = 'button'; bc.onclick = function () { limPedCancela(idx); }; rw.appendChild(bc);
+  }
+  if (rw.childNodes.length) c.appendChild(rw);
+}
+function limPedir(i) {
+  var x = LM.itens[i];
+  dlg('Pedir para mudar no TrainingPeaks o limiar de ' + x.nome + ' (' + x.rot + ') para ' + x.novoT + '? A rotina diária das 8h40 aplica. Se não rodar, peça ao Claude. Você verá aqui se foi feito ou não.', { ok: 'Pedir mudança' }).then(function (v) {
+    if (v === null || v === false) return;
+    call('limPedir', { id: x.id }).then(function (r) { aviso(r.ja ? 'Já existe pedido para este limiar.' : 'Pedido registrado.'); return limRecarrega(); }).catch(function (e) { aviso(e.message); });
+  });
+}
+function limPedCancela(i) {
+  var x = LM.itens[i];
+  call('limPedCancela', { id: x.id }).then(function () { aviso('Pedido cancelado.'); return limRecarrega(); }).catch(function (e) { aviso(e.message); });
+}
 function limCard(x, idx, box, aba) {
   var c = paEl('div', 'pa-al ' + (aba === 'pend' ? 'yel' : ''));
   var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome)); t.appendChild(paEl('span', 'tag w', x.rot)); if (x.pasta) t.appendChild(paEl('span', 'tag w', x.pasta)); c.appendChild(t);
   c.appendChild(paEl('div', '', 'Limiar novo: ' + x.novoT + ' (antes ' + x.antigoT + ') · ' + x.data));
+  limPedidoBloco(c, x, idx);
   if (x.treino) c.appendChild(limGrafico(x));
   if (x.aviso) c.appendChild(paEl('div', 'pa-hint', 'Só aviso. Este tipo de limiar não gera zonas nem e-mail para o atleta.'));
   if (aba === 'ign') {
@@ -2072,8 +2104,15 @@ function limDesenha() {
   var abas = [['pend', 'Pendentes'], ['env', 'E-mails enviados'], ['ign', 'Ignorados'], ['ina', 'Inativos']];
   app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + (LM.acesso === 'caio' ? 'Professor' : 'Head coach') + '</div><h2>Novos <em>limiares</em></h2></div>' +
     '<div class="pa-hint">Lidos do TrainingPeaks (sino → estrela) todo dia, de hoje até 2 dias atrás. Os últimos 10 dias ficam nas abas. O e-mail só sai quando você clicar em enviar, em nome da BLC. ' + (LM.acesso === 'caio' ? 'Você vê apenas os seus atletas.' : '') + '</div>' +
+    '<div id="lmPedBox"></div>' +
     '<div id="lmAbas" class="row" style="gap:6px;flex-wrap:wrap"></div>' +
     '<div id="lmBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
+  var pp = 0, pa = 0, pf = 0;
+  LM.itens.forEach(function (x) { if (x.pedido) { if (x.pedido.status === 'Pendente') { pp++; if (x.pedido.atrasado) pa++; } else if (x.pedido.status === 'Falhou') pf++; } });
+  if (pp || pf) {
+    var pb = paEl('div', '', (pa ? pa + ' pedido(s) de mudança de limiar NÃO foram aplicados: a rotina das 8h40 não rodou. Peça ao Claude: "aplicar limiares pendentes". ' : '') + (pf ? pf + ' pedido(s) falharam e o limiar NÃO foi mudado no TrainingPeaks (veja nos cards). ' : '') + ((pp - pa) ? (pp - pa) + ' pedido(s) aguardando a rotina das 8h40.' : ''));
+    pb.style.cssText = 'font-weight:600;font-size:.82rem;border-left:3px solid ' + ((pa || pf) ? '#ff6b6b' : 'var(--cyan)') + ';padding-left:10px;margin:4px 0'; $('lmPedBox').appendChild(pb);
+  }
   var ab = $('lmAbas');
   abas.forEach(function (a) {
     var b = paEl('button', 'btn btn-sm' + (LM.aba === a[0] ? ' btn-green' : ''), a[1] + ' (' + cont[a[0]] + ')'); b.type = 'button';
