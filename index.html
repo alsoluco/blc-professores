@@ -1706,6 +1706,7 @@ function saTend(med, bomSobe) {
   var d = (b - a) / a * 100;
   if (Math.abs(d) < 3) return { dir: 'estável', txt: 'estável (' + (d > 0 ? '+' : '') + saFmt(d, '%') + ')', cor: 'inherit' };
   var sobe = d > 0, bom = (sobe === bomSobe);
+  if (bomSobe === null) return { dir: sobe ? 'subindo' : 'caindo', txt: (sobe ? 'subindo' : 'caindo') + ' (' + (d > 0 ? '+' : '') + saFmt(d, '%') + ' em 7 dias)', cor: 'inherit' };
   return { dir: sobe ? 'subindo' : 'caindo', txt: (bom ? 'melhorando' : 'piorando') + ' (' + (d > 0 ? '+' : '') + saFmt(d, '%') + ' em 7 dias)', cor: bom ? 'var(--cyan)' : '#ff5a5a' };
 }
 function saGraf(tit, sr, key, base, cor) {
@@ -1738,9 +1739,9 @@ function saTendBloco(x) {
     return w;
   }
   var b = sr.base || {};
-  w.appendChild(paEl('div', 'pa-hint', 'Tendência dos últimos 7 dias. Linha colorida: média dos 7 dias que terminam em cada dia. Pontos claros: valor do dia. Tracejado: base das 4 semanas anteriores.'));
+  w.appendChild(paEl('div', 'pa-hint', 'Tendência dos últimos 7 dias. Linha colorida: média dos 7 dias que terminam em cada dia. Pontos claros: valor do dia. Tracejado: base das 4 semanas anteriores (no TSS, a média semanal das 3 semanas anteriores).'));
   var g = paEl('div', ''); g.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:6px';
-  [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].forEach(function (c) {
+  [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].concat(sr.tss ? [['Carga de treino: TSS acumulado de 7 dias', 'tss', b.tss, '#b388ff', null]] : []).forEach(function (c) {
     var t = saTend(sr[c[1]], c[4]), k = paEl('div', ''); k.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
     k.innerHTML = '<div style="font-size:.78rem;font-weight:700">' + c[0] + '</div><div style="font-size:.76rem;color:' + t.cor + ';font-weight:600">' + esc(t.txt) + '</div>' + saGraf(c[0], sr, c[1], c[2], c[3]);
     g.appendChild(k);
@@ -1761,6 +1762,7 @@ function saEmailTexto(x) {
     '• HRV: média dos últimos 7 dias em ' + saFmt(x.hrv, ' ms') + ab(x.hrvV) + (x.hrvV != null ? ' da sua média das últimas 4 semanas.' : '.') + tn(dirs.hrv),
     '• Frequência cardíaca de repouso: média de ' + saFmt(x.fc, ' bpm') + ab(x.fcV) + (x.fcV != null ? ' do seu normal.' : '.') + tn(dirs.rhr),
     '• Body Battery: máximo médio de ' + saFmt(x.bb) + ab(x.bbV) + (x.bbV != null ? ' do seu normal.' : '.') + tn(dirs.bb)];
+  if (sr.tss && sr.tss.length) { var tl = sr.tss[sr.tss.length - 1], tb = (sr.base || {}).tss; l.push('\u2022 Carga de treino (TSS): ' + Math.round(tl) + ' nos últimos 7 dias' + (tb ? ', ' + saFmt(Math.abs((tl - tb) / tb * 100), '%') + (tl < tb ? ' abaixo' : ' acima') + ' da sua média semanal das 3 semanas anteriores.' : '.') + tn(saTend(sr.tss, null).dir)); }
   if (x.dias > 1) l.push('', 'Esse quadro já dura ' + x.dias + ' dias seguidos.');
   var sig = x.tipo === 'Alta' ? 'São sinais de que o seu corpo está se recuperando bem.' : (x.leitura === 'Esperada pela carga' ? 'A sua semana de treino foi pesada, então é normal que o corpo mostre sinais de cansaço.' : 'São sinais de que o seu corpo pode estar acumulando cansaço.');
   l.push('', 'O que isso pode significar:', sig + ' Isso não é um diagnóstico e um dia isolado não quer dizer nada. O que me interessa é a tendência ao longo da semana.' + (x.tipo === 'Alta' ? '' : ' Quero ajustar os próximos treinos de acordo com a sua resposta.') + ' Se você estiver sentindo algo diferente, como sono ruim, cansaço, estresse, dor ou sintomas de doença, me conta, porque isso muda a leitura.', '',
@@ -1768,9 +1770,10 @@ function saEmailTexto(x) {
     '1) HRV (variabilidade da frequência cardíaca): é a variação de tempo entre um batimento e outro. Parece contraditório, mas um HRV mais alto costuma indicar um corpo mais recuperado e preparado para o treino. Quando ele cai por vários dias seguidos, em geral há cansaço acumulado, sono ruim, estresse ou início de doença. Ele varia muito de pessoa para pessoa, por isso eu comparo você só com você mesmo.', '',
     '2) Frequência cardíaca de repouso: é a FC do seu coração em descanso, medida principalmente durante o sono. Quando ela sobe alguns batimentos acima do seu normal por dias seguidos, é um sinal de que o corpo está sob carga, seja por treino, calor, sono curto, estresse ou doença. Com o condicionamento melhorando, ela tende a cair com o tempo.', '',
     '3) Body Battery: é uma nota de 0 a 100 do Garmin que estima a sua energia, combinando HRV, estresse, sono e atividade. Acordar com a bateria baixa por vários dias indica que a recuperação não está completa.', '',
+    (sr.tss ? '4) Carga de treino (TSS): é a pontuação que o TrainingPeaks dá ao treino combinando duração e intensidade. Quando a soma da semana fica bem acima do seu normal, é esperado que o HRV caia e a frequência de repouso suba. O gráfico mostra se a queda dos seus dados acompanha a carga ou se tem outra causa.\n' : null),
     'Por que o relógio precisa ficar com você o tempo todo:', 'Todos esses números só são confiáveis se o relógio registrar todos os dias e todas as noites. Se você dorme sem ele ou o deixa carregando de noite, perco o dado mais importante, que é o do sono. E se ele estiver frouxo no punho, o sensor lê errado, e isso gera números que parecem um problema quando não são, ou escondem um problema real. O ideal é usar o relógio ajustado, um pouco acima do osso do punho, inclusive para dormir, e carregar durante o dia, por exemplo no banho ou enquanto trabalha.', '',
     'Quanto mais dados corretos eu tiver, melhor consigo ajustar o seu treino, e evitar tanto que você se arrebente quanto que eu pegue leve à toa.', '', 'Qualquer dúvida, me chama.', '', 'Um abraço,', 'Beto Lundgren', 'BLC Assessoria Esportiva');
-  return l.join('\n');
+  return l.filter(function (t) { return t !== null; }).join('\n');
 }
 function saEmailPainel(i, c) {
   var x = SA.itens[i], old = $('saEm' + i); if (old) { old.remove(); return; }
