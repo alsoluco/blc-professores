@@ -1940,7 +1940,7 @@ function fbZapSv() {
     .catch(function (e) { aviso('Não consegui marcar como enviado: ' + e.message); });
 }
 function saudeTela() {
-  S.aba2 = 'sau';
+  S.aba2 = 'sau'; SA.aba = 'pend';
   app(head(userBar()) + '<div class="spin">Carregando alertas de saúde…</div>');
   call('saudeAlertas', {}).then(function (r) { SA.itens = r.itens || []; SA.data = r.data || ''; saudeDesenha(r.vazio); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="saudeTela()">Tentar de novo</button>'); });
@@ -1948,12 +1948,23 @@ function saudeTela() {
 function saudeDesenha(vazio) {
   app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Head coach</div><h2>Saúde dos <em>atletas</em></h2></div>' +
     '<div class="pa-hint">Só você vê esta tela. Compara a média de 7 dias de HRV, FC de repouso e body battery com a média das 4 semanas anteriores do próprio atleta. Alerta quando o HRV varia 10% ou mais. ' + (SA.data ? 'Análise de ' + paFd(SA.data) + '.' : '') + '</div>' +
+    '<div id="saAbas" class="row" style="gap:6px;flex-wrap:wrap"></div>' +
     '<div id="saBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
   var box = $('saBox');
   if (!SA.itens.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', vazio ? 'Ainda não há análise de saúde. Ela é gerada pela leitura diária das 8h40.' : 'Nenhum atleta com variação de HRV acima de 10% nesta análise.')); return; }
   var ord = { 'Queda 2 dias': 1, 'Queda': 0, 'Alta': 2 };
   SA.itens.sort(function (a, b) { return (a.contato && a.contato.tipo === 'Ignorado' ? 1 : 0) - (b.contato && b.contato.tipo === 'Ignorado' ? 1 : 0) || (b.pri ? 1 : 0) - (a.pri ? 1 : 0) || (a.contato ? 1 : 0) - (b.contato ? 1 : 0) || (ord[a.tipo] || 0) - (ord[b.tipo] || 0) || Math.abs(b.hrvV || 0) - Math.abs(a.hrvV || 0); });
+  if (!SA.aba) SA.aba = 'pend';
+  function saEst(x) { return !x.contato ? 'pend' : (x.contato.tipo === 'Ignorado' ? 'ign' : 'env'); }
+  var cnt = { pend: 0, env: 0, ign: 0 };
+  SA.itens.forEach(function (x) { cnt[saEst(x)]++; });
+  [['pend', 'Para enviar'], ['env', 'Enviados'], ['ign', 'Ignorados']].forEach(function (a) {
+    var bb = paEl('button', 'btn btn-sm' + (SA.aba === a[0] ? ' btn-green' : ''), a[1] + ' (' + cnt[a[0]] + ')'); bb.type = 'button';
+    bb.onclick = function () { SA.aba = a[0]; saudeDesenha(); }; $('saAbas').appendChild(bb);
+  });
+  if (!cnt[SA.aba]) box.appendChild(paEl('div', 'pa-panel pa-hint', SA.aba === 'pend' ? 'Nenhum alerta para enviar. Todos já foram enviados ou ignorados.' : SA.aba === 'env' ? 'Nenhum alerta enviado ainda nesta análise.' : 'Nenhum alerta ignorado nesta análise.'));
   SA.itens.forEach(function (x, idx) {
+    if (saEst(x) !== SA.aba) return;
     var c = paEl('div', 'pa-al ' + (x.pri ? 'red' : (x.tipo === 'Alta' ? '' : 'yel')));
     if (x.contato) c.style.opacity = '.8';
     var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome));
