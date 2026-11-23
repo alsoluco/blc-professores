@@ -1698,6 +1698,110 @@ function saVar(v, bom) {
   var r = Math.round(v * 10) / 10, cor = Math.abs(r) < 10 ? 'inherit' : (bom * r > 0 ? 'var(--cyan)' : '#ff5a5a');
   return '<b style="color:' + cor + '">' + (r > 0 ? '+' : '') + String(r).replace('.', ',') + '%</b>';
 }
+/* ---------- saúde: gráficos de tendência, carga e e-mail ao atleta ---------- */
+function saTend(med, bomSobe) {
+  var a = null, b = null;
+  (med || []).forEach(function (v) { if (v != null) { if (a === null) a = v; b = v; } });
+  if (a === null || b === null || !a) return { dir: 'sem dados', txt: 'sem dados suficientes', cor: 'inherit' };
+  var d = (b - a) / a * 100;
+  if (Math.abs(d) < 3) return { dir: 'estável', txt: 'estável (' + (d > 0 ? '+' : '') + saFmt(d, '%') + ')', cor: 'inherit' };
+  var sobe = d > 0, bom = (sobe === bomSobe);
+  return { dir: sobe ? 'subindo' : 'caindo', txt: (bom ? 'melhorando' : 'piorando') + ' (' + (d > 0 ? '+' : '') + saFmt(d, '%') + ' em 7 dias)', cor: bom ? 'var(--cyan)' : '#ff5a5a' };
+}
+function saGraf(tit, sr, key, base, cor) {
+  var med = sr[key] || [], dia = sr[key + 'D'] || [], d = sr.d || [], n = d.length, vals = [];
+  med.concat(dia).forEach(function (v) { if (v != null) vals.push(v); });
+  if (base != null) vals.push(base);
+  if (!vals.length || !n) return '';
+  var W = 300, H = 130, L = 30, R = 10, T = 10, B = 22;
+  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), pad = (mx - mn) * 0.15 || 1; mn -= pad; mx += pad;
+  function X(i) { return L + (n < 2 ? 0 : i * (W - L - R) / (n - 1)); }
+  function Y(v) { return T + (mx - v) * (H - T - B) / (mx - mn); }
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + esc(tit) + '" style="display:block;overflow:visible">';
+  s += '<text x="0" y="' + (T + 4) + '" font-size="9" fill="currentColor" opacity=".6">' + Math.round(mx) + '</text><text x="0" y="' + (H - B) + '" font-size="9" fill="currentColor" opacity=".6">' + Math.round(mn) + '</text>';
+  s += '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="currentColor" opacity=".2"/>';
+  if (base != null) s += '<line x1="' + L + '" y1="' + Y(base).toFixed(1) + '" x2="' + (W - R) + '" y2="' + Y(base).toFixed(1) + '" stroke="#e0a800" stroke-width="1.2" stroke-dasharray="4 3"/>';
+  dia.forEach(function (v, i) { if (v != null) s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="2.6" fill="currentColor" opacity=".4"/>'; });
+  var p = '', ant = false, ult = -1;
+  med.forEach(function (v, i) { if (v == null) { ant = false; return; } p += (ant ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' '; ant = true; ult = i; });
+  if (p) s += '<path d="' + p + '" fill="none" style="stroke:' + cor + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
+  med.forEach(function (v, i) { if (v != null) s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(v).toFixed(1) + '" r="' + (i === ult ? 4 : 2.4) + '" style="fill:' + cor + '"/>'; });
+  if (ult >= 0) s += '<text x="' + Math.min(X(ult), W - R - 4).toFixed(1) + '" y="' + (Y(med[ult]) - 8).toFixed(1) + '" font-size="10" font-weight="700" text-anchor="end" style="fill:' + cor + '">' + saFmt(med[ult]) + '</text>';
+  [0, Math.floor((n - 1) / 2), n - 1].forEach(function (i, k, arr) { if (k && arr[k - 1] === i) return; s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" font-size="9" text-anchor="' + (i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle')) + '" fill="currentColor" opacity=".65">' + esc(d[i] || '') + '</text>'; });
+  return s + '</svg>';
+}
+function saTendBloco(x) {
+  var w = paEl('div', ''); w.style.cssText = 'margin:8px 0';
+  var sr = x.serie;
+  if (!sr || !sr.d) {
+    w.appendChild(paEl('div', 'pa-hint', 'Gráficos de tendência e contexto de carga ainda não estão disponíveis para esta leitura. Aparecem a partir da próxima leitura das 8h40.'));
+    return w;
+  }
+  var b = sr.base || {};
+  w.appendChild(paEl('div', 'pa-hint', 'Tendência dos últimos 7 dias. Linha colorida: média dos 7 dias que terminam em cada dia. Pontos claros: valor do dia. Tracejado: base das 4 semanas anteriores.'));
+  var g = paEl('div', ''); g.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:6px';
+  [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].forEach(function (c) {
+    var t = saTend(sr[c[1]], c[4]), k = paEl('div', ''); k.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
+    k.innerHTML = '<div style="font-size:.78rem;font-weight:700">' + c[0] + '</div><div style="font-size:.76rem;color:' + t.cor + ';font-weight:600">' + esc(t.txt) + '</div>' + saGraf(c[0], sr, c[1], c[2], c[3]);
+    g.appendChild(k);
+  });
+  w.appendChild(g);
+  if (x.leitura || x.carga) {
+    var cb = paEl('div', ''); cb.style.cssText = 'margin-top:8px;padding:8px 10px;border-left:3px solid ' + (x.leitura === 'Sem explicação pela carga' ? '#ff5a5a' : 'var(--cyan)') + ';font-size:.82rem';
+    cb.innerHTML = '<b>Leitura: ' + esc(x.leitura || 'sem leitura') + '</b>' + (x.carga ? '<div style="white-space:pre-wrap;margin-top:3px">' + esc(x.carga) + '</div>' : '');
+    w.appendChild(cb);
+  }
+  return w;
+}
+function saEmailTexto(x) {
+  var sr = x.serie || {}, nome = String(x.nome || '').split(' ')[0], dirs = { hrv: saTend(sr.hrv, true).dir, rhr: saTend(sr.rhr, false).dir, bb: saTend(sr.bb, true).dir };
+  function ab(v) { return v == null ? '' : ', ' + saFmt(Math.abs(v), '%') + (v < 0 ? ' abaixo' : ' acima'); }
+  function tn(d) { return d === 'sem dados' ? '' : ' A tendência dos últimos 7 dias está ' + d + '.'; }
+  var l = ['Oi, ' + nome + ', tudo bem?', '', 'Estive olhando os dados do seu relógio dos últimos dias e quero te contar o que encontrei.', '', 'O que eu vi (leitura de ' + (SA.data ? paFd(SA.data) : '') + '):', '',
+    '• HRV: média dos últimos 7 dias em ' + saFmt(x.hrv, ' ms') + ab(x.hrvV) + (x.hrvV != null ? ' da sua média das últimas 4 semanas.' : '.') + tn(dirs.hrv),
+    '• Frequência cardíaca de repouso: média de ' + saFmt(x.fc, ' bpm') + ab(x.fcV) + (x.fcV != null ? ' do seu normal.' : '.') + tn(dirs.rhr),
+    '• Body Battery: máximo médio de ' + saFmt(x.bb) + ab(x.bbV) + (x.bbV != null ? ' do seu normal.' : '.') + tn(dirs.bb)];
+  if (x.dias > 1) l.push('', 'Esse quadro já dura ' + x.dias + ' dias seguidos.');
+  var sig = x.tipo === 'Alta' ? 'São sinais de que o seu corpo está se recuperando bem.' : (x.leitura === 'Esperada pela carga' ? 'A sua semana de treino foi pesada, então é normal que o corpo mostre sinais de cansaço.' : 'São sinais de que o seu corpo pode estar acumulando cansaço.');
+  l.push('', 'O que isso pode significar:', sig + ' Isso não é um diagnóstico e um dia isolado não quer dizer nada. O que me interessa é a tendência ao longo da semana.' + (x.tipo === 'Alta' ? '' : ' Quero ajustar os próximos treinos de acordo com a sua resposta.') + ' Se você estiver sentindo algo diferente, como sono ruim, cansaço, estresse, dor ou sintomas de doença, me conta, porque isso muda a leitura.', '',
+    'O que é cada dado:', '',
+    '1) HRV (variabilidade da frequência cardíaca): é a variação de tempo entre um batimento e outro. Parece contraditório, mas um HRV mais alto costuma indicar um corpo mais recuperado e preparado para o treino. Quando ele cai por vários dias seguidos, em geral há cansaço acumulado, sono ruim, estresse ou início de doença. Ele varia muito de pessoa para pessoa, por isso eu comparo você só com você mesmo.', '',
+    '2) Frequência cardíaca de repouso: é a FC do seu coração em descanso, medida principalmente durante o sono. Quando ela sobe alguns batimentos acima do seu normal por dias seguidos, é um sinal de que o corpo está sob carga, seja por treino, calor, sono curto, estresse ou doença. Com o condicionamento melhorando, ela tende a cair com o tempo.', '',
+    '3) Body Battery: é uma nota de 0 a 100 do Garmin que estima a sua energia, combinando HRV, estresse, sono e atividade. Acordar com a bateria baixa por vários dias indica que a recuperação não está completa.', '',
+    'Por que o relógio precisa ficar com você o tempo todo:', 'Todos esses números só são confiáveis se o relógio registrar todos os dias e todas as noites. Se você dorme sem ele ou o deixa carregando de noite, perco o dado mais importante, que é o do sono. E se ele estiver frouxo no punho, o sensor lê errado, e isso gera números que parecem um problema quando não são, ou escondem um problema real. O ideal é usar o relógio ajustado, um pouco acima do osso do punho, inclusive para dormir, e carregar durante o dia, por exemplo no banho ou enquanto trabalha.', '',
+    'Quanto mais dados corretos eu tiver, melhor consigo ajustar o seu treino, e evitar tanto que você se arrebente quanto que eu pegue leve à toa.', '', 'Qualquer dúvida, me chama.', '', 'Um abraço,', 'Beto Lundgren', 'BLC Assessoria Esportiva');
+  return l.join('\n');
+}
+function saEmailPainel(i, c) {
+  var x = SA.itens[i], old = $('saEm' + i); if (old) { old.remove(); return; }
+  var p = paEl('div', ''); p.id = 'saEm' + i; p.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:10px;margin-top:8px';
+  if (!x.serie) { p.appendChild(paEl('div', 'pa-hint', 'O e-mail leva os gráficos de 7 dias, que ainda não existem para este alerta. Eles chegam na próxima leitura das 8h40.')); c.appendChild(p); return; }
+  p.appendChild(paEl('div', 'pa-hint', 'E-mail com os 3 gráficos de tendência. Edite o texto se quiser. Os gráficos entram antes de "O que isso pode significar". Nada é enviado sem você clicar. ' + (x.email ? 'Destino: ' + x.email : 'Este atleta não tem e-mail cadastrado (você ainda pode enviar um teste para você).')));
+  var ta = document.createElement('textarea'); ta.value = saEmailTexto(x); ta.rows = 16; ta.setAttribute('aria-label', 'E-mail para ' + x.nome);
+  ta.style.cssText = 'width:100%;box-sizing:border-box;font:inherit;font-size:.88rem;padding:10px;border-radius:10px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;resize:vertical;margin:6px 0';
+  p.appendChild(ta);
+  var rw = paEl('div', 'row');
+  function bt(t, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, t); b.type = 'button'; b.onclick = function () { fn(b); }; rw.appendChild(b); }
+  bt('Enviar teste para mim', '', function (b) { saEmailEnv(i, ta.value, true, b); });
+  if (x.email) bt('Enviar ao atleta', 'btn-green', function (b) { saEmailEnv(i, ta.value, false, b); });
+  bt('Fechar', '', function () { p.remove(); });
+  p.appendChild(rw); c.appendChild(p);
+}
+function saEmailEnv(i, texto, teste, b) {
+  var x = SA.itens[i];
+  if (!String(texto || '').trim()) { aviso('Escreva o texto do e-mail.'); return; }
+  function envia() {
+    b.disabled = true;
+    call('saudeEmail', { id: x.id, texto: texto, teste: teste }).then(function (r) {
+      b.disabled = false;
+      aviso(teste ? 'Teste enviado para ' + r.para + '. Confira como o e-mail ficou.' : 'E-mail enviado para ' + r.para + '.').then(function () {
+        if (!teste) call('saudeAlertas', {}, true).then(function (rr) { SA.itens = rr.itens || []; saudeDesenha(); });
+      });
+    }).catch(function (e) { b.disabled = false; aviso('Não consegui enviar: ' + e.message); });
+  }
+  if (teste) { envia(); return; }
+  dlg('Enviar este e-mail, com os gráficos, para ' + x.nome + ' (' + x.email + ')?', { ok: 'Enviar' }).then(function (v) { if (v) envia(); });
+}
 /* ---------- feedback do treinador (só Admin) ---------- */
 var FB = { g: null, d: null, sel: {}, ini: '', fim: '', det: null };
 function fbHoje() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
@@ -1864,6 +1968,7 @@ function saudeDesenha(vazio) {
       '<div><span class="pa-hint">FC de repouso</span><br>' + saFmt(x.fc, ' bpm') + '<br>' + saVar(x.fcV, -1) + '</div>' +
       '<div><span class="pa-hint">Body battery máx.</span><br>' + saFmt(x.bb) + '<br>' + saVar(x.bbV, 1) + '</div>';
     c.appendChild(v);
+    c.appendChild(saTendBloco(x));
     c.appendChild(paEl('div', 'pa-hint', 'Treino de amanhã: ' + (x.amanha || 'sem treino planejado')));
     var cm = paEl('div', 'pa-hint', x.coment ? 'Comentários do atleta nos últimos 3 dias (leia antes de enviar): ' + x.coment : 'Comentários do atleta nos últimos 3 dias: nenhum.');
     if (x.coment) cm.style.cssText = 'border-left:3px solid var(--cyan);padding-left:8px;white-space:pre-wrap;opacity:1'; c.appendChild(cm);
@@ -1878,6 +1983,7 @@ function saudeDesenha(vazio) {
     x.foneN = fone;
     if (fone) bt(x.contato ? 'Enviar de novo no WhatsApp' : 'Enviar no WhatsApp', 'btn-green', function () { saudeZap(idx); });
     else { rw.appendChild(paEl('span', 'pa-hint', 'Sem telefone cadastrado')); bt('Copiar mensagem', '', function (b) { paCopia(x.msg, b); }); bt('Já enviei', '', function () { saudeReg(idx, 'Enviada'); }); }
+    bt('E-mail com gráficos', '', function () { saEmailPainel(idx, c); });
     bt('Ignorar alerta', '', function () { saudeIgn(idx); });
     if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
     c.appendChild(rw); box.appendChild(c);
