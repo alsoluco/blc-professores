@@ -3344,7 +3344,7 @@ function asZap(x) {
   else if (k === '3') msg = 'Olá, ' + n + '. Aqui é da BLC Assessoria Esportiva.\n\nA cobrança de ' + v + ' (vencimento em ' + x.venc + (x.dias ? ', ' + x.dias + ' dia(s) de atraso' : '') + ') segue em aberto no nosso sistema.\n\n' +
     'Você pode conferir se o pagamento foi feito? Se já pagou, é só enviar o comprovante por aqui. Se ainda não, peço que regularize pelo link abaixo:\n\n' + lk + '\n\nSe houver algum problema para pagar, me avise para a gente combinar a melhor forma.';
   else msg = 'Oi, ' + n + '! Tudo bem? Aqui é da BLC.\n\nEstou passando para conferir a sua cobrança de ' + v + ' (vencimento em ' + x.venc + '). No nosso sistema ela ainda aparece em aberto. Pode dar uma olhadinha se o pagamento foi feito?\n\n' +
-    'Se já pagou, me manda o comprovante que eu atualizo por aqui. Se ainda não deu, o link para pagar é este:\n\n' + lk + '\n\nQualquer coisa, é só chamar. Abraço!';
+    'Se já pagou, por favor me manda o comprovante que eu atualizo por aqui. Se ainda não fez, o link para pagar é este:\n\n' + lk + '\n\nQualquer coisa, é só chamar. Abraço!';
   return 'https://wa.me/' + x.tel + '?text=' + encodeURIComponent(msg);
 }
 function asModo(m) { AS.modo = m; painelAsaas(); }
