@@ -3347,6 +3347,21 @@ function asZap(x) {
     'Se já pagou, por favor me manda o comprovante que eu atualizo por aqui. Se ainda não fez, o link para pagar é este:\n\n' + lk + '\n\nQualquer coisa, é só chamar. Abraço!';
   return 'https://wa.me/' + x.tel + '?text=' + encodeURIComponent(msg);
 }
+function asDataBr(t) {
+  t = String(t || '').trim(); var m = t.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/); if (!m) return '';
+  var d = new Date(), a = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : d.getFullYear();
+  var dt = new Date(a, +m[2] - 1, +m[1]); if (dt.getMonth() !== +m[2] - 1 || dt.getDate() !== +m[1]) return '';
+  return a + '-' + finP2(+m[2]) + '-' + finP2(+m[1]);
+}
+function asBaixa(i) {
+  var x = (AS.lista || [])[i]; if (!x || !x.link) { aviso('Não achei a cobrança. Atualize a tela.'); return; }
+  dlg('Marcar como PAGA a cobrança de ' + x.nome + ' (' + finMoeda(x.valor) + ', venceu ' + x.venc + ')? No Asaas ela passa para "Recebida em dinheiro" com a data que você informar. Isso não gera cobrança nem e-mail ao atleta.', { ok: 'Dar baixa no Asaas', input: 'Data do pagamento (dd/mm/aaaa)' }).then(function (v) {
+    if (v === null || v === false) return;
+    var d = asDataBr(v);
+    if (!d) { aviso('Data inválida. Escreva assim: 24/11/2026.'); return; }
+    call('asaasBaixa', { link: x.link, data: d }).then(function (r) { aviso('Baixa feita no Asaas: ' + x.nome + ', ' + finMoeda(r.valor) + ', pago em ' + String(v).trim() + '.').then(function () { painelAsaas(AS.mes, true); }); }).catch(function (e) { aviso(e.message); });
+  });
+}
 function asModo(m) { AS.modo = m; painelAsaas(); }
 function asVerVencidas(todas) { AS.rolar = 'asAtraso'; if (todas) { AS.modo = 'atraso'; painelAsaas(); } else { AS.modo = 'mes'; painelAsaas(); } }
 function painelAsaas(mes, atualizar) {
@@ -3362,6 +3377,7 @@ function painelAsaas(mes, atualizar) {
       tv += x.valor; tq++; return true;
     });
     if (r.tot && r.tot.atraso) { r.tot.atraso.valor = Math.round(tv * 100) / 100; r.tot.atraso.qtd = tq; }
+    AS.lista = r.itens;
     r.ign90 = { qtd: ign.qtd, valor: Math.round(ign.valor * 100) / 100 };
     var todos = AS.modo === 'atraso';
     var modos = '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm' + (todos ? '' : ' btn-green') + '" onclick="asModo(\'mes\')">Por mês</button><button class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="asModo(\'atraso\')">Vencidas dos últimos 90 dias (qualquer mês)</button><button class="btn btn-sm" onclick="painelProj()">Projeção dos próximos meses</button><button class="btn btn-sm" onclick="painelProd()">Produtos e vendas</button></div>';
@@ -3375,7 +3391,7 @@ function painelAsaas(mes, atualizar) {
       var zap = x.g === 'atraso' ? (x.tel ? '<a class="btn btn-sm btn-green" href="' + esc(asZap(x)) + '" target="_blank" rel="noopener">Lembrete no WhatsApp</a>' : '<span class="small muted">Sem telefone cadastrado</span>') : '';
       return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(x.nome) + '</b><span class="tag ' + (x.g === 'atraso' ? '' : 'w') + '">' + finMoeda(x.valor) + '</span></div>' +
         '<div class="small muted">' + (x.g === 'atraso' ? 'Venceu ' + esc(x.venc) + ' (' + x.dias + ' dia(s) de atraso)' : 'Vence ' + esc(x.venc)) + ' · ' + esc(AS_TIPO[x.tipo] || '') + (forma ? ' · ' + esc(forma) : '') + (x.desc ? ' · ' + esc(x.desc) : '') + '</div>' +
-        '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' + zap + (x.link ? '<a class="lnk" href="' + esc(x.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div></div>';
+        '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' + zap + (x.g === 'atraso' && x.link ? '<button class="btn btn-sm" onclick="asBaixa(' + r.itens.indexOf(x) + ')">Já foi pago · dar baixa</button>' : '') + (x.link ? '<a class="lnk" href="' + esc(x.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div></div>';
     };
     var atr = r.itens.filter(function (x) { return x.g === 'atraso'; }), rec = r.itens.filter(function (x) { return x.g === 'areceber'; });
     var porPessoa = {}; atr.forEach(function (x) { porPessoa[x.nome] = 1; });
