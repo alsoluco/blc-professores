@@ -3354,8 +3354,17 @@ function painelAsaas(mes, atualizar) {
   AS.mes = mes || AS.mes || asMesAtual();
   app(cabAsaas() + '<div class="spin">Buscando no Asaas…</div>');
   call('asaas', { mes: AS.mes, modo: AS.modo, atualizar: !!atualizar }).then(function (r) {
+    /* só conta como vencida o que venceu nos últimos 90 dias; o que passar disso é ignorado */
+    var ign = { qtd: 0, valor: 0 }, tv = 0, tq = 0;
+    r.itens = (r.itens || []).filter(function (x) {
+      if (x.g !== 'atraso') return true;
+      if (x.dias > 90) { ign.qtd++; ign.valor += x.valor; return false; }
+      tv += x.valor; tq++; return true;
+    });
+    if (r.tot && r.tot.atraso) { r.tot.atraso.valor = Math.round(tv * 100) / 100; r.tot.atraso.qtd = tq; }
+    r.ign90 = { qtd: ign.qtd, valor: Math.round(ign.valor * 100) / 100 };
     var todos = AS.modo === 'atraso';
-    var modos = '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm' + (todos ? '' : ' btn-green') + '" onclick="asModo(\'mes\')">Por mês</button><button class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="asModo(\'atraso\')">Todos em atraso (qualquer mês)</button><button class="btn btn-sm" onclick="painelProj()">Projeção dos próximos meses</button><button class="btn btn-sm" onclick="painelProd()">Produtos e vendas</button></div>';
+    var modos = '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn btn-sm' + (todos ? '' : ' btn-green') + '" onclick="asModo(\'mes\')">Por mês</button><button class="btn btn-sm' + (todos ? ' btn-green' : '') + '" onclick="asModo(\'atraso\')">Vencidas dos últimos 90 dias (qualquer mês)</button><button class="btn btn-sm" onclick="painelProj()">Projeção dos próximos meses</button><button class="btn btn-sm" onclick="painelProd()">Produtos e vendas</button></div>';
     var nav = todos ? '<div class="row" style="gap:6px;align-items:center"><button class="btn btn-sm" onclick="painelAsaas(AS.mes, true)">Atualizar</button></div>' :
       '<div class="row" style="gap:6px;align-items:center"><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, -1) + '\')">‹</button><b>' + esc(asMesNome(AS.mes)) + '</b><button class="btn btn-sm" onclick="painelAsaas(\'' + asMesSoma(AS.mes, 1) + '\')">›</button><button class="btn btn-sm" onclick="painelAsaas(AS.mes, true)">Atualizar</button></div>';
     var card = function (t, o, cls, extra) { return '<div class="card"><div class="eyebrow">' + t + '</div><h2><span class="tag ' + cls + '">' + finMoeda(o.valor) + '</span></h2><div class="small muted">' + o.qtd + ' cobrança(s)</div>' + (extra || '') + '</div>'; };
@@ -3370,7 +3379,7 @@ function painelAsaas(mes, atualizar) {
     };
     var atr = r.itens.filter(function (x) { return x.g === 'atraso'; }), rec = r.itens.filter(function (x) { return x.g === 'areceber'; });
     var porPessoa = {}; atr.forEach(function (x) { porPessoa[x.nome] = 1; });
-    var topo = '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + (todos ? ' · todas as cobranças vencidas e não pagas, de qualquer mês' : ' · por data de vencimento · ' + r.total + ' cobranças no mês') + '</div>';
+    var topo = (r.ign90 && r.ign90.qtd ? '<div class="small muted">Ignoradas por terem vencido há mais de 90 dias: ' + r.ign90.qtd + ' cobrança(s), ' + finMoeda(r.ign90.valor) + ' (não entram nas contas).</div>' : '') + '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + (todos ? ' · cobranças vencidas e não pagas nos últimos 90 dias, de qualquer mês' : ' · por data de vencimento · ' + r.total + ' cobranças no mês') + '</div>';
     var corpo = todos ?
       card('Em atraso (total)', r.tot.atraso, '', '<div class="small muted">' + Object.keys(porPessoa).length + ' pessoa(s)</div>') +
       '<div class="eyebrow" id="asAtraso">Em atraso (' + atr.length + ')</div>' + asMsgSel() + '<div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso.</div>') + '</div>' :
@@ -3467,9 +3476,9 @@ function finResumo(r, pv, pd, ex, todos) {
   var sep = (aberto !== null ? aberto + reserva : 0) + (prod || 0);
   var livre = (typeof r.saldo === 'number' && aberto !== null) ? Math.round((r.saldo - sep) * 100) / 100 : null;
   var h = '<div class="card"><div class="eyebrow">Resumo financeiro · ' + esc(asMesNome(AS.mes)) + '</div>';
-  if (mesOk) h += finLinha('Já recebido no mês', rec, 'g') + finLinha('A receber, ainda no prazo', noPrazo, 'w') + finLinha('Mensalidades vencidas (em atraso)', venc, venc ? 'r' : '') +
-    '<div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 6px"><button class="btn btn-sm" onclick="asVerVencidas(false)">Ver quem venceu em ' + esc(asMesNome(AS.mes)) + '</button><button class="btn btn-sm" onclick="asVerVencidas(true)">Ver todas as vencidas</button></div>';
-  else h += finLinha('Mensalidades vencidas (todas, qualquer mês)', venc, venc ? 'r' : '') + '<div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 6px"><button class="btn btn-sm" onclick="asVerVencidas(false)">Ver só as do mês</button><button class="btn btn-sm" onclick="asVerVencidas(true)">Ver todas as vencidas</button></div><div class="small muted">Escolha "Por mês" para ver recebido e a receber no prazo.</div>';
+  if (mesOk) h += finLinha('Já recebido no mês', rec, 'g') + finLinha('A receber, ainda no prazo', noPrazo, 'w') + finLinha('Mensalidades vencidas (últimos 90 dias)', venc, venc ? 'r' : '') +
+    '<div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 6px"><button class="btn btn-sm" onclick="asVerVencidas(false)">Ver quem venceu em ' + esc(asMesNome(AS.mes)) + '</button><button class="btn btn-sm" onclick="asVerVencidas(true)">Ver todas dos últimos 90 dias</button></div>';
+  else h += finLinha('Mensalidades vencidas (últimos 90 dias, qualquer mês)', venc, venc ? 'r' : '') + '<div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 6px"><button class="btn btn-sm" onclick="asVerVencidas(false)">Ver só as do mês</button><button class="btn btn-sm" onclick="asVerVencidas(true)">Ver todas dos últimos 90 dias</button></div><div class="small muted">Escolha "Por mês" para ver recebido e a receber no prazo.</div>';
   h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">';
   if (aberto !== null) {
     h += finLinha('Separar para pagar provas e eventos (recebido, ainda sem baixa)', aberto, 'w') +
