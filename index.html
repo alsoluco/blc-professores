@@ -3147,7 +3147,7 @@ function finLinha(rot, v, cls) {
   return '<div class="row" style="justify-content:space-between;gap:8px;margin:4px 0"><span class="small muted">' + rot + '</span><span class="tag ' + (cls || '') + '">' + finMoeda(v) + '</span></div>';
 }
 function finProvas() {
-  S.aba = 'fin'; S.aba2 = 'pnl';
+  S.aba = 'fin'; S.aba2 = 'pnl'; S.finDe = '';
   app(finCab('provas', 'Provas e eventos') + '<div class="spin">Somando as provas…</div>');
   call('finProvas', {}).then(function (r) {
     var g = r.geral;
@@ -3208,7 +3208,7 @@ function finProvaDesenha() {
     return '<div class="small" style="padding:6px 0;border-top:1px solid rgba(128,128,128,.25)"><b>' + esc(l.tipo) + '</b> · ' + finMoeda(l.valor) + (l.inscrito ? ' · ' + esc(l.inscrito) : '') + '<div class="muted">' + esc(l.quando) + (l.por ? ' · ' + esc(l.por) : '') + (l.obs ? ' · ' + esc(l.obs) : '') + '</div>' +
       '<button class="btn btn-sm" onclick="finDesfaz(\'' + esc(l.id) + '\')">Desfazer este lançamento</button></div>';
   }).join('');
-  app(finCab('provas', 'Provas e eventos') + '<button class="back" onclick="finProvas()">← Provas e eventos</button>' +
+  app(finCab('provas', 'Provas e eventos') + '<button class="back" onclick="finVoltar()">' + (S.finDe === 'resumo' ? '← Resumo financeiro' : '← Provas e eventos') + '</button>' +
     '<div class="card"><div class="top"><b>' + esc(d.nome) + '</b><span class="tag g">' + esc(String(d.data)) + '</span></div>' +
     '<div class="small muted">' + d.pagaram + ' de ' + d.inscritos + ' inscritos pagaram' + (d.aConferir ? ' · ' + d.aConferir + ' com comprovante a conferir' : '') + '</div>' +
     (d.quitada ? (d.retidoPor ? finLinha('A guardar para a BLC: ' + (d.retidoQtd || 0) + ' inscritos × ' + finMoeda(d.retidoPor) + ' (tenda e camisa)', d.emCaixa, 'w') + (d.inscritos > d.retidoQtd ? '<div class="small">' + (d.inscritos - d.retidoQtd) + ' nome(s) na planilha sem dados de pagamento/kit não entram na conta.</div>' : '') : '<div class="small"><b>Nada a guardar:</b> tudo foi pago e repassado ao organizador.</div>') + '<div class="small muted">Valor total das inscrições: ' + finMoeda(d.totalInscricoes) + ' · já repassado ao organizador: ' + finMoeda(d.repassado) + '</div>' : finLinha('Recebido', d.recebido, 'g') + (d.devolvido ? finLinha('Devolvido (já descontado)', d.devolvido, '') : '') + finLinha('Já repassado (baixa)', d.usado, '') + (d.taxa ? finLinha('Fica com a BLC (taxa)', d.taxa, 'w') : '') + finLinha('Em caixa para repassar', d.emCaixa, 'w')) + (d.falta ? finLinha('Falta receber (inscritos que ainda não pagaram)', d.falta, 'r') : '') + '</div>' +
@@ -3240,7 +3240,7 @@ function finBaixaUm(i) {
 }
 function finReservaTodos() {
   var d = S.fpd;
-  dlg('Dar baixa em toda a reserva (' + finMoeda(d.emCaixa) + ')? Significa que você já retirou esse dinheiro; ele deixa de aparecer como "a guardar".', { ok: 'Dar baixa' }).then(function (ok) {
+  dlg('Dar baixa em toda a reserva (' + finMoeda(d.emCaixa) + ')? Significa que você já fez a transferência (retirou esse dinheiro); ele deixa de aparecer como "a guardar".', { ok: 'Dar baixa' }).then(function (ok) {
     if (!ok) return;
     call('finReservaTodos', { id: d.id }).then(function (r) { aviso('Baixa feita em ' + r.qtd + ' atleta(s): ' + finMoeda(r.total) + '.').then(finRecarrega); }).catch(function (e) { aviso(e.message); });
   });
@@ -3415,14 +3415,21 @@ function emailTeste() {
     aviso(r.via === 'contato' ? 'Funcionou: o e-mail de teste saiu de contato@equipeblc.com. Veja na sua caixa de entrada.' : 'O e-mail saiu pela conta principal, não pelo contato@. ' + (r.aliasEncontrado ? 'O alias foi encontrado, mas o envio falhou: ' + (r.erro || '') : 'O app ainda não enxerga o alias (falta autorizar o acesso ao Gmail no Apps Script). ' + (r.erroAlias || '')));
   }).catch(function (e) { aviso(e.message); });
 }
+function finChips(lista, dica) {
+  return '<div class="small muted">' + dica + '</div><div class="list" style="margin:6px 0 10px">' + lista.map(function (x) {
+    return '<button class="btn btn-sm" style="display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;margin:4px 0" onclick="finProvaDoResumo(\'' + esc(x.id) + '\')"><span>' + esc(x.nome) + '</span><b>' + finMoeda(x.emCaixa) + ' ›</b></button>';
+  }).join('') + '</div>';
+}
+function finProvaDoResumo(id) { S.finDe = 'resumo'; finProva(id); }
+function finVoltar() { if (S.finDe === 'resumo') { S.finDe = ''; painelAsaas(AS.mes, true); } else finProvas(); }
 function finResumo(r, pv, pd, ex, todos) {
   var mesOk = !todos && r.tot && r.tot.recebido;
   var rec = mesOk ? r.tot.recebido.valor : 0, noPrazo = mesOk ? r.tot.areceber.valor : 0, venc = r.tot && r.tot.atraso ? r.tot.atraso.valor : 0;
-  var aberto = null, reserva = null, abertas = [];
+  var aberto = null, reserva = null, abertas = [], reservas = [];
   if (pv) {
     aberto = 0; reserva = 0;
     pv.provas.forEach(function (x) {
-      if (x.quitada) reserva += x.emCaixa || 0;
+      if (x.quitada) { reserva += x.emCaixa || 0; if ((x.emCaixa || 0) > 0.004) reservas.push(x); }
       else if ((x.emCaixa || 0) > 0.004) { aberto += x.emCaixa; abertas.push(x); }
     });
     aberto = Math.round(aberto * 100) / 100; reserva = Math.round(reserva * 100) / 100;
@@ -3438,8 +3445,8 @@ function finResumo(r, pv, pd, ex, todos) {
   h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">';
   if (aberto !== null) {
     h += finLinha('Separar para pagar provas e eventos (recebido, ainda sem baixa)', aberto, 'w') +
-      (abertas.length ? '<div class="small muted">' + abertas.map(function (x) { return esc(x.nome) + ': ' + finMoeda(x.emCaixa); }).join(' · ') + '</div>' : '<div class="small muted">Todas as provas estão com baixa dada.</div>') +
-      (reserva ? finLinha('Reserva da BLC já retida nas inscrições (tenda e camisa)', reserva, 'w') : '');
+      (abertas.length ? finChips(abertas, 'Toque para abrir a prova e dar baixa (já transferi ao organizador)') : '<div class="small muted">Todas as provas estão com baixa dada.</div>') +
+      (reserva ? finLinha('Reserva da BLC já retida nas inscrições (tenda e camisa)', reserva, 'w') + finChips(reservas, 'Toque para abrir a prova e dar baixa na reserva (já retirei)') : '');
   } else h += '<div class="small muted">Provas: não consegui calcular agora.</div>';
   if (prod !== null) h += finLinha('Separar para produtos (vendas recebidas no mês)', prod, 'w');
   h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">' +
