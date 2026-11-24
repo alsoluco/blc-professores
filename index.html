@@ -3327,12 +3327,28 @@ function cabAsaas() {
   return head(userBar()) + '<button class="back" onclick="inicio()">← Mensagens</button><div><div class="eyebrow">Head coach</div><h2>Financeiro <em>Asaas ao vivo</em></h2></div>' + painelTabs('fin') + finSub('asaas');
 }
 function asPrimeiro(n) { var t = String(n || '').trim().split(/\s+/)[0].toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); }
+var AS_MSGS = [['1', 'Cordial'], ['2', 'Formal'], ['3', 'Direta']];
+function asMsgEsc() { try { return localStorage.getItem('blc_asmsg') || '1'; } catch (e) { return '1'; } }
+function asMsgSet(k) { try { localStorage.setItem('blc_asmsg', k); } catch (e) {} painelAsaas(); }
+function asMsgSel() {
+  var k = asMsgEsc();
+  return '<div class="small muted" style="margin:4px 0">Texto do WhatsApp (já leva o link de pagamento do Asaas):</div><div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">' + AS_MSGS.map(function (m) {
+    return '<button class="btn btn-sm' + (k === m[0] ? ' btn-green' : '') + '" onclick="asMsgSet(\'' + m[0] + '\')">' + m[1] + '</button>';
+  }).join('') + '</div>';
+}
 function asZap(x) {
-  var msg = 'Olá, ' + asPrimeiro(x.nome) + '! Tudo bem?\n\nAqui é da BLC Assessoria Esportiva. Ao revisarmos nosso financeiro, identificamos que a cobrança de ' + finMoeda(x.valor) + ', com vencimento em ' + x.venc + ', ainda consta como em aberto em nosso sistema.\n\n' +
-    'Se o pagamento já foi realizado, por favor desconsidere esta mensagem e nos envie o comprovante para que possamos atualizar o seu cadastro. Caso ainda não tenha sido feito, segue o link para pagamento:\n\n' + x.link + '\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe BLC Assessoria Esportiva';
+  var k = asMsgEsc(), n = asPrimeiro(x.nome), v = finMoeda(x.valor), msg;
+  var lk = x.link || '(link de pagamento indisponível, envio em seguida)';
+  if (k === '2') msg = 'Olá, ' + n + '! Tudo bem?\n\nAqui é da BLC Assessoria Esportiva. Ao revisarmos nosso financeiro, identificamos que a cobrança de ' + v + ', com vencimento em ' + x.venc + ', ainda consta como em aberto em nosso sistema.\n\n' +
+    'Se o pagamento já foi realizado, por favor desconsidere esta mensagem e nos envie o comprovante para que possamos atualizar o seu cadastro. Caso ainda não tenha sido feito, segue o link para pagamento:\n\n' + lk + '\n\nQualquer dúvida, estamos à disposição.\n\nAtenciosamente,\nEquipe BLC Assessoria Esportiva';
+  else if (k === '3') msg = 'Olá, ' + n + '. Aqui é da BLC Assessoria Esportiva.\n\nA cobrança de ' + v + ' (vencimento em ' + x.venc + (x.dias ? ', ' + x.dias + ' dia(s) de atraso' : '') + ') segue em aberto no nosso sistema.\n\n' +
+    'Você pode conferir se o pagamento foi feito? Se já pagou, é só enviar o comprovante por aqui. Se ainda não, peço que regularize pelo link abaixo:\n\n' + lk + '\n\nSe houver algum problema para pagar, me avise para a gente combinar a melhor forma.';
+  else msg = 'Oi, ' + n + '! Tudo bem? Aqui é da BLC.\n\nEstou passando para conferir a sua cobrança de ' + v + ' (vencimento em ' + x.venc + '). No nosso sistema ela ainda aparece em aberto. Pode dar uma olhadinha se o pagamento foi feito?\n\n' +
+    'Se já pagou, me manda o comprovante que eu atualizo por aqui. Se ainda não deu, o link para pagar é este:\n\n' + lk + '\n\nQualquer coisa, é só chamar. Abraço!';
   return 'https://wa.me/' + x.tel + '?text=' + encodeURIComponent(msg);
 }
 function asModo(m) { AS.modo = m; painelAsaas(); }
+function asVerVencidas(todas) { AS.rolar = 'asAtraso'; if (todas) { AS.modo = 'atraso'; painelAsaas(); } else { AS.modo = 'mes'; painelAsaas(); } }
 function painelAsaas(mes, atualizar) {
   S.aba = 'fin'; S.aba2 = 'pnl';
   AS.mes = mes || AS.mes || asMesAtual();
@@ -3357,14 +3373,15 @@ function painelAsaas(mes, atualizar) {
     var topo = '<div class="small muted">Atualizado em ' + esc(r.atualizadoEm) + (todos ? ' · todas as cobranças vencidas e não pagas, de qualquer mês' : ' · por data de vencimento · ' + r.total + ' cobranças no mês') + '</div>';
     var corpo = todos ?
       card('Em atraso (total)', r.tot.atraso, '', '<div class="small muted">' + Object.keys(porPessoa).length + ' pessoa(s)</div>') +
-      '<div class="eyebrow">Em atraso (' + atr.length + ')</div><div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso.</div>') + '</div>' :
+      '<div class="eyebrow" id="asAtraso">Em atraso (' + atr.length + ')</div>' + asMsgSel() + '<div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso.</div>') + '</div>' :
       card('Recebido', r.tot.recebido, 'g', rcbExtra) + card('Falta receber (a receber + em atraso)', { valor: r.tot.areceber.valor + r.tot.atraso.valor, qtd: r.tot.areceber.qtd + r.tot.atraso.qtd }, 'w', '<div class="small" style="margin-top:8px"><div><b>A receber (ainda no prazo):</b> ' + finMoeda(r.tot.areceber.valor) + ' <span class="muted">(' + r.tot.areceber.qtd + ')</span></div><div><b>Vencido (em atraso):</b> ' + finMoeda(r.tot.atraso.valor) + ' <span class="muted">(' + r.tot.atraso.qtd + ')</span></div></div>') +
-      '<div class="eyebrow">Em atraso (' + atr.length + ')</div><div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso neste mês.</div>') + '</div>' +
+      '<div class="eyebrow" id="asAtraso">Em atraso (' + atr.length + ')</div>' + asMsgSel() + '<div class="list">' + (atr.length ? atr.map(item).join('') : '<div class="muted small">Ninguém em atraso neste mês.</div>') + '</div>' +
       '<div class="eyebrow">A receber (' + rec.length + ')</div><div class="list">' + (rec.length ? rec.map(item).join('') : '<div class="muted small">Nada a receber neste mês.</div>') + '</div>';
     var saldo = '<div class="card"><div class="eyebrow">Saldo na conta Asaas</div><h2><span class="tag g">' + (r.saldo === null || r.saldo === undefined ? 'indisponível' : finMoeda(r.saldo)) + '</span></h2><div class="small muted">Valor disponível na conta agora (não depende do mês escolhido).</div></div>';
     var nulo = function () { return null; };
     Promise.all([call('finProvas', {}).catch(nulo), call('finProdutos', { meses: 6 }).catch(nulo), call('finExtra', { mes: AS.mes }).catch(nulo)]).then(function (x) {
       app(cabAsaas() + finResumo(r, x[0], x[1], x[2], todos) + modos + nav + topo + corpo);
+      if (AS.rolar) { var el = $(AS.rolar); AS.rolar = ''; if (el && el.scrollIntoView) el.scrollIntoView(); }
     });
   }).catch(function (e) { app(cabAsaas() + '<div class="err">' + esc(e.message) + '</div>'); });
 }
@@ -3415,17 +3432,27 @@ function emailTeste() {
     aviso(r.via === 'contato' ? 'Funcionou: o e-mail de teste saiu de contato@equipeblc.com. Veja na sua caixa de entrada.' : 'O e-mail saiu pela conta principal, não pelo contato@. ' + (r.aliasEncontrado ? 'O alias foi encontrado, mas o envio falhou: ' + (r.erro || '') : 'O app ainda não enxerga o alias (falta autorizar o acesso ao Gmail no Apps Script). ' + (r.erroAlias || '')));
   }).catch(function (e) { aviso(e.message); });
 }
-function finChips(lista, dica) {
+function finChips(lista, dica, reserva) {
   return '<div class="small muted">' + dica + '</div><div class="list" style="margin:6px 0 10px">' + lista.map(function (x) {
-    return '<button class="btn btn-sm" style="display:flex;justify-content:space-between;gap:10px;width:100%;text-align:left;margin:4px 0" onclick="finProvaDoResumo(\'' + esc(x.id) + '\')"><span>' + esc(x.nome) + '</span><b>' + finMoeda(x.emCaixa) + ' ›</b></button>';
+    return '<div class="row" style="gap:6px;align-items:stretch;margin:4px 0"><button class="btn btn-sm" style="flex:1;display:flex;justify-content:space-between;gap:10px;text-align:left" onclick="finProvaDoResumo(\'' + esc(x.id) + '\')"><span>' + esc(x.nome) + '</span><b>' + finMoeda(x.emCaixa) + ' ›</b></button>' +
+      '<button class="btn btn-sm btn-green" onclick="finBaixaDireta(\'' + esc(x.id) + '\',' + (reserva ? 1 : 0) + ')">Dar baixa</button></div>';
   }).join('') + '</div>';
+}
+function finBaixaDireta(id, reserva) {
+  var x = (S.pvResumo || []).filter(function (p) { return p.id === id; })[0]; if (!x) { aviso('Não achei a prova. Atualize a tela.'); return; }
+  var txt = reserva ? 'Dar baixa na reserva de ' + x.nome + ' (' + finMoeda(x.emCaixa) + ')? Significa que você já fez a transferência (retirou esse dinheiro); ele deixa de aparecer como "a guardar".' :
+    'Dar baixa em ' + x.nome + ' (' + finMoeda(x.emCaixa) + ')? Significa que você já fez a transferência ao organizador. O valor sai de "separar para pagar provas e eventos" e do saldo em caixa.';
+  dlg(txt, { ok: 'Dar baixa' }).then(function (ok) {
+    if (!ok) return;
+    call(reserva ? 'finReservaTodos' : 'finBaixaTodos', { id: id }).then(function (r) { aviso('Baixa feita: ' + finMoeda(r.valor !== undefined ? r.valor : r.total) + '.').then(function () { painelAsaas(AS.mes, true); }); }).catch(function (e) { aviso(e.message); });
+  });
 }
 function finProvaDoResumo(id) { S.finDe = 'resumo'; finProva(id); }
 function finVoltar() { if (S.finDe === 'resumo') { S.finDe = ''; painelAsaas(AS.mes, true); } else finProvas(); }
 function finResumo(r, pv, pd, ex, todos) {
   var mesOk = !todos && r.tot && r.tot.recebido;
   var rec = mesOk ? r.tot.recebido.valor : 0, noPrazo = mesOk ? r.tot.areceber.valor : 0, venc = r.tot && r.tot.atraso ? r.tot.atraso.valor : 0;
-  var aberto = null, reserva = null, abertas = [], reservas = [];
+  var aberto = null, reserva = null, abertas = [], reservas = []; S.pvResumo = pv ? pv.provas : [];
   if (pv) {
     aberto = 0; reserva = 0;
     pv.provas.forEach(function (x) {
@@ -3440,13 +3467,14 @@ function finResumo(r, pv, pd, ex, todos) {
   var sep = (aberto !== null ? aberto + reserva : 0) + (prod || 0);
   var livre = (typeof r.saldo === 'number' && aberto !== null) ? Math.round((r.saldo - sep) * 100) / 100 : null;
   var h = '<div class="card"><div class="eyebrow">Resumo financeiro · ' + esc(asMesNome(AS.mes)) + '</div>';
-  if (mesOk) h += finLinha('Já recebido no mês', rec, 'g') + finLinha('A receber, ainda no prazo', noPrazo, 'w') + finLinha('Mensalidades vencidas (em atraso)', venc, venc ? 'r' : '');
-  else h += finLinha('Mensalidades vencidas (todas, qualquer mês)', venc, venc ? 'r' : '') + '<div class="small muted">Escolha "Por mês" para ver recebido e a receber no prazo.</div>';
+  if (mesOk) h += finLinha('Já recebido no mês', rec, 'g') + finLinha('A receber, ainda no prazo', noPrazo, 'w') + finLinha('Mensalidades vencidas (em atraso)', venc, venc ? 'r' : '') +
+    '<div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 6px"><button class="btn btn-sm" onclick="asVerVencidas(false)">Ver quem venceu em ' + esc(asMesNome(AS.mes)) + '</button><button class="btn btn-sm" onclick="asVerVencidas(true)">Ver todas as vencidas</button></div>';
+  else h += finLinha('Mensalidades vencidas (todas, qualquer mês)', venc, venc ? 'r' : '') + '<div class="row" style="gap:6px;flex-wrap:wrap;margin:4px 0 6px"><button class="btn btn-sm" onclick="asVerVencidas(false)">Ver só as do mês</button><button class="btn btn-sm" onclick="asVerVencidas(true)">Ver todas as vencidas</button></div><div class="small muted">Escolha "Por mês" para ver recebido e a receber no prazo.</div>';
   h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">';
   if (aberto !== null) {
     h += finLinha('Separar para pagar provas e eventos (recebido, ainda sem baixa)', aberto, 'w') +
-      (abertas.length ? finChips(abertas, 'Toque para abrir a prova e dar baixa (já transferi ao organizador)') : '<div class="small muted">Todas as provas estão com baixa dada.</div>') +
-      (reserva ? finLinha('Reserva da BLC já retida nas inscrições (tenda e camisa)', reserva, 'w') + finChips(reservas, 'Toque para abrir a prova e dar baixa na reserva (já retirei)') : '');
+      (abertas.length ? finChips(abertas, 'Toque no nome para abrir a prova, ou em Dar baixa se você já fez a transferência ao organizador', false) : '<div class="small muted">Todas as provas estão com baixa dada.</div>') +
+      (reserva ? finLinha('Reserva da BLC já retida nas inscrições (tenda e camisa)', reserva, 'w') + finChips(reservas, 'Toque no nome para abrir a prova, ou em Dar baixa se você já retirou a reserva', true) : '');
   } else h += '<div class="small muted">Provas: não consegui calcular agora.</div>';
   if (prod !== null) h += finLinha('Separar para produtos (vendas recebidas no mês)', prod, 'w');
   h += '<hr style="border:0;border-top:1px solid rgba(128,128,128,.3);margin:10px 0">' +
