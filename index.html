@@ -3347,6 +3347,24 @@ function asZap(x) {
     'Se já pagou, por favor me manda o comprovante que eu atualizo por aqui. Se ainda não fez, o link para pagar é este:\n\n' + lk + '\n\nQualquer coisa, é só chamar. Abraço!';
   return 'https://wa.me/' + x.tel + '?text=' + encodeURIComponent(msg);
 }
+function asUltimaTxt(x) {
+  var u = x.ultima;
+  if (!u) return '<span class="muted">Última cobrança no WhatsApp: nenhuma enviada pelo app ainda.</span>';
+  var recente = u.dias <= 7;
+  return '<b style="' + (recente ? 'color:#e0a800' : '') + '">Última cobrança no WhatsApp: ' + esc(u.q) + (u.quem ? ' (' + esc(u.quem) + ')' : '') + ' · ' + (u.dias === 0 ? 'hoje' : 'há ' + u.dias + ' dia(s)') + (u.outra ? ' · referente a outra cobrança deste atleta' : '') + '</b>';
+}
+function asZapEnvia(i) {
+  var x = (AS.lista || [])[i]; if (!x) { aviso('Não achei a cobrança. Atualize a tela.'); return; }
+  function vai() {
+    window.open(asZap(x), '_blank');
+    call('cobrancaZap', { link: x.link, nome: x.nome, valor: finMoeda(x.valor), venc: x.venc }).then(function (r) {
+      x.ultima = { q: r.q, quem: r.quem, dias: 0, outra: false };
+      var el = $('asU' + i); if (el) el.innerHTML = asUltimaTxt(x);
+    }).catch(function (e) { aviso('A mensagem abriu, mas não consegui registrar a data: ' + e.message); });
+  }
+  if (x.ultima && x.ultima.dias <= 7) dlg('Atenção: ' + x.nome + ' já recebeu uma cobrança no WhatsApp em ' + x.ultima.q + (x.ultima.dias === 0 ? ' (hoje)' : ' (há ' + x.ultima.dias + ' dia(s))') + '. Enviar de novo mesmo assim?', { ok: 'Enviar de novo', cancelTxt: 'Não enviar' }).then(function (ok) { if (ok) vai(); });
+  else vai();
+}
 function asDataBr(t) {
   t = String(t || '').trim(); var m = t.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/); if (!m) return '';
   var d = new Date(), a = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : d.getFullYear();
@@ -3397,10 +3415,10 @@ function painelAsaas(mes, atualizar) {
     var rcbExtra = '<div class="small" style="margin-top:8px">' + ['assinatura', 'avulso', 'parcelado'].map(function (k) { return '<div><b>' + AS_TIPO[k] + ':</b> ' + finMoeda(tp[k].valor) + ' <span class="muted">(' + tp[k].qtd + ')</span></div>'; }).join('') + '</div>';
     var item = function (x) {
       var forma = AS_FORMA[x.forma] || '';
-      var zap = x.g === 'atraso' ? (x.tel ? '<a class="btn btn-sm btn-green" href="' + esc(asZap(x)) + '" target="_blank" rel="noopener">Lembrete no WhatsApp</a>' : '<span class="small muted">Sem telefone cadastrado</span>') : '';
+      var zap = x.g === 'atraso' ? (x.tel ? '<button class="btn btn-sm btn-green" onclick="asZapEnvia(' + r.itens.indexOf(x) + ')">Lembrete no WhatsApp</button>' : '<span class="small muted">Sem telefone cadastrado</span>') : '';
       return '<div class="card"><div class="row" style="justify-content:space-between;gap:8px"><b>' + esc(x.nome) + '</b><span class="tag ' + (x.g === 'atraso' ? '' : 'w') + '">' + finMoeda(x.valor) + '</span></div>' +
         '<div class="small muted">' + (x.g === 'atraso' ? 'Venceu ' + esc(x.venc) + ' (' + x.dias + ' dia(s) de atraso)' : 'Vence ' + esc(x.venc)) + ' · ' + esc(AS_TIPO[x.tipo] || '') + (forma ? ' · ' + esc(forma) : '') + (x.desc ? ' · ' + esc(x.desc) : '') + '</div>' +
-        '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' + zap + (x.g === 'atraso' && x.link ? '<button class="btn btn-sm" onclick="asBaixa(' + r.itens.indexOf(x) + ')">Já foi pago · dar baixa</button>' : '') + (x.link ? '<a class="lnk" href="' + esc(x.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div></div>';
+        (x.g === 'atraso' ? '<div class="small" id="asU' + r.itens.indexOf(x) + '">' + asUltimaTxt(x) + '</div>' : '') + '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">' + zap + (x.g === 'atraso' && x.link ? '<button class="btn btn-sm" onclick="asBaixa(' + r.itens.indexOf(x) + ')">Já foi pago · dar baixa</button>' : '') + (x.link ? '<a class="lnk" href="' + esc(x.link) + '" target="_blank" rel="noopener">Abrir cobrança</a>' : '') + '</div></div>';
     };
     var atr = r.itens.filter(function (x) { return x.g === 'atraso'; }), rec = r.itens.filter(function (x) { return x.g === 'areceber'; });
     var porPessoa = {}; atr.forEach(function (x) { porPessoa[x.nome] = 1; });
