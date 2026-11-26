@@ -2031,6 +2031,7 @@ function saudeDesenha(vazio) {
     x.foneN = fone;
     if (fone) bt(x.contato ? 'Enviar de novo no WhatsApp' : 'Enviar no WhatsApp', 'btn-green', function () { saudeZap(idx); });
     else { rw.appendChild(paEl('span', 'pa-hint', 'Sem telefone cadastrado')); bt('Copiar mensagem', '', function (b) { paCopia(x.msg, b); }); bt('Já enviei', '', function () { saudeReg(idx, 'Enviada'); }); }
+    if (fone && x.email && x.serie) bt('WhatsApp + e-mail', 'btn-green', function (b) { saZapEmail(idx, ta, b); });
     bt('E-mail com gráficos', '', function () { saEmailPainel(idx, c); });
     bt('Ignorar alerta', '', function () { saudeIgn(idx); });
     if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
@@ -2057,6 +2058,26 @@ function saudeReg(i, tipo) {
   return call('saudeContato', { id: x.id, nome: x.nome, alerta: x.tipo, msg: x.msg, tipo: tipo }).then(function () {
     aviso('Contato registrado.'); return call('saudeAlertas', {}, true).then(function (r) { SA.itens = r.itens || []; saudeDesenha(); });
   }).catch(function (e) { aviso(e.message); });
+}
+var SA_LINHA_EMAIL = 'Te enviei também um e-mail com os gráficos dos seus dados, para você acompanhar a evolução. Dá uma conferida lá.';
+var SA_LINHA_GRAF = 'Seguem abaixo os gráficos dos seus dados dos últimos 7 dias, com os números de cada dia.';
+function saZapEmail(i, ta, b) {
+  var x = SA.itens[i], base = String(ta.value || '').replace(SA_LINHA_EMAIL, '').replace(/\s+$/, '');
+  if (!base.trim()) { aviso('Escreva a mensagem antes de enviar.'); return; }
+  dlg('Enviar para ' + x.nome + ' agora: WhatsApp (abre o app com a mensagem) e e-mail (' + x.email + ') com o mesmo texto e os gráficos?', { ok: 'Enviar' }).then(function (v) {
+    if (!v) return;
+    var zap = base + '\n\n' + SA_LINHA_EMAIL;
+    ta.value = zap; x.msg = zap;
+    window.open('https://wa.me/' + x.foneN + '?text=' + encodeURIComponent(zap), '_blank');
+    b.disabled = true;
+    call('saudeEmail', { id: x.id, texto: base + '\n\n' + SA_LINHA_GRAF, teste: false }).then(function (r) {
+      b.disabled = false;
+      return aviso('WhatsApp aberto e e-mail enviado para ' + r.para + '.').then(function () { return call('saudeAlertas', {}, true); }).then(function (rr) { SA.itens = rr.itens || []; saudeDesenha(); });
+    }).catch(function (e) {
+      b.disabled = false;
+      aviso('O WhatsApp abriu, mas o e-mail NÃO foi enviado: ' + e.message + ' Use o botão "E-mail com gráficos".').then(function () { saudeReg(i, 'Enviada'); });
+    });
+  });
 }
 function saudeZap(i) {
   var x = SA.itens[i];
