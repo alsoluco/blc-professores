@@ -2069,10 +2069,8 @@ function saudeDesenha(vazio) {
     c.appendChild(ta); c.appendChild(paEl('div', 'pa-hint', 'Edite o texto se quiser. Esta mensagem não é salva na ficha do atleta (dado de saúde).'));
     var rw = paEl('div', 'row');
     function bt(txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = function () { fn(b); }; rw.appendChild(b); }
-    var fone = cvFone(x.fone);
-    x.foneN = fone;
-    if (fone) bt('WhatsApp + e-mail', 'btn-green', function (b) { saZapEmail(idx, ta, b); });
-    else { rw.appendChild(paEl('span', 'pa-hint', 'Sem telefone cadastrado')); bt('Copiar mensagem', '', function (b) { paCopia(x.msg, b); }); bt('Já enviei', '', function () { saudeReg(idx, 'Enviada'); }); }
+    x.foneN = cvFone(x.fone);
+    bt('WhatsApp + e-mail', 'btn-green', function (b) { saZapEmail(idx, ta, b); });
     bt('Ignorar alerta', '', function () { saudeIgn(idx); });
     if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
     c.appendChild(rw); box.appendChild(c);
@@ -2103,25 +2101,53 @@ var SA_LINHA_EMAIL = 'Confira seu e-mail para verificar os gráficos de saúde.'
 var SA_LINHA_GRAF = 'Seguem abaixo os gráficos dos seus dados dos últimos 7 dias, com os números de cada dia.';
 function saZapEmail(i, ta, b) {
   var x = SA.itens[i], base = String(ta.value || '').replace(SA_LINHA_EMAIL, '').replace(/\s+$/, '');
-  if (!base.trim()) { aviso('Escreva a mensagem antes de enviar.'); return; }
-  if (!x.email || !x.serie) {
-    dlg('Este atleta ' + (!x.email ? 'não tem e-mail cadastrado' : 'ainda não tem os gráficos desta leitura') + '. Abrir só o WhatsApp, sem e-mail?', { ok: 'Abrir WhatsApp' }).then(function (v) { if (v) saudeZap(i); });
-    return;
-  }
-  dlg('Enviar para ' + x.nome + ' agora: WhatsApp (abre o app com a mensagem) e e-mail (' + x.email + ') no formato padrão do "E-mail com gráficos" (gráficos, explicações e identidade BLC)?', { ok: 'Enviar' }).then(function (v) {
-    if (!v) return;
-    var zap = base + '\n\n' + SA_LINHA_EMAIL;
-    ta.value = zap; x.msg = zap;
-    window.open('https://wa.me/' + x.foneN + '?text=' + encodeURIComponent(zap), '_blank');
+  if (!base.trim()) { aviso('Escreva a mensagem do WhatsApp antes de enviar.'); return; }
+  var o = document.createElement('div'); o.className = 'ov';
+  var st = 'width:100%;box-sizing:border-box;font:inherit;font-size:.86rem;padding:8px;border-radius:8px;border:1px solid var(--line,#ccc);background:transparent;color:inherit;margin:4px 0 8px';
+  o.innerHTML = '<div class="dlg" style="max-height:90vh;overflow:auto;text-align:left"><p style="font-weight:700">Enviar para ' + esc(x.nome) + '</p>' +
+    (x.email && cvFone(x.fone) ? '' : '<p class="small">' + (!x.email && !cvFone(x.fone) ? 'Este atleta não tem e-mail nem telefone cadastrados.' : (!x.email ? 'Este atleta não tem e-mail cadastrado.' : 'Este atleta não tem telefone cadastrado.')) + ' Preencha abaixo e eu salvo na ficha dele.</p>') +
+    (x.email ? '' : '<label class="small">E-mail</label><input id="saeEm" type="text" inputmode="email" autocomplete="off" style="' + st + '">') +
+    (cvFone(x.fone) ? '' : '<label class="small">Telefone (com DDD)</label><input id="saeTel" type="text" inputmode="tel" autocomplete="off" style="' + st + '">') +
+    '<label class="small">Texto do e-mail' + (x.email ? ' (para ' + esc(x.email) + ')' : '') + '. Os gráficos e as explicações entram no e-mail antes de "O que isso pode significar".</label>' +
+    '<textarea id="saeTx" rows="12" style="' + st + '"></textarea>' +
+    '<div class="row"><button class="btn btn-sm" id="saeN" type="button">Cancelar</button><button class="btn btn-sm btn-green" id="saeY" type="button">Enviar e-mail e abrir WhatsApp</button></div></div>';
+  document.body.appendChild(o);
+  o.querySelector('#saeTx').value = saEmailTexto(x);
+  function fecha() { if (o.parentNode) o.parentNode.removeChild(o); }
+  o.querySelector('#saeN').onclick = fecha;
+  o.querySelector('#saeY').onclick = function () {
+    var em = x.email || (o.querySelector('#saeEm') ? o.querySelector('#saeEm').value.trim() : ''), fn = x.foneN || cvFone(x.fone), tl = o.querySelector('#saeTel') ? o.querySelector('#saeTel').value.trim() : '';
+    var texto = o.querySelector('#saeTx').value;
+    if (!x.email && em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { aviso('O e-mail digitado não parece válido.'); return; }
+    if (!fn && tl) { fn = cvFone(tl); if (!fn) { aviso('O telefone digitado não parece válido. Use o DDD, por exemplo 21 99999-9999.'); return; } }
+    var temEm = !!em && !!x.serie, temZap = !!fn;
+    if (!temEm && !temZap) { aviso('Preencha o e-mail ou o telefone para enviar.'); return; }
+    if (temEm && !String(texto).trim()) { aviso('Escreva o texto do e-mail.'); return; }
+    fecha();
+    var campos = {};
+    if (!x.email && em) campos['E-mail'] = em;
+    if (!cvFone(x.fone) && tl) campos['Telefone'] = tl;
+    function salva() {
+      if (!Object.keys(campos).length) return Promise.resolve(null);
+      if (!x.fid) return Promise.resolve('Não achei a ficha deste atleta para salvar o contato. O envio segue com o que você digitou.');
+      return call('atletaEditar', { id: x.fid, campos: JSON.stringify(campos) }).then(function () { if (campos['E-mail']) x.email = campos['E-mail']; if (campos['Telefone']) x.fone = campos['Telefone']; return 'Contato salvo na ficha.'; });
+    }
     b.disabled = true;
-    call('saudeEmail', { id: x.id, texto: saEmailTexto(x), teste: false }).then(function (r) {
-      b.disabled = false;
-      return aviso('WhatsApp aberto e e-mail enviado para ' + r.para + '.').then(function () { return call('saudeAlertas', {}, true); }).then(function (rr) { SA.itens = rr.itens || []; saudeDesenha(); });
-    }).catch(function (e) {
-      b.disabled = false;
-      aviso('O WhatsApp abriu, mas o e-mail NÃO foi enviado: ' + e.message + ' Use o botão "E-mail com gráficos".').then(function () { saudeReg(i, 'Enviada'); });
+    salva().catch(function (e) { return 'Não consegui salvar o contato na ficha: ' + e.message; }).then(function (nota) {
+      var zap = base + (temEm ? '\n\n' + SA_LINHA_EMAIL : '');
+      var p = temEm ? call('saudeEmail', { id: x.id, texto: texto, teste: false, para: em }) : Promise.resolve(null);
+      return p.then(function (r) {
+        b.disabled = false;
+        if (temZap) { ta.value = zap; x.msg = zap; window.open('https://wa.me/' + fn + '?text=' + encodeURIComponent(zap), '_blank'); }
+        var msg = (temEm ? 'E-mail enviado para ' + r.para + '. ' : 'Atleta sem e-mail: só o WhatsApp foi aberto. ') + (temZap ? 'WhatsApp aberto.' : 'Sem telefone: o WhatsApp não foi aberto.') + (nota ? ' ' + nota : '');
+        return aviso(msg).then(function () { if (!temEm && temZap) return saudeReg(i, 'Enviada'); return call('saudeAlertas', {}, true).then(function (rr) { SA.itens = rr.itens || []; saudeDesenha(); }); });
+      }).catch(function (e) {
+        b.disabled = false;
+        if (temZap) { window.open('https://wa.me/' + fn + '?text=' + encodeURIComponent(base), '_blank'); }
+        aviso('O e-mail NÃO foi enviado: ' + e.message + (temZap ? ' O WhatsApp foi aberto.' : '')).then(function () { if (temZap) saudeReg(i, 'Enviada'); });
+      });
     });
-  });
+  };
 }
 function saudeZap(i) {
   var x = SA.itens[i];
