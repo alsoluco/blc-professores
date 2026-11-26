@@ -2501,8 +2501,11 @@ function grTela() {
 function grDesenha() {
   app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Treino presencial</div><h2>Grupos de <em>ritmo</em></h2></div>' +
     '<div class="pa-hint">Atletas que treinam na Lagoa e têm o mesmo treino marcado para o dia. O ritmo é a média dos treinos leves dos últimos 21 dias (TrainingPeaks). Cada grupo tem no máximo 30 s/km de diferença. Quem destoa aparece à parte.</div>' +
-    '<div id="grBox" style="display:flex;flex-direction:column;gap:14px"></div></div>');
+    '<div class="pa-mode" id="grTabs"></div><div id="grBox" style="display:flex;flex-direction:column;gap:14px"></div></div>');
+  var tb = $('grTabs');
+  [['trn', 'Por treino do dia'], ['lim', 'Por limiar (Lagoa)']].forEach(function (x) { var b = paEl('button', (GR.tab || 'trn') === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { GR.tab = x[0]; grDesenha(); }; tb.appendChild(b); });
   var box = $('grBox');
+  if (GR.tab === 'lim') { grLimiar(box); return; }
   if (!GR.dias.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Ainda não há grupos montados para os próximos dias.')); return; }
   GR.dias.forEach(function (d) {
     var sec = paEl('div'); sec.style.cssText = 'display:flex;flex-direction:column;gap:10px';
@@ -2537,6 +2540,37 @@ function grDesenha() {
     });
     box.appendChild(sec);
   });
+}
+function grLimiar(box) {
+  box.appendChild(paEl('div', 'pa-hint', 'Quem treina na Lagoa (pelo menos 2 corridas lá nas últimas 4 semanas), agrupado só pelo limiar de ritmo salvo no TrainingPeaks, sem olhar os treinos anteriores. Cada bloco tem no máximo 30 s/km de diferença.'));
+  function desenha() {
+    var L = GR.lagoa.filter(function (a) { return a.lim >= 150 && a.lim <= 600; }).sort(function (a, b) { return a.lim - b.lim; });
+    var sem = GR.lagoa.filter(function (a) { return !(a.lim >= 150 && a.lim <= 600); });
+    var G = [];
+    L.forEach(function (a) { if (G.length && a.lim - G[G.length - 1][0].lim <= 30) G[G.length - 1].push(a); else G.push([a]); });
+    var alvo = $('grLim'); if (!alvo) return; alvo.innerHTML = '';
+    G.forEach(function (g, i) {
+      var c = paEl('div', 'pa-al'), tt = paEl('div', 'ttl');
+      tt.appendChild(paEl('b', '', 'Bloco ' + (i + 1) + ' · ' + (g.length > 1 ? grPf(g[0].lim) + ' a ' + grPf(g[g.length - 1].lim) : grPf(g[0].lim)) + ' /km'));
+      tt.appendChild(paEl('span', 'tag w', g.length + (g.length === 1 ? ' atleta' : ' atletas'))); c.appendChild(tt);
+      g.forEach(function (a) {
+        var r = paEl('div'); r.style.cssText = 'display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:.92rem';
+        r.appendChild(paEl('span', '', a.nome)); r.appendChild(paEl('b', '', grPf(a.lim) + ' /km')); c.appendChild(r);
+      });
+      alvo.appendChild(c);
+    });
+    if (sem.length) {
+      var c2 = paEl('div', 'pa-al'), t2 = paEl('div', 'ttl'); t2.appendChild(paEl('b', '', 'Sem limiar de ritmo')); t2.appendChild(paEl('span', 'tag w', sem.length + (sem.length === 1 ? ' atleta' : ' atletas'))); c2.appendChild(t2);
+      sem.forEach(function (a) { var r = paEl('div', '', a.nome); r.style.cssText = 'padding:3px 0;font-size:.92rem'; c2.appendChild(r); });
+      alvo.appendChild(c2);
+    }
+    if (!G.length && !sem.length) alvo.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhum atleta encontrado.'));
+  }
+  var d = paEl('div'); d.id = 'grLim'; d.style.cssText = 'display:flex;flex-direction:column;gap:12px'; box.appendChild(d);
+  if (GR.lagoa) { desenha(); return; }
+  d.appendChild(paEl('div', 'pa-hint', 'Carregando…'));
+  call('limLagoa', {}).then(function (r) { GR.lagoa = r.atletas || []; desenha(); })
+    .catch(function (e) { d.innerHTML = ''; d.appendChild(paEl('div', 'err', e.message)); });
 }
 function lgTela() {
   S.aba2 = 'lg';
