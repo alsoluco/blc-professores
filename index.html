@@ -2102,7 +2102,7 @@ function saudeReg(i, tipo) {
     aviso('Contato registrado.'); return call('saudeAlertas', {}, true).then(function (r) { SA.itens = r.itens || []; saudeDesenha(); });
   }).catch(function (e) { aviso(e.message); });
 }
-var SA_LINHA_EMAIL = 'Te enviei também um e-mail com os gráficos dos seus dados, para você acompanhar a evolução. Dá uma conferida lá.';
+var SA_LINHA_EMAIL = 'Confira seu e-mail para verificar os gráficos de saúde.';
 var SA_LINHA_GRAF = 'Seguem abaixo os gráficos dos seus dados dos últimos 7 dias, com os números de cada dia.';
 function saZapEmail(i, ta, b) {
   var x = SA.itens[i], base = String(ta.value || '').replace(SA_LINHA_EMAIL, '').replace(/\s+$/, '');
