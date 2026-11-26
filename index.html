@@ -2071,10 +2071,8 @@ function saudeDesenha(vazio) {
     function bt(txt, cls, fn) { var b = paEl('button', 'btn btn-sm ' + cls, txt); b.type = 'button'; b.onclick = function () { fn(b); }; rw.appendChild(b); }
     var fone = cvFone(x.fone);
     x.foneN = fone;
-    if (fone) bt(x.contato ? 'Enviar de novo no WhatsApp' : 'Enviar no WhatsApp', 'btn-green', function () { saudeZap(idx); });
+    if (fone) bt('WhatsApp + e-mail', 'btn-green', function (b) { saZapEmail(idx, ta, b); });
     else { rw.appendChild(paEl('span', 'pa-hint', 'Sem telefone cadastrado')); bt('Copiar mensagem', '', function (b) { paCopia(x.msg, b); }); bt('Já enviei', '', function () { saudeReg(idx, 'Enviada'); }); }
-    if (fone && x.email && x.serie) bt('WhatsApp + e-mail', 'btn-green', function (b) { saZapEmail(idx, ta, b); });
-    bt('E-mail com gráficos', '', function () { saEmailPainel(idx, c); });
     bt('Ignorar alerta', '', function () { saudeIgn(idx); });
     if (x.fid) bt('Abrir ficha', '', function () { abrir(x.fid); });
     c.appendChild(rw); box.appendChild(c);
@@ -2106,6 +2104,10 @@ var SA_LINHA_GRAF = 'Seguem abaixo os gráficos dos seus dados dos últimos 7 di
 function saZapEmail(i, ta, b) {
   var x = SA.itens[i], base = String(ta.value || '').replace(SA_LINHA_EMAIL, '').replace(/\s+$/, '');
   if (!base.trim()) { aviso('Escreva a mensagem antes de enviar.'); return; }
+  if (!x.email || !x.serie) {
+    dlg('Este atleta ' + (!x.email ? 'não tem e-mail cadastrado' : 'ainda não tem os gráficos desta leitura') + '. Abrir só o WhatsApp, sem e-mail?', { ok: 'Abrir WhatsApp' }).then(function (v) { if (v) saudeZap(i); });
+    return;
+  }
   dlg('Enviar para ' + x.nome + ' agora: WhatsApp (abre o app com a mensagem) e e-mail (' + x.email + ') no formato padrão do "E-mail com gráficos" (gráficos, explicações e identidade BLC)?', { ok: 'Enviar' }).then(function (v) {
     if (!v) return;
     var zap = base + '\n\n' + SA_LINHA_EMAIL;
