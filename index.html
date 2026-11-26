@@ -2513,6 +2513,14 @@ function grDesenha() {
     ordem.forEach(function (t) {
       var ls = por[t], c = paEl('div', 'pa-al'), tt = paEl('div', 'ttl'); tt.appendChild(paEl('b', '', t.replace(/^#BLC\s*-?\s*/, '')));
       tt.appendChild(paEl('span', 'tag w', ls.length + (ls.length === 1 ? ' atleta' : ' atletas'))); c.appendChild(tt);
+      var ob = '', rc = ''; ls.forEach(function (l) { if (l.obj && !ob) ob = l.obj; if (l.rec && !rc) rc = l.rec; });
+      if (ob) {
+        var bo = paEl('div', rc ? 'pa-panel' : 'pa-hint'); bo.style.cssText = rc ? 'margin:8px 0;border-left:4px solid var(--cyan,#00b3b3)' : 'margin:6px 0';
+        if (rc) { bo.appendChild(paEl('div', 'eyebrow', 'Objetivo do treino')); }
+        bo.appendChild(paEl('div', rc ? '' : 'pa-hint', ob));
+        if (rc) { var h2 = paEl('div', 'eyebrow', 'Recomendações para os atletas'); h2.style.marginTop = '8px'; bo.appendChild(h2); var ul = document.createElement('ul'); ul.style.cssText = 'margin:4px 0 0;padding-left:18px'; rc.split('|').forEach(function (x) { if (x.trim()) ul.appendChild(paEl('li', '', x.trim())); }); bo.appendChild(ul); }
+        c.appendChild(bo);
+      }
       var gs = {}, go = [];
       ls.forEach(function (l) { if (!gs[l.grupo]) { gs[l.grupo] = []; go.push(l.grupo); } gs[l.grupo].push(l); });
       go.sort(function (a, b) { var w = { 'Destaque': 8, 'Sem par': 9, 'Sem dados': 10 }; return (w[a] || 0) - (w[b] || 0) || (a < b ? -1 : 1); });
