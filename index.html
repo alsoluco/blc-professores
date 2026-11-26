@@ -363,7 +363,7 @@ function menuAtualiza() {
     '<button type="button" class="dit" onclick="mnTog(\'tp\')"><span>Treino presencial</span><span>' + (S.mnTp ? '▴' : '▾') + '</span></button>' +
     (S.mnTp ? '<div style="padding-left:14px;display:flex;flex-direction:column;gap:2px">' + it('Presença de alunos', 'presAlu()', S.aba2 === 'pal') + it('Grupos de ritmo', 'grTela()', S.aba2 === 'gr') + it('Limiares por grupo', 'lgTela()', S.aba2 === 'lg') + '</div>' : '') +
     '<button type="button" class="dit" onclick="mnTog(\'al\')"><span>Alertas</span><span>' + (S.mnAl ? '▴' : '▾') + '</span></button>' +
-    (S.mnAl ? '<div style="padding-left:14px;display:flex;flex-direction:column;gap:2px">' + it('Presença (afastados)', 'alPres()', S.aba2 === 'ale') + (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Novos limiares', 'limTela()', S.aba2 === 'lim') : '') + (S.perfil === 'Admin' ? it('Saúde dos atletas', 'saudeTela()', S.aba2 === 'sau') : '') + '</div>' : '') +
+    (S.mnAl ? '<div style="padding-left:14px;display:flex;flex-direction:column;gap:2px">' + it('Presença (afastados)', 'alPres()', S.aba2 === 'ale') + it('Novos limiares', 'limTela()', S.aba2 === 'lim') + (S.perfil === 'Admin' ? it('Saúde dos atletas', 'saudeTela()', S.aba2 === 'sau') : '') + '</div>' : '') +
     '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
     provas +
     it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
@@ -1651,6 +1651,22 @@ function paAlertas() {
   out.sort(function (x, y) { return (x.nivel === 'red' ? 0 : 1) - (y.nivel === 'red' ? 0 : 1) || y.base - x.base; });
   return { w: w, lista: out };
 }
+function paHistContatos(box) {
+  var h = paEl('div', 'pa-panel'); h.appendChild(paEl('h3', '', 'Mensagens enviadas aos afastados')); h.appendChild(paEl('div', 'pa-hint', 'Só você vê esta lista: quem recebeu o contato, qual professor enviou e quando.'));
+  var lst = paEl('div'); lst.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:8px'; h.appendChild(lst); box.appendChild(h);
+  lst.appendChild(paEl('div', 'pa-hint', 'Carregando…'));
+  call('presContatosLog', {}).then(function (r) {
+    lst.innerHTML = '';
+    if (!(r.itens || []).length) { lst.appendChild(paEl('div', 'pa-hint', 'Nenhuma mensagem registrada ainda.')); return; }
+    r.itens.forEach(function (x) {
+      var d = document.createElement('details'); d.style.cssText = 'border-bottom:1px solid var(--line,#333);padding:4px 0';
+      var sm = document.createElement('summary'); sm.style.cssText = 'cursor:pointer;font-size:.9rem';
+      sm.appendChild(paEl('b', '', x.atleta)); sm.appendChild(document.createTextNode(' · ' + (x.tipo === 'Enviada' ? 'mensagem enviada' : x.tipo === 'Respondeu' ? 'respondeu' : x.tipo === 'Voltou' ? 'voltou a treinar' : x.tipo) + ' · ' + x.prof + ' · ' + x.quando));
+      d.appendChild(sm); if (x.msg) { var m = paEl('div', 'pa-hint', x.msg); m.style.marginTop = '4px'; d.appendChild(m); }
+      lst.appendChild(d);
+    });
+  }).catch(function (e) { lst.innerHTML = ''; lst.appendChild(paEl('div', 'err', e.message)); });
+}
 function paAlertasTela() {
   var R = paAlertas(), box = $('paAl'), W = PA.WK; box.innerHTML = ''; PA.msgs = [];
   var nomeR = {}, nomeM = {}; PA_R.forEach(function (r) { nomeR[r.k] = r.n; nomeM[r.k] = r.m; });
@@ -1658,7 +1674,7 @@ function paAlertasTela() {
   var cab = paEl('div', 'pa-panel'); var h = paEl('h3'); h.appendChild(document.createTextNode('Queda de frequência · ')); h.appendChild(paEl('em', '', R.lista.length + (R.lista.length === 1 ? ' atleta' : ' atletas'))); cab.appendChild(h);
   cab.appendChild(paEl('div', 'pa-hint', 'Semana avaliada: ' + ref + '. Compara com a média das 4 semanas anteriores, só de quem treinava com a gente (pelo menos 2 presenças nessas 4 semanas). Amarelo: a semana ficou em metade da média ou menos. Vermelho: duas semanas seguidas assim. Semanas com feriado são ajustadas. ' + (S.perfil === 'Admin' ? 'Você vê todos os horários.' : 'Aparecem só os atletas do seu horário.')));
   box.appendChild(cab);
-  if (!R.lista.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhuma queda de frequência para avisar nesta semana.')); return; }
+  if (!R.lista.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Nenhuma queda de frequência para avisar nesta semana.')); if (S.perfil === 'Admin') paHistContatos(box); return; }
   var ctm = PA.E.contatos || {};
   R.lista.sort(function (x, y) { return (ctm[x.p] ? 1 : 0) - (ctm[y.p] ? 1 : 0); });
   PA.items = [];
@@ -1688,6 +1704,7 @@ function paAlertasTela() {
     var f = PA.E.F[x.p]; if (f) bt('Abrir ficha', '', function () { abrir(f); });
     c.appendChild(rw); box.appendChild(c);
   });
+  if (S.perfil === 'Admin') paHistContatos(box);
 }
 function paZap(i) {
   var it = PA.items[i];
@@ -2358,7 +2375,9 @@ function limDesenha() {
   var cont = { pend: 0, env: 0, ign: 0, ina: (LM.inativos || []).length };
   LM.itens.forEach(function (x) { cont[limEstado(x)]++; });
   var abas = [['pend', 'Pendentes'], ['env', 'E-mails enviados'], ['ign', 'Ignorados'], ['ina', 'Inativos']];
-  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + (LM.acesso === 'caio' ? 'Professor' : 'Head coach') + '</div><h2>Novos <em>limiares</em></h2></div>' +
+  var leit = LM.acesso === 'leitura'; if (leit) { abas = abas.slice(0, 3); if (LM.aba === 'ina') LM.aba = 'pend'; }
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">' + (LM.acesso === 'caio' ? 'Professor' : LM.acesso === 'leitura' ? 'Só visualização' : 'Head coach') + '</div><h2>Novos <em>limiares</em></h2></div>' +
+    (LM.acesso === 'leitura' ? '<div class="pa-hint">Você vê quem teve um novo limiar. Só o head coach e o Caio enviam e-mail ao atleta.</div>' : '') +
     '<div class="pa-hint">Lidos do TrainingPeaks (sino → estrela) todo dia, de hoje até 2 dias atrás. Os últimos 10 dias ficam nas abas. O e-mail só sai quando você clicar em enviar, em nome da BLC. ' + (LM.acesso === 'caio' ? 'Você vê apenas os seus atletas.' : '') + '</div>' +
     '<div id="lmPedBox"></div>' +
     '<div id="lmAbas" class="row" style="gap:6px;flex-wrap:wrap"></div>' +
@@ -2387,7 +2406,7 @@ function limDesenha() {
   }
   var vazio = { pend: 'Nenhum limiar pendente. Tudo que apareceu já foi enviado ou ignorado.', env: 'Nenhum e-mail de limiar enviado nos últimos 10 dias.', ign: 'Nenhum alerta ignorado nos últimos 10 dias.' };
   var n = 0;
-  LM.itens.forEach(function (x, idx) { if (limEstado(x) === LM.aba) { n++; limCard(x, idx, box, LM.aba); } });
+  LM.itens.forEach(function (x, idx) { if (limEstado(x) === LM.aba) { n++; limCard(x, idx, box, LM.aba); if (leit && box.lastChild) { var rm = box.lastChild.querySelectorAll('button,textarea,input'); for (var q = 0; q < rm.length; q++) rm[q].parentNode.removeChild(rm[q]); } } });
   if (!n) box.appendChild(paEl('div', 'pa-panel pa-hint', vazio[LM.aba]));
 }
 function limRecarrega() { return call('limiaresLista', {}, true).then(function (d) { LM.itens = d.itens || []; LM.inativos = d.inativos || []; limDesenha(); }); }
