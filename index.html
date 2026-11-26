@@ -1778,7 +1778,6 @@ function saTendBloco(x) {
     return w;
   }
   var b = sr.base || {};
-  w.appendChild(paEl('div', 'pa-hint', 'Tendência dos últimos 7 dias. Linha colorida: média dos 7 dias que terminam em cada dia. Pontos claros: valor do dia. Cada ponto mostra seu valor. Tracejado: base das 4 semanas anteriores. O TSS é mostrado por semana, em barras.'));
   var g = paEl('div', ''); g.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:6px';
   [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].concat((sr.tss && !sr.sem) ? [['Carga de treino: TSS acumulado de 7 dias', 'tss', b.tss, '#b388ff', null]] : [])
    .concat(sr.sono ? [['Sono (horas por noite)', 'sono', b.sono, '#6ea8ff', true]] : []).forEach(function (c) {
@@ -1791,7 +1790,7 @@ function saTendBloco(x) {
     var n2 = sr.sem.length, comp = sr.sem[n2 - 2], bs = b.sem, hj = (sr.d && sr.d.length) ? sr.d[sr.d.length - 1] : '', pc = (comp != null && bs) ? Math.round((comp - bs) / bs * 100) : null;
     ks2.innerHTML = '<div style="font-size:.78rem;font-weight:700">Carga de treino: TSS por semana (soma das atividades)</div><div style="font-size:.76rem;font-weight:600">' +
       'Última semana completa (' + esc((sr.semL || [])[n2 - 2] || '') + '): ' + Math.round(comp || 0) + (pc !== null ? ' (' + (pc >= 0 ? '+' : '') + pc + '% vs a média das 5 semanas completas, ' + Math.round(bs) + ')' : '') + '. Semana atual até ' + esc(hj) + ': ' + Math.round(sr.sem[n2 - 1] || 0) + '.</div>' + saGrafSem(sr) +
-      '<div class="pa-hint">Cada barra é a soma do TSS de todos os treinos da semana (segunda a domingo), igual ao total semanal do TrainingPeaks. A última barra é a semana em andamento. Tracejado: média das 5 semanas completas.</div>';
+      '';
     g.appendChild(ks2);
   }
   var kt = paEl('div', ''); kt.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
