@@ -1762,11 +1762,24 @@ function saTendBloco(x) {
   var b = sr.base || {};
   w.appendChild(paEl('div', 'pa-hint', 'Tendência dos últimos 7 dias. Linha colorida: média dos 7 dias que terminam em cada dia. Pontos claros: valor do dia. Cada ponto mostra seu valor. Tracejado: base das 4 semanas anteriores (no TSS, a média semanal das 3 semanas anteriores).'));
   var g = paEl('div', ''); g.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:6px';
-  [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].concat(sr.tss ? [['Carga de treino: TSS acumulado de 7 dias', 'tss', b.tss, '#b388ff', null]] : []).forEach(function (c) {
+  [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].concat(sr.tss ? [['Carga de treino: TSS acumulado de 7 dias', 'tss', b.tss, '#b388ff', null]] : [])
+   .concat(sr.sono ? [['Sono (horas por noite)', 'sono', b.sono, '#6ea8ff', true]] : []).forEach(function (c) {
     var t = saTend(sr[c[1]], c[4]), k = paEl('div', ''); k.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
     k.innerHTML = '<div style="font-size:.78rem;font-weight:700">' + c[0] + '</div><div style="font-size:.76rem;color:' + t.cor + ';font-weight:600">' + esc(t.txt) + '</div>' + saGraf(c[0], sr, c[1], c[2], c[3]);
     g.appendChild(k);
   });
+  var kt = paEl('div', ''); kt.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
+  if (!sr.sono) { var ks = paEl('div', 'pa-hint', 'Sono: ainda não disponível para esta leitura. Aparece a partir da próxima leitura das 8h40.'); ks.style.cssText = 'border:1px dashed var(--line,#ccc);border-radius:10px;padding:8px'; g.appendChild(ks); }
+  if (!sr.tempTem) {
+    kt.innerHTML = '<div style="font-size:.78rem;font-weight:700">Temperatura do treino (°C)</div><div class="pa-hint">Ainda não disponível para esta leitura. Aparece a partir da próxima leitura das 8h40.</div>';
+  } else if (sr.tempSem || !(sr.temp || []).some(function (v) { return v != null; })) {
+    kt.innerHTML = '<div style="font-size:.78rem;font-weight:700">Temperatura do treino (°C)</div><div class="pa-hint" style="font-size:.85rem">Não há dado de temperatura. O relógio deste atleta não registrou a temperatura nos treinos dos últimos dias.</div>';
+  } else {
+    var tt = saTend(sr.temp, null);
+    kt.innerHTML = '<div style="font-size:.78rem;font-weight:700">Temperatura do treino (°C): média do dia</div><div style="font-size:.76rem;font-weight:600">' + esc(tt.txt) + '</div>' + saGraf('Temperatura do treino', { d: sr.d, temp: sr.temp, tempD: [] }, 'temp', null, '#ff6b9d') +
+      '<div class="pa-hint">Dia sem ponto: sem treino ou sem leitura de temperatura. Máxima do dia: ' + esc((sr.tempMax || []).map(function (v, i) { return v == null ? null : (sr.d[i] + ' ' + (Math.round(v * 10) / 10).toString().replace('.', ',') + '°'); }).filter(Boolean).join(' · ') || 'sem dado') + '.</div>';
+  }
+  g.appendChild(kt);
   w.appendChild(g);
   if (x.leitura || x.carga) {
     var cb = paEl('div', ''); cb.style.cssText = 'margin-top:8px;padding:8px 10px;border-left:3px solid ' + (x.leitura === 'Sem explicação pela carga' ? '#ff5a5a' : 'var(--cyan)') + ';font-size:.82rem';
