@@ -1752,6 +1752,24 @@ function saGraf(tit, sr, key, base, cor) {
   [0, Math.floor((n - 1) / 2), n - 1].forEach(function (i, k, arr) { if (k && arr[k - 1] === i) return; s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 6) + '" font-size="9" text-anchor="' + (i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle')) + '" fill="currentColor" opacity=".65">' + esc(d[i] || '') + '</text>'; });
   return s + '</svg>';
 }
+function saGrafSem(sr) {
+  var sem = sr.sem || [], L = sr.semL || [], n = sem.length, b = (sr.base || {}).sem;
+  if (!n) return '';
+  var W = 320, H = 170, Lm = 8, R = 8, T = 22, B = 30;
+  var mx = Math.max.apply(null, sem.concat(b != null ? [b] : [])) * 1.12 || 1;
+  var bw = (W - Lm - R) / n, s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="TSS por semana" style="display:block;overflow:visible">';
+  function Y(v) { return T + (mx - v) * (H - T - B) / mx; }
+  s += '<line x1="' + Lm + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="currentColor" opacity=".25"/>';
+  sem.forEach(function (v, i) {
+    var x0 = Lm + i * bw + bw * 0.18, w = bw * 0.64, y = Y(v || 0), atual = i === n - 1;
+    s += '<rect x="' + x0.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + Math.max(0, H - B - y).toFixed(1) + '" rx="3" style="fill:#b388ff" opacity="' + (atual ? '.45' : '1') + '"' + (atual ? ' stroke="#b388ff" stroke-dasharray="3 2"' : '') + '/>';
+    s += '<text x="' + (x0 + w / 2).toFixed(1) + '" y="' + (y - 4).toFixed(1) + '" font-size="10" font-weight="700" text-anchor="middle" style="fill:#b388ff">' + Math.round(v || 0) + '</text>';
+    s += '<text x="' + (x0 + w / 2).toFixed(1) + '" y="' + (H - 16) + '" font-size="9" text-anchor="middle" fill="currentColor" opacity=".7">' + esc(L[i] || '') + '</text>';
+    if (atual) s += '<text x="' + (x0 + w / 2).toFixed(1) + '" y="' + (H - 5) + '" font-size="8" text-anchor="middle" fill="currentColor" opacity=".6">em andamento</text>';
+  });
+  if (b != null) s += '<line x1="' + Lm + '" y1="' + Y(b).toFixed(1) + '" x2="' + (W - R) + '" y2="' + Y(b).toFixed(1) + '" stroke="#e0a800" stroke-width="1.2" stroke-dasharray="4 3"/><text x="' + (W - R) + '" y="' + (Y(b) - 3).toFixed(1) + '" font-size="8.5" font-weight="700" text-anchor="end" fill="#e0a800">média ' + Math.round(b) + '</text>';
+  return s + '</svg>';
+}
 function saTendBloco(x) {
   var w = paEl('div', ''); w.style.cssText = 'margin:8px 0';
   var sr = x.serie;
@@ -1760,14 +1778,22 @@ function saTendBloco(x) {
     return w;
   }
   var b = sr.base || {};
-  w.appendChild(paEl('div', 'pa-hint', 'Tendência dos últimos 7 dias. Linha colorida: média dos 7 dias que terminam em cada dia. Pontos claros: valor do dia. Cada ponto mostra seu valor. Tracejado: base das 4 semanas anteriores (no TSS, a média semanal das 3 semanas anteriores).'));
+  w.appendChild(paEl('div', 'pa-hint', 'Tendência dos últimos 7 dias. Linha colorida: média dos 7 dias que terminam em cada dia. Pontos claros: valor do dia. Cada ponto mostra seu valor. Tracejado: base das 4 semanas anteriores. O TSS é mostrado por semana, em barras.'));
   var g = paEl('div', ''); g.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:6px';
-  [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].concat(sr.tss ? [['Carga de treino: TSS acumulado de 7 dias', 'tss', b.tss, '#b388ff', null]] : [])
+  [['HRV (ms)', 'hrv', b.hrv, 'var(--cyan)', true], ['FC de repouso (bpm)', 'rhr', b.rhr, '#ff8a3d', false], ['Body Battery (máx.)', 'bb', b.bb, '#3ddc84', true]].concat((sr.tss && !sr.sem) ? [['Carga de treino: TSS acumulado de 7 dias', 'tss', b.tss, '#b388ff', null]] : [])
    .concat(sr.sono ? [['Sono (horas por noite)', 'sono', b.sono, '#6ea8ff', true]] : []).forEach(function (c) {
     var t = saTend(sr[c[1]], c[4]), k = paEl('div', ''); k.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
     k.innerHTML = '<div style="font-size:.78rem;font-weight:700">' + c[0] + '</div><div style="font-size:.76rem;color:' + t.cor + ';font-weight:600">' + esc(t.txt) + '</div>' + saGraf(c[0], sr, c[1], c[2], c[3]);
     g.appendChild(k);
   });
+  if (sr.sem && sr.sem.length) {
+    var ks2 = paEl('div', ''); ks2.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
+    var n2 = sr.sem.length, comp = sr.sem[n2 - 2], bs = b.sem, hj = (sr.d && sr.d.length) ? sr.d[sr.d.length - 1] : '', pc = (comp != null && bs) ? Math.round((comp - bs) / bs * 100) : null;
+    ks2.innerHTML = '<div style="font-size:.78rem;font-weight:700">Carga de treino: TSS por semana (soma das atividades)</div><div style="font-size:.76rem;font-weight:600">' +
+      'Última semana completa (' + esc((sr.semL || [])[n2 - 2] || '') + '): ' + Math.round(comp || 0) + (pc !== null ? ' (' + (pc >= 0 ? '+' : '') + pc + '% vs a média das 5 semanas completas, ' + Math.round(bs) + ')' : '') + '. Semana atual até ' + esc(hj) + ': ' + Math.round(sr.sem[n2 - 1] || 0) + '.</div>' + saGrafSem(sr) +
+      '<div class="pa-hint">Cada barra é a soma do TSS de todos os treinos da semana (segunda a domingo), igual ao total semanal do TrainingPeaks. A última barra é a semana em andamento. Tracejado: média das 5 semanas completas.</div>';
+    g.appendChild(ks2);
+  }
   var kt = paEl('div', ''); kt.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px';
   if (!sr.sono) { var ks = paEl('div', 'pa-hint', 'Sono: ainda não disponível para esta leitura. Aparece a partir da próxima leitura das 8h40.'); ks.style.cssText = 'border:1px dashed var(--line,#ccc);border-radius:10px;padding:8px'; g.appendChild(ks); }
   if (!sr.tempTem) {
@@ -1796,15 +1822,18 @@ function saEmailTexto(x) {
     '• HRV: média dos últimos 7 dias em ' + saFmt(x.hrv, ' ms') + ab(x.hrvV) + (x.hrvV != null ? ' da sua média das últimas 4 semanas.' : '.') + tn(dirs.hrv),
     '• Frequência cardíaca de repouso: média de ' + saFmt(x.fc, ' bpm') + ab(x.fcV) + (x.fcV != null ? ' do seu normal.' : '.') + tn(dirs.rhr),
     '• Body Battery: máximo médio de ' + saFmt(x.bb) + ab(x.bbV) + (x.bbV != null ? ' do seu normal.' : '.') + tn(dirs.bb)];
-  if (sr.tss && sr.tss.length) { var tl = sr.tss[sr.tss.length - 1], tb = (sr.base || {}).tss; l.push('\u2022 Carga de treino (TSS): ' + Math.round(tl) + ' nos últimos 7 dias' + (tb ? ', ' + saFmt(Math.abs((tl - tb) / tb * 100), '%') + (tl < tb ? ' abaixo' : ' acima') + ' da sua média semanal das 3 semanas anteriores.' : '.') + tn(saTend(sr.tss, null).dir)); }
+  if (sr.sem && sr.sem.length) { var ns = sr.sem.length, cs = sr.sem[ns - 2], bs2 = (sr.base || {}).sem; l.push('\u2022 Carga de treino (TSS): ' + Math.round(cs || 0) + ' na última semana completa' + (bs2 ? ', ' + saFmt(Math.abs((cs - bs2) / bs2 * 100), '%') + (cs < bs2 ? ' abaixo' : ' acima') + ' da sua média das 5 últimas semanas completas (' + Math.round(bs2) + ').' : '.') + ' Nesta semana, até agora, foram ' + Math.round(sr.sem[ns - 1] || 0) + '.'); }
+  else if (sr.tss && sr.tss.length) { var tl = sr.tss[sr.tss.length - 1], tb = (sr.base || {}).tss; l.push('\u2022 Carga de treino (TSS): ' + Math.round(tl) + ' nos últimos 7 dias' + (tb ? ', ' + saFmt(Math.abs((tl - tb) / tb * 100), '%') + (tl < tb ? ' abaixo' : ' acima') + ' da sua média semanal das 3 semanas anteriores.' : '.') + tn(saTend(sr.tss, null).dir)); }
   if (x.dias > 1) l.push('', 'Esse quadro já dura ' + x.dias + ' dias seguidos.');
-  var sig = x.tipo === 'Alta' ? 'São sinais de que o seu corpo está se recuperando bem.' : (x.leitura === 'Esperada pela carga' ? 'A sua semana de treino foi pesada, então é normal que o corpo mostre sinais de cansaço.' : 'São sinais de que o seu corpo pode estar acumulando cansaço.');
-  l.push('', 'O que isso pode significar:', sig + ' Isso não é um diagnóstico e um dia isolado não quer dizer nada. O que me interessa é a tendência ao longo da semana.' + (x.tipo === 'Alta' ? '' : ' Quero ajustar os próximos treinos de acordo com a sua resposta.') + ' Se você estiver sentindo algo diferente, como sono ruim, cansaço, estresse, dor ou sintomas de doença, me conta, porque isso muda a leitura.', '',
+  var sit0 = x.sit || 'Alerta';
+  var sig = sit0 === 'Acompanhando' ? 'O seu HRV ainda está um pouco abaixo da sua média, mas já está subindo, e isso é um bom sinal de que o corpo está respondendo bem ao treino e se recuperando.' : (sit0 === 'Recuperado' ? 'Os seus dados voltaram para perto da sua média. É um sinal de que o corpo se recuperou.' : (sit0 === 'Alerta com ressalva' ? 'O seu HRV está melhorando, o que é bom, mas a frequência cardíaca de repouso também subiu um pouco, então quero ficar atento aos próximos dias.' : null));
+  if (sig === null) sig = x.tipo === 'Alta' ? 'São sinais de que o seu corpo está se recuperando bem.' : (x.leitura === 'Esperada pela carga' ? 'A sua semana de treino foi pesada, então é normal que o corpo mostre sinais de cansaço.' : 'São sinais de que o seu corpo pode estar acumulando cansaço.');
+  l.push('', 'O que isso pode significar:', sig + ' Isso não é um diagnóstico e um dia isolado não quer dizer nada. O que me interessa é a tendência ao longo da semana.' + (x.tipo === 'Alta' ? '' : (sit0 === 'Acompanhando' || sit0 === 'Recuperado' ? ' Vou continuar acompanhando os seus dados.' : ' Quero ajustar os próximos treinos de acordo com a sua resposta.')) + ' Se você estiver sentindo algo diferente, como sono ruim, cansaço, estresse, dor ou sintomas de doença, me conta, porque isso muda a leitura.', '',
     'O que é cada dado:', '',
     '1) HRV (variabilidade da frequência cardíaca): é a variação de tempo entre um batimento e outro. Parece contraditório, mas um HRV mais alto costuma indicar um corpo mais recuperado e preparado para o treino. Quando ele cai por vários dias seguidos, em geral há cansaço acumulado, sono ruim, estresse ou início de doença. Ele varia muito de pessoa para pessoa, por isso eu comparo você só com você mesmo.', '',
     '2) Frequência cardíaca de repouso: é a FC do seu coração em descanso, medida principalmente durante o sono. Quando ela sobe alguns batimentos acima do seu normal por dias seguidos, é um sinal de que o corpo está sob carga, seja por treino, calor, sono curto, estresse ou doença. Com o condicionamento melhorando, ela tende a cair com o tempo.', '',
     '3) Body Battery: é uma nota de 0 a 100 do Garmin que estima a sua energia, combinando HRV, estresse, sono e atividade. Acordar com a bateria baixa por vários dias indica que a recuperação não está completa.', '',
-    (sr.tss ? '4) Carga de treino (TSS): é a pontuação que o TrainingPeaks dá ao treino combinando duração e intensidade. Quando a soma da semana fica bem acima do seu normal, é esperado que o HRV caia e a frequência de repouso suba. O gráfico mostra se a queda dos seus dados acompanha a carga ou se tem outra causa.\n' : null),
+    ((sr.tss || sr.sem) ? '4) Carga de treino (TSS): é a pontuação que o TrainingPeaks dá ao treino combinando duração e intensidade. Quando a soma da semana fica bem acima do seu normal, é esperado que o HRV caia e a frequência de repouso suba. O gráfico mostra se a queda dos seus dados acompanha a carga ou se tem outra causa.\n' : null),
     'Por que o relógio precisa ficar com você o tempo todo:', 'Todos esses números só são confiáveis se o relógio registrar todos os dias e todas as noites. Se você dorme sem ele ou o deixa carregando de noite, perco o dado mais importante, que é o do sono. E se ele estiver frouxo no punho, o sensor lê errado, e isso gera números que parecem um problema quando não são, ou escondem um problema real. O ideal é usar o relógio ajustado, um pouco acima do osso do punho, inclusive para dormir, e carregar durante o dia, por exemplo no banho ou enquanto trabalha.', '',
     'Quanto mais dados corretos eu tiver, melhor consigo ajustar o seu treino, e evitar tanto que você se arrebente quanto que eu pegue leve à toa.', '', 'Qualquer dúvida, me chama.', '', 'Um abraço,', 'Beto Lundgren', 'BLC Assessoria Esportiva');
   return l.filter(function (t) { return t !== null; }).join('\n');
@@ -1974,14 +2003,14 @@ function fbZapSv() {
     .catch(function (e) { aviso('Não consegui marcar como enviado: ' + e.message); });
 }
 function saudeTela() {
-  S.aba2 = 'sau'; SA.aba = 'pend';
+  S.aba2 = 'sau'; SA.aba = 'pend'; SA.sec = 'alerta';
   app(head(userBar()) + '<div class="spin">Carregando alertas de saúde…</div>');
   call('saudeAlertas', {}).then(function (r) { SA.itens = r.itens || []; SA.data = r.data || ''; saudeDesenha(r.vazio); })
     .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="saudeTela()">Tentar de novo</button>'); });
 }
 function saudeDesenha(vazio) {
   app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Head coach</div><h2>Saúde dos <em>atletas</em></h2></div>' +
-    '<div class="pa-hint">Só você vê esta tela. Compara a média de 7 dias de HRV, FC de repouso e body battery com a média das 4 semanas anteriores do próprio atleta. Alerta quando o HRV varia 10% ou mais. ' + (SA.data ? 'Análise de ' + paFd(SA.data) + '.' : '') + '</div>' +
+    '<div class="pa-hint">Só você vê esta tela. Compara a média de 7 dias de HRV, FC de repouso e body battery com a média das 4 semanas anteriores do próprio atleta e olha também para onde os dados estão indo. Alerta: HRV varia 10% ou mais e não está melhorando. Acompanhando: HRV ainda fora da base, mas subindo 4% ou mais em 7 dias com a FC de repouso estável (até 3%) ou caindo. Se o HRV sobe mas a FC de repouso sobe mais de 3%, fica em Alerta com ressalva. Recuperado: voltou para dentro de 10% da base. ' + (SA.data ? 'Análise de ' + paFd(SA.data) + '.' : '') + '</div>' +
     '<div id="saAbas" class="row" style="gap:6px;flex-wrap:wrap"></div>' +
     '<div id="saBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
   var box = $('saBox');
@@ -1990,19 +2019,31 @@ function saudeDesenha(vazio) {
   SA.itens.sort(function (a, b) { return (a.contato && a.contato.tipo === 'Ignorado' ? 1 : 0) - (b.contato && b.contato.tipo === 'Ignorado' ? 1 : 0) || (b.pri ? 1 : 0) - (a.pri ? 1 : 0) || (a.contato ? 1 : 0) - (b.contato ? 1 : 0) || (ord[a.tipo] || 0) - (ord[b.tipo] || 0) || Math.abs(b.hrvV || 0) - Math.abs(a.hrvV || 0); });
   if (!SA.aba) SA.aba = 'pend';
   function saEst(x) { return !x.contato ? 'pend' : (x.contato.tipo === 'Ignorado' ? 'ign' : 'env'); }
+  function saSec(x) { var t = x.sit || 'Alerta'; return t === 'Acompanhando' ? 'acomp' : (t === 'Recuperado' ? 'recup' : 'alerta'); }
+  if (!SA.sec) SA.sec = 'alerta';
+  var cs = { alerta: 0, acomp: 0, recup: 0 };
+  SA.itens.forEach(function (x) { cs[saSec(x)]++; });
+  var cp = { alerta: 0, acomp: 0, recup: 0 };
+  SA.itens.forEach(function (x) { if (saEst(x) === 'pend') cp[saSec(x)]++; });
+  [['alerta', 'Alerta'], ['acomp', 'Acompanhando'], ['recup', 'Recuperado']].forEach(function (a) {
+    var bs = paEl('button', 'btn' + (SA.sec === a[0] ? ' btn-green' : ''), a[1] + ' (' + cs[a[0]] + (cp[a[0]] ? ' · ' + cp[a[0]] + ' a enviar' : '') + ')'); bs.type = 'button';
+    bs.onclick = function () { SA.sec = a[0]; SA.aba = 'pend'; saudeDesenha(); }; $('saAbas').appendChild(bs);
+  });
+  var sw = paEl('div', ''); sw.style.cssText = 'flex-basis:100%;height:0'; $('saAbas').appendChild(sw);
   var cnt = { pend: 0, env: 0, ign: 0 };
-  SA.itens.forEach(function (x) { cnt[saEst(x)]++; });
+  SA.itens.forEach(function (x) { if (saSec(x) === SA.sec) cnt[saEst(x)]++; });
   [['pend', 'Para enviar'], ['env', 'Enviados'], ['ign', 'Ignorados']].forEach(function (a) {
     var bb = paEl('button', 'btn btn-sm' + (SA.aba === a[0] ? ' btn-green' : ''), a[1] + ' (' + cnt[a[0]] + ')'); bb.type = 'button';
     bb.onclick = function () { SA.aba = a[0]; saudeDesenha(); }; $('saAbas').appendChild(bb);
   });
-  if (!cnt[SA.aba]) box.appendChild(paEl('div', 'pa-panel pa-hint', SA.aba === 'pend' ? 'Nenhum alerta para enviar. Todos já foram enviados ou ignorados.' : SA.aba === 'env' ? 'Nenhum alerta enviado ainda nesta análise.' : 'Nenhum alerta ignorado nesta análise.'));
+  var secNome = SA.sec === 'acomp' ? 'Acompanhando' : (SA.sec === 'recup' ? 'Recuperado' : 'Alerta');
+  if (!cnt[SA.aba]) box.appendChild(paEl('div', 'pa-panel pa-hint', SA.aba === 'pend' ? 'Nada em "' + secNome + '" para enviar nesta análise.' : SA.aba === 'env' ? 'Nenhum alerta enviado ainda nesta análise.' : 'Nenhum alerta ignorado nesta análise.'));
   SA.itens.forEach(function (x, idx) {
-    if (saEst(x) !== SA.aba) return;
+    if (saEst(x) !== SA.aba || saSec(x) !== SA.sec) return;
     var c = paEl('div', 'pa-al ' + (x.pri ? 'red' : (x.tipo === 'Alta' ? '' : 'yel')));
     if (x.contato) c.style.opacity = '.8';
     var t = paEl('div', 'ttl'); t.appendChild(paEl('b', '', x.nome));
-    t.appendChild(paEl('span', 'tag ' + (x.pri ? '' : 'w'), (x.pri ? 'Prioridade · ' : '') + x.tipo));
+    t.appendChild(paEl('span', 'tag ' + (x.pri ? '' : 'w'), (x.pri ? 'Prioridade · ' : '') + x.tipo + (x.sit && x.sit !== 'Alerta' && x.sit !== x.tipo ? ' · ' + (x.sit === 'Alerta com ressalva' ? 'com ressalva' : x.sit.toLowerCase()) : '')));
     t.appendChild(paEl('span', 'tag ' + (x.dias > 1 ? 'w' : ''), x.dias > 1 ? 'Segue em alerta há ' + x.dias + ' dias (desde ' + x.desde + ')' : 'NOVO alerta de ' + (x.dataAlerta || ''))); c.appendChild(t);
     if (x.anterior && !x.contato) { var ant = paEl('div', 'pa-hint', 'Mensagem anterior: ' + (x.anterior.tipo === 'Enviada' ? 'enviada' : x.anterior.tipo.toLowerCase()) + ' em ' + x.anterior.quando + ' (alerta antigo). Para este alerta ainda não há mensagem enviada.'); ant.style.cssText = 'opacity:.85'; c.appendChild(ant); }
     if (x.contato && x.contato.tipo === 'Ignorado') {
@@ -2016,6 +2057,8 @@ function saudeDesenha(vazio) {
       '<div><span class="pa-hint">FC de repouso</span><br>' + saFmt(x.fc, ' bpm') + '<br>' + saVar(x.fcV, -1) + '</div>' +
       '<div><span class="pa-hint">Body battery máx.</span><br>' + saFmt(x.bb) + '<br>' + saVar(x.bbV, 1) + '</div>';
     c.appendChild(v);
+    if (x.cruz) { var zc = paEl('div', ''); zc.style.cssText = 'margin:6px 0;padding:8px 10px;border-left:3px solid ' + (x.sit === 'Acompanhando' || x.sit === 'Recuperado' ? '#3ddc84' : (x.sit === 'Alerta com ressalva' ? '#e0a800' : '#ff5a5a')) + ';font-size:.82rem'; zc.innerHTML = '<b>Leitura cruzada' + (x.sit && x.sit !== 'Alerta' ? ' (' + esc(x.sit) + ')' : '') + ':</b> ' + esc(x.cruz) + (x.sit === 'Alerta com ressalva' ? '<div style="margin-top:3px">O HRV está subindo, mas a FC de repouso também subiu: vale perguntar como ele está antes de liberar a carga.</div>' : ''); c.appendChild(zc); }
+    if (x.sitAuto && x.sit !== 'Alerta' && x.sit !== 'Recuperado') c.appendChild(paEl('div', 'pa-hint', 'Esta mensagem foi escrita antes da regra de acompanhamento e ainda fala em alerta. Revise o texto antes de enviar. A partir da próxima leitura das 8h40 ela já vem adequada.'));
     c.appendChild(saTendBloco(x));
     c.appendChild(paEl('div', 'pa-hint', 'Treino de amanhã: ' + (x.amanha || 'sem treino planejado')));
     var cm = paEl('div', 'pa-hint', x.coment ? 'Comentários do atleta nos últimos 3 dias (leia antes de enviar): ' + x.coment : 'Comentários do atleta nos últimos 3 dias: nenhum.');
