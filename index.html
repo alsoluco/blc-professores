@@ -343,10 +343,12 @@ function carregaProvas(depois) {
 function menuAbre() {
   if ($('drw')) return;
   if (S.provas === undefined) carregaProvas(menuAtualiza);
+  if (/^(pal|gr|lg)$/.test(S.aba2 || '')) S.mnTp = true; if (/^(ale|lim|sau)$/.test(S.aba2 || '')) S.mnAl = true;
   var o = document.createElement('div'); o.id = 'drw'; o.className = 'drw';
   document.body.appendChild(o);
   menuAtualiza();
 }
+function mnTog(k) { if (k === 'tp') S.mnTp = !S.mnTp; else S.mnAl = !S.mnAl; menuAtualiza(); }
 function menuFecha() { var o = $('drw'); if (o) document.body.removeChild(o); }
 function menuAtualiza() {
   var o = $('drw'); if (!o) return;
@@ -358,13 +360,16 @@ function menuAtualiza() {
     (pushPronto() && Notification.permission !== 'granted' ? '<button type="button" class="btn" onclick="menuFecha();pushAtiva()">\ud83d\udd14 Ativar avisos no celular</button>' : '') +
     it('Mensagens', 'mural()', S.aba2 === 'msg', badge(S.mural ? S.mural.paraMimTotal : 0)) +
     it('Atletas', 'atletas()', S.aba2 === 'atl') +
-    it('Presen\u00e7a de alunos', 'presAlu()', S.aba2 === 'pal') +
+    '<button type="button" class="dit" onclick="mnTog(\'tp\')"><span>Treino presencial</span><span>' + (S.mnTp ? '▴' : '▾') + '</span></button>' +
+    (S.mnTp ? '<div style="padding-left:14px;display:flex;flex-direction:column;gap:2px">' + it('Presença de alunos', 'presAlu()', S.aba2 === 'pal') + it('Grupos de ritmo', 'grTela()', S.aba2 === 'gr') + it('Limiares por grupo', 'lgTela()', S.aba2 === 'lg') + '</div>' : '') +
+    '<button type="button" class="dit" onclick="mnTog(\'al\')"><span>Alertas</span><span>' + (S.mnAl ? '▴' : '▾') + '</span></button>' +
+    (S.mnAl ? '<div style="padding-left:14px;display:flex;flex-direction:column;gap:2px">' + it('Presença (afastados)', 'alPres()', S.aba2 === 'ale') + (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Novos limiares', 'limTela()', S.aba2 === 'lim') : '') + (S.perfil === 'Admin' ? it('Saúde dos atletas', 'saudeTela()', S.aba2 === 'sau') : '') + '</div>' : '') +
     '<button type="button" class="btn btn-green" onclick="menuFecha();novaMsg()">+ Nova mensagem</button>' +
     provas +
     it('Vendas de produtos', 'painelProd()', S.aba2 === 'prod') +
-    it('\ud83e\udde0 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
-    (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Novos limiares', 'limTela()', S.aba2 === 'lim') + it('Limiares dos atletas', 'lzTela()', S.aba2 === 'lz') : '') +
-    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Sa\u00fade dos atletas', 'saudeTela()', S.aba2 === 'sau') + it('Feedback do treinador', 'fbTela()', S.aba2 === 'fb') + it('Uso da IA', 'iaTela()', S.aba2 === 'ia') : '') +
+    it('🧠 Insights e condutas', 'insightsTela()', S.aba2 === 'ins') +
+    (S.perfil === 'Admin' || S.email === 'caioluanfarias1903@gmail.com' ? it('Limiares dos atletas', 'lzTela()', S.aba2 === 'lz') : '') +
+    (S.perfil === 'Admin' ? '<div class="dsec">Head coach</div>' + it('Painel', 'verPainel()', S.aba2 === 'pnl') + it('Feedback do treinador', 'fbTela()', S.aba2 === 'fb') + it('Uso da IA', 'iaTela()', S.aba2 === 'ia') : '') +
     '<div class="dsec">Conta</div><div class="small muted">' + esc(S.nome) + '</div>' + it('Sair', 'sair()', false) +
     '</nav>';
 }
@@ -1290,16 +1295,21 @@ function paInit(r) {
   PA.wi = PA.WK.length - 1; if (!PA.dia) PA.dia = null; PA.mi = PA.MON.length - 1; PA.sel = null; PA.hsel = null;
   PA.R = PA_R.filter(function (x) { return r.regs[x.k]; });
 }
+function alPres() { S.aba2 = 'ale'; PA.alOnly = true; PA.mode = 'ale'; presAluCarrega(); }
 function presAlu(modo) {
-  S.aba2 = 'pal';
+  S.aba2 = 'pal'; PA.alOnly = false;
   if (modo) PA.mode = modo;
+  if (PA.mode === 'ale') PA.mode = 'sem';
+  presAluCarrega();
+}
+function presAluCarrega() {
   if (PA.E) { paDesenha(); }
   else app(head(userBar()) + '<div class="spin">Carregando presença…</div>');
   call('presAlunos', {}, !!PA.E).then(function (r) { paInit(r); paDesenha(); })
     .catch(function (e) { if (S.token && !PA.E) app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="presAlu()">Tentar de novo</button>'); });
 }
 function paDesenha() {
-  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Presença</div><h2>Presença de <em>alunos</em></h2></div>' +
+  app(head(userBar()) + '<div class="pa"><div>' + (PA.alOnly ? '<div class="eyebrow">Alertas</div><h2>Presença · <em>afastados</em></h2>' : '<div class="eyebrow">Presença</div><h2>Presença de <em>alunos</em></h2>') + '</div>' +
     '<div class="pa-hint">Leitura do TrainingPeaks · dados até ' + paFd(PA.ult) + '.</div>' +
     '<div class="pa-tot" id="paTot"></div><div class="pa-mode" id="paMode"></div><div class="pa-tabs" id="paTabs"></div>' +
     '<div class="pa-hs" id="paHist" hidden></div><div class="pa-wrap" id="paWr"><table id="paTb"></table></div><div class="pa-tot" id="paFim"></div><div id="paAl" hidden></div><div id="paDia" hidden></div><div id="paMed" hidden></div>' +
@@ -1318,9 +1328,10 @@ function paBuild() {
   if (m === 'ale') { [[A.u, 'atletas diferentes no período todo', 'all'], [A.p, 'presenças no período todo', 'all']].forEach(function (x) { var d = paEl('div', x[2]); d.appendChild(paEl('b', '', x[0])); d.appendChild(paEl('span', '', x[1])); t.appendChild(d); }); }
   else [[A.u, 'atletas diferentes no período todo', 'all'], [A.p, 'presenças no período todo', 'all'], [C.u, 'atletas diferentes ' + qd, ''], [C.p, 'presenças ' + qd, '']].forEach(function (x) { var d = paEl('div', x[2]); d.appendChild(paEl('b', '', x[0])); d.appendChild(paEl('span', '', x[1])); t.appendChild(d); });
   var md = $('paMode'); md.innerHTML = '';
-  [['dia', 'Dia'], ['sem', 'Semana'], ['mes', 'Mês'], ['his', 'Histórico'], ['med', 'Média'], ['ale', 'Alertas']].forEach(function (x) { var b = paEl('button', m === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { PA.mode = x[0]; PA.sel = null; paBuild(); }; md.appendChild(b); });
+  [['dia', 'Dia'], ['sem', 'Semana'], ['mes', 'Mês'], ['his', 'Histórico'], ['med', 'Média']].forEach(function (x) { var b = paEl('button', m === x[0] ? 'on' : '', x[1]); b.type = 'button'; b.onclick = function () { PA.mode = x[0]; PA.sel = null; paBuild(); }; md.appendChild(b); });
   var tb = $('paTabs'); tb.innerHTML = ''; tb.style.flexWrap = m === 'his' ? 'wrap' : 'nowrap';
   var isH = m === 'his', isA = m === 'ale', isD = m === 'dia', isM = m === 'med';
+  $('paTot').hidden = $('paMode').hidden = $('paTabs').hidden = !!PA.alOnly;
   $('paDia').hidden = !isD; $('paWr').hidden = isH || isA || isD; $('paFim').hidden = isH || isA || isD || isM; $('paMed').hidden = !isM; $('paHist').hidden = !isH; $('paAl').hidden = !isA; $('paPn').hidden = isA || isD || isM; $('paRkd').hidden = isA || isM;
   if (isA) { paAlertasTela(); return; }
   if (isM) { paBuildMedia(); return; }
@@ -2476,6 +2487,77 @@ function lzCard(t, nome) {
     g.fillStyle = 'rgba(255,255,255,.58)'; g.font = '400 26px ' + F; lzTexto(g, 'BLC · RIO DE JANEIRO', 1080 - M, 1830, 5, 'right');
     return c.toDataURL('image/png');
   });
+}
+/* ---------- Treino presencial: grupos de ritmo e limiares por grupo ---------- */
+var GR = { dias: null }, LG = { lista: null };
+function grPf(sec) { sec = Math.round(sec); var m = Math.floor(sec / 60), r = sec % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+function grDiaNome(d) { var n = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'], x = new Date(d + 'T12:00:00Z').getUTCDay(); return n[x] + ', ' + d.slice(8) + '/' + d.slice(5, 7); }
+function grTela() {
+  S.aba2 = 'gr';
+  app(head(userBar()) + '<div class="spin">Carregando grupos…</div>');
+  call('ritmoGrupos', {}).then(function (r) { GR.dias = r.dias || []; grDesenha(); })
+    .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="grTela()">Tentar de novo</button>'); });
+}
+function grDesenha() {
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Treino presencial</div><h2>Grupos de <em>ritmo</em></h2></div>' +
+    '<div class="pa-hint">Atletas que treinam na Lagoa e têm o mesmo treino marcado para o dia. O ritmo é a média dos treinos leves dos últimos 21 dias (TrainingPeaks). Cada grupo tem no máximo 30 s/km de diferença. Quem destoa aparece à parte.</div>' +
+    '<div id="grBox" style="display:flex;flex-direction:column;gap:14px"></div></div>');
+  var box = $('grBox');
+  if (!GR.dias.length) { box.appendChild(paEl('div', 'pa-panel pa-hint', 'Ainda não há grupos montados para os próximos dias.')); return; }
+  GR.dias.forEach(function (d) {
+    var sec = paEl('div'); sec.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+    var h = paEl('h3', '', grDiaNome(d.dia)); sec.appendChild(h);
+    sec.appendChild(paEl('div', 'pa-hint', 'Montado em ' + d.gerado + '.'));
+    var por = {}, ordem = [];
+    d.linhas.forEach(function (l) { if (!por[l.treino]) { por[l.treino] = []; ordem.push(l.treino); } por[l.treino].push(l); });
+    ordem.forEach(function (t) {
+      var ls = por[t], c = paEl('div', 'pa-al'), tt = paEl('div', 'ttl'); tt.appendChild(paEl('b', '', t.replace(/^#BLC\s*-?\s*/, '')));
+      tt.appendChild(paEl('span', 'tag w', ls.length + (ls.length === 1 ? ' atleta' : ' atletas'))); c.appendChild(tt);
+      var gs = {}, go = [];
+      ls.forEach(function (l) { if (!gs[l.grupo]) { gs[l.grupo] = []; go.push(l.grupo); } gs[l.grupo].push(l); });
+      go.sort(function (a, b) { var w = { 'Destaque': 8, 'Sem par': 9, 'Sem dados': 10 }; return (w[a] || 0) - (w[b] || 0) || (a < b ? -1 : 1); });
+      go.forEach(function (g) {
+        var l0 = gs[g][0], tit = g === 'Sem par' ? 'Treino diferente dos demais' : g === 'Sem dados' ? 'Sem treinos leves nos últimos 21 dias' : g === 'Destaque' ? 'Ritmo fora dos grupos' : g + (l0.faixa ? ' · ' + l0.faixa : '');
+        var b = paEl('div', 'pa-hint'); b.style.cssText = 'margin-top:8px;font-weight:700'; b.textContent = tit; c.appendChild(b);
+        gs[g].forEach(function (l) {
+          var r = paEl('div'); r.style.cssText = 'display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:.92rem';
+          r.appendChild(paEl('span', '', l.nome)); r.appendChild(paEl('b', '', l.pace ? grPf(l.pace) + ' /km' : '–'));
+          c.appendChild(r);
+        });
+      });
+      sec.appendChild(c);
+    });
+    box.appendChild(sec);
+  });
+}
+function lgTela() {
+  S.aba2 = 'lg';
+  app(head(userBar()) + '<div class="spin">Carregando limiares…</div>');
+  call('limGrupos', {}).then(function (r) { LG.lista = r.atletas || []; lgDesenha(); })
+    .catch(function (e) { app(head(userBar()) + '<div class="err">' + esc(e.message) + '</div><button class="btn" onclick="lgTela()">Tentar de novo</button>'); });
+}
+function lgDesenha() {
+  app(head(userBar()) + '<div class="pa"><div><div class="eyebrow">Treino presencial</div><h2>Limiares por <em>grupo</em></h2></div>' +
+    '<div class="pa-hint">Limiar de ritmo de cada atleta (salvo do TrainingPeaks), separado em faixas de 30 s/km. Quem está sem limiar de ritmo aparece no fim.</div>' +
+    '<div id="lgBox" style="display:flex;flex-direction:column;gap:12px"></div></div>');
+  var box = $('lgBox'), fx = {}, ks = [], sem = [];
+  LG.lista.forEach(function (a) { if (!a.lim || a.lim < 150 || a.lim > 600) { sem.push(a); return; } var k = Math.floor(a.lim / 30) * 30; if (!fx[k]) { fx[k] = []; ks.push(k); } fx[k].push(a); });
+  ks.sort(function (a, b) { return a - b; });
+  ks.forEach(function (k) {
+    fx[k].sort(function (a, b) { return a.lim - b.lim; });
+    var c = paEl('div', 'pa-al'), tt = paEl('div', 'ttl'); tt.appendChild(paEl('b', '', grPf(k) + ' a ' + grPf(k + 29) + ' /km')); tt.appendChild(paEl('span', 'tag w', fx[k].length + (fx[k].length === 1 ? ' atleta' : ' atletas'))); c.appendChild(tt);
+    fx[k].forEach(function (a) {
+      var r = paEl('div'); r.style.cssText = 'display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:.92rem';
+      var n = paEl('span', '', a.nome); if (a.grupo) { var sm = paEl('small', 'pa-hint', ' · ' + a.grupo); n.appendChild(sm); }
+      r.appendChild(n); r.appendChild(paEl('b', '', grPf(a.lim) + ' /km')); c.appendChild(r);
+    });
+    box.appendChild(c);
+  });
+  if (sem.length) {
+    var c2 = paEl('div', 'pa-al'), t2 = paEl('div', 'ttl'); t2.appendChild(paEl('b', '', 'Sem limiar de ritmo')); t2.appendChild(paEl('span', 'tag w', sem.length + (sem.length === 1 ? ' atleta' : ' atletas'))); c2.appendChild(t2);
+    sem.forEach(function (a) { var r = paEl('div', '', a.nome + (a.grupo ? ' · ' + a.grupo : '')); r.style.cssText = 'padding:3px 0;font-size:.92rem'; c2.appendChild(r); });
+    box.appendChild(c2);
+  }
 }
 function lzTela() {
   S.aba2 = 'lz'; LZ.det = null;
