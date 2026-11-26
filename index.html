@@ -1832,7 +1832,7 @@ function saEmailTexto(x) {
     'O que é cada dado:', '',
     '1) HRV (variabilidade da frequência cardíaca): é a variação de tempo entre um batimento e outro. Parece contraditório, mas um HRV mais alto costuma indicar um corpo mais recuperado e preparado para o treino. Quando ele cai por vários dias seguidos, em geral há cansaço acumulado, sono ruim, estresse ou início de doença. Ele varia muito de pessoa para pessoa, por isso eu comparo você só com você mesmo.', '',
     '2) Frequência cardíaca de repouso: é a FC do seu coração em descanso, medida principalmente durante o sono. Quando ela sobe alguns batimentos acima do seu normal por dias seguidos, é um sinal de que o corpo está sob carga, seja por treino, calor, sono curto, estresse ou doença. Com o condicionamento melhorando, ela tende a cair com o tempo.', '',
-    '3) Body Battery: é uma nota de 0 a 100 do Garmin que estima a sua energia, combinando HRV, estresse, sono e atividade. Acordar com a bateria baixa por vários dias indica que a recuperação não está completa.', '',
+    '3) Body Battery: é uma nota de 0 a 100 do Garmin que estima a sua energia, combinando HRV, estresse, sono e atividade. Ao longo do dia o relógio registra um valor máximo e um mínimo. Eu considero o MÁXIMO, que é o pico de energia do dia (em geral ao acordar) e mostra o quanto você recarregou durante a noite. O mínimo mostra o quanto o dia gastou e depende do treino e do estresse daquele dia, por isso não uso para avaliar a recuperação. Máximo baixo por vários dias indica que a recuperação não está completa.', '',
     ((sr.tss || sr.sem) ? '4) Carga de treino (TSS): é a pontuação que o TrainingPeaks dá ao treino combinando duração e intensidade. Quando a soma da semana fica bem acima do seu normal, é esperado que o HRV caia e a frequência de repouso suba. O gráfico mostra se a queda dos seus dados acompanha a carga ou se tem outra causa.\n' : null),
     'Por que o relógio precisa ficar com você o tempo todo:', 'Todos esses números só são confiáveis se o relógio registrar todos os dias e todas as noites. Se você dorme sem ele ou o deixa carregando de noite, perco o dado mais importante, que é o do sono. E se ele estiver frouxo no punho, o sensor lê errado, e isso gera números que parecem um problema quando não são, ou escondem um problema real. O ideal é usar o relógio ajustado, um pouco acima do osso do punho, inclusive para dormir, e carregar durante o dia, por exemplo no banho ou enquanto trabalha.', '',
     'Quanto mais dados corretos eu tiver, melhor consigo ajustar o seu treino, e evitar tanto que você se arrebente quanto que eu pegue leve à toa.', '', 'Qualquer dúvida, me chama.', '', 'Um abraço,', 'Beto Lundgren', 'BLC Assessoria Esportiva');
@@ -2107,13 +2107,13 @@ var SA_LINHA_GRAF = 'Seguem abaixo os gráficos dos seus dados dos últimos 7 di
 function saZapEmail(i, ta, b) {
   var x = SA.itens[i], base = String(ta.value || '').replace(SA_LINHA_EMAIL, '').replace(/\s+$/, '');
   if (!base.trim()) { aviso('Escreva a mensagem antes de enviar.'); return; }
-  dlg('Enviar para ' + x.nome + ' agora: WhatsApp (abre o app com a mensagem) e e-mail (' + x.email + ') com o mesmo texto e os gráficos?', { ok: 'Enviar' }).then(function (v) {
+  dlg('Enviar para ' + x.nome + ' agora: WhatsApp (abre o app com a mensagem) e e-mail (' + x.email + ') no formato padrão do "E-mail com gráficos" (gráficos, explicações e identidade BLC)?', { ok: 'Enviar' }).then(function (v) {
     if (!v) return;
     var zap = base + '\n\n' + SA_LINHA_EMAIL;
     ta.value = zap; x.msg = zap;
     window.open('https://wa.me/' + x.foneN + '?text=' + encodeURIComponent(zap), '_blank');
     b.disabled = true;
-    call('saudeEmail', { id: x.id, texto: base + '\n\n' + SA_LINHA_GRAF, teste: false }).then(function (r) {
+    call('saudeEmail', { id: x.id, texto: saEmailTexto(x), teste: false }).then(function (r) {
       b.disabled = false;
       return aviso('WhatsApp aberto e e-mail enviado para ' + r.para + '.').then(function () { return call('saudeAlertas', {}, true); }).then(function (rr) { SA.itens = rr.itens || []; saudeDesenha(); });
     }).catch(function (e) {
