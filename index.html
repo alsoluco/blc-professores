@@ -398,7 +398,20 @@ function ldAtualiza() {
 function carrega(msg) { LD.force = true; LD.msg = msg || ''; ldAtualiza(); }
 function carregaFim() { LD.force = false; ldAtualiza(); }
 function ldFim() { LD.n--; if (LD.n <= 0) { LD.n = 0; clearTimeout(LD.t); LD.vis = false; ldAtualiza(); } }
+var CC = { m: {}, ler: { inicio: 1, provas: 1, membros: 1, financeiro: 1, prodLista: 1, presenca: 1, saudeAlertas: 1, limiaresLista: 1, finProvas: 1 }, neutro: { login: 1, esqueci: 1, logout: 1, abriu: 1, chatLista: 1, chatResumo: 1, chatPainel: 1 } };
 function call(action, payload, quieto) {
+  var ck = null;
+  if (CC.ler[action]) {
+    ck = action + '|' + JSON.stringify(payload || {});
+    var h = CC.m[ck];
+    if (h && Date.now() - h.t < 40000) return Promise.resolve(JSON.parse(h.v));
+  } else if (!CC.neutro[action]) { CC.m = {}; }
+  return call0(action, payload, quieto).then(function (r) {
+    if (ck) { try { CC.m[ck] = { t: Date.now(), v: JSON.stringify(r) }; } catch (e) {} }
+    return r;
+  });
+}
+function call0(action, payload, quieto) {
   if (!quieto) { LD.n++; if (LD.n === 1) LD.t = setTimeout(function () { if (LD.n > 0) { LD.vis = true; ldAtualiza(); } }, 600); }
   var fim = function () { if (!quieto) ldFim(); };
   return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ a: action, t: S.token, p: payload || {} }), redirect: 'follow' })
@@ -476,6 +489,7 @@ function telaTroca(msg) {
 }
 
 function sair(silencioso) {
+  CC.m = {};
   if (S.token && !silencioso) { try { var pt = ''; try { pt = localStorage.getItem('blc_pt') || ''; localStorage.removeItem('blc_pt'); } catch (e) {} call('logout', { pt: pt }); } catch (e) {} }
   badgeIcone(0); S.pushTentou = false;
   S.token = null; S.nome = ''; S.perfil = ''; S.email = ''; S.troca = false; S.mural = null;
