@@ -938,6 +938,48 @@ function frCarrega(id) {
 }
 function frData(s) { var m = /^(\d{4})-(\d\d)-(\d\d)/.exec(s || ''); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; }
 function frIso(d) { return d.toISOString().slice(0, 10); }
+function frHoje() { var n = new Date(); return n.getFullYear() + '-' + ('0' + (n.getMonth() + 1)).slice(-2) + '-' + ('0' + n.getDate()).slice(-2); }
+function frDias(a, b) { return Math.round((frData(b) - frData(a)) / 86400000); }
+/* Resumo geral: pontos de atenção, pelos mesmos parâmetros combinados (presença, saúde, limiares, mensagens, cadastro) */
+function frAtencao() {
+  var d = FR.d, f = (S.ficha && S.ficha.ficha) || {}, hoje = frHoje(), it = [];
+  var add = function (n, txt) { it.push({ n: n, t: txt }); };
+  // presença: frequentava e sumiu, ou queda forte nas últimas 2 semanas completas
+  if (d.pres.length) {
+    var dias = {}; d.pres.forEach(function (x) { dias[x[0]] = 1; });
+    var lista = Object.keys(dias).sort(), ult = lista[lista.length - 1], sem = frDias(ult, hoje);
+    var freq = lista.filter(function (z) { var k = frDias(z, hoje); return k >= 14 && k <= 56; }).length;
+    var segAtual = frData(hoje); segAtual.setUTCDate(segAtual.getUTCDate() - ((segAtual.getUTCDay() + 6) % 7));
+    var semDia = function (z) { var k = Math.floor(frDias(frIso(segAtual), z) / 7); return k; };
+    var cont = {}; lista.forEach(function (z) { var k = semDia(z); cont[k] = (cont[k] || 0) + 1; });
+    var med4 = ((cont[-3] || 0) + (cont[-4] || 0) + (cont[-5] || 0) + (cont[-6] || 0)) / 4, u2 = ((cont[-1] || 0) + (cont[-2] || 0)) / 2;
+    if (freq >= 4 && sem >= 14) add(2, 'Afastado dos treinos presenciais: último em ' + frBr(ult) + ' (há ' + sem + ' dias). Frequentava antes.');
+    else if (med4 >= 1.5 && u2 <= med4 * 0.5) add(1, 'Queda de frequência nos treinos presenciais: média de ' + (Math.round(med4 * 10) / 10).toString().replace('.', ',') + ' dias por semana antes, ' + (Math.round(u2 * 10) / 10).toString().replace('.', ',') + ' nas últimas 2 semanas.');
+  }
+  // saúde: situação mais recente
+  var sd = d.saude.slice().sort(function (a, b) { return a.d < b.d ? -1 : 1; }), last = sd[sd.length - 1];
+  if (last && frDias(last.d, hoje) <= 3 && last.tipo && last.tipo !== 'Recuperado' && last.tipo !== 'Normal') {
+    var ini = last.d, i = sd.length - 1; while (i > 0 && frDias(sd[i - 1].d, sd[i].d) <= 2 && sd[i - 1].tipo && sd[i - 1].tipo !== 'Recuperado' && sd[i - 1].tipo !== 'Normal') { i--; ini = sd[i].d; }
+    var nd = frDias(ini, last.d) + 1;
+    add(last.prio ? 2 : 1, 'Alerta de saúde' + (d.adm ? ' (' + last.tipo + ')' : '') + ' desde ' + frBr(ini) + ' (' + nd + ' dia' + (nd > 1 ? 's' : '') + ')' + (last.prio ? ', prioridade' : '') + '.' + (d.adm && last.hrv != null ? ' HRV ' + last.hrv + ' · FC rep ' + last.fc + ' · BB ' + last.bb + '.' : ''));
+  }
+  // limiares novos sem mensagem de zonas
+  d.ev.forEach(function (x) { if (x.t === 'lim' && x.envio === 'Pendente' && frDias(x.d, hoje) <= 14) add(1, 'Novo limiar sem mensagem de zonas: ' + x.rot + ', de ' + x.antes + ' para ' + x.depois + ' (' + frBr(x.d) + ').'); });
+  // prioridades em aberto
+  var tl = (S.ficha && S.ficha.linha) || [], np = tl.filter(function (m) { return m.prioridade && !m.resolvido; }).length;
+  if (np) add(2, np + ' prioridade' + (np > 1 ? 's' : '') + ' em aberto nas mensagens deste atleta.');
+  // cadastro
+  if (f['PAR-Q positivo']) add(1, 'PAR-Q com resposta "Sim": ' + f['PAR-Q positivo']);
+  if (f['Limitação física']) add(1, 'Limitação física: ' + f['Limitação física']);
+  if (f['Alergia/doença']) add(1, 'Alergia ou doença informada: ' + f['Alergia/doença']);
+  if (f['Contato emergência'] === 'Sem contato') add(0, 'Sem contato de emergência cadastrado.');
+  if (!f['Telefone']) add(0, 'Sem telefone cadastrado.');
+  it.sort(function (a, b) { return b.n - a.n; });
+  var cor = ['#8a8f98', '#e0a000', '#d92b2b'], nome = ['Cadastro', 'Atenção', 'Importante'];
+  return '<div class="card cy"><div class="eyebrow cy">Resumo geral · pontos de atenção</div>' +
+    (it.length ? it.map(function (x) { return '<div class="hist" style="border-left:3px solid ' + cor[x.n] + ';padding-left:8px"><div class="meta">' + nome[x.n] + '</div><div class="txt">' + esc(x.t) + '</div></div>'; }).join('') : '<div class="txt">Nada de especial por enquanto: presença, saúde e limiares dentro do esperado.</div>') +
+    '<p class="small muted">Presença: afastado = frequentava (4 dias ou mais entre 2 e 8 semanas atrás) e está 14 dias ou mais sem treino presencial; queda = últimas 2 semanas com metade ou menos da média das 4 anteriores. Saúde e limiares seguem as regras combinadas.</p></div>';
+}
 function frBr(iso) { return iso.slice(8, 10) + '/' + iso.slice(5, 7); }
 function frIni(iso) { var d = frData(iso); if (!d) return ''; if (FR.modo === 'mes') { d.setUTCDate(1); } else { d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); } return frIso(d); }
 function frRot(ini) { if (FR.modo === 'mes') { var n = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']; return n[+ini.slice(5, 7) - 1] + '/' + ini.slice(2, 4); } return 'Sem ' + frBr(ini); }
@@ -972,7 +1014,7 @@ function frEventos() {
   return ev;
 }
 function frResumoHtml() {
-  var d = FR.d, ev = d.ev.concat(frMsgs()), B = {}, n = FR.modo === 'mes' ? 6 : 8, hoje = frIso(new Date()), ini = frIni(hoje), ks = [];
+  var d = FR.d, ev = d.ev.concat(frMsgs()), B = {}, n = FR.modo === 'mes' ? 6 : 8, hoje = frHoje(), ini = frIni(hoje), ks = [];
   var k = ini;
   for (var i = 0; i < n; i++) { ks.unshift(k); var dd = frData(k); if (FR.modo === 'mes') dd.setUTCMonth(dd.getUTCMonth() - 1); else dd.setUTCDate(dd.getUTCDate() - 7); k = frIso(dd); }
   ks.forEach(function (x) { B[x] = { pre: {}, lagoa: 0, lim: 0, msg: 0, sh: [], sf: [], sb: [], alerta: 0, dias: 0 }; });
@@ -1005,7 +1047,7 @@ function frDesenha() {
   var box = $('fres'); if (!box || !FR.d) return;
   var ev = frEventos().filter(function (x) { return FR.filtro === 'tudo' || x.t === FR.filtro; });
   var btn = function (ativo, txt, js) { return '<button type="button" class="btn btn-sm' + (ativo ? '' : ' btn-line') + '" onclick="' + js + '">' + txt + '</button>'; };
-  box.innerHTML = '<div class="card hot"><div class="eyebrow">Resumo do atleta</div>' +
+  box.innerHTML = frAtencao() + '<div class="card hot"><div class="eyebrow">Resumo detalhado</div>' +
     '<div class="row" style="margin:6px 0">' + btn(FR.modo === 'sem', 'Por semana', "FR.modo='sem';frDesenha()") + btn(FR.modo === 'mes', 'Por mês', "FR.modo='mes';frDesenha()") + '</div>' +
     frResumoHtml() + '</div>' +
     '<div class="card"><div class="eyebrow">Linha do tempo do atleta</div><div class="row" style="margin:6px 0;flex-wrap:wrap">' +
