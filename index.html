@@ -403,7 +403,7 @@ function ldAtualiza() {
 function carrega(msg) { LD.force = true; LD.msg = msg || ''; ldAtualiza(); }
 function carregaFim() { LD.force = false; ldAtualiza(); }
 function ldFim() { LD.n--; if (LD.n <= 0) { LD.n = 0; clearTimeout(LD.t); LD.vis = false; ldAtualiza(); } }
-var CC = { m: {}, ler: { inicio: 1, provas: 1, membros: 1, financeiro: 1, prodLista: 1, presenca: 1, fichaResumo: 1, saudeAlertas: 1, limiaresLista: 1, finProvas: 1 }, neutro: { login: 1, esqueci: 1, logout: 1, abriu: 1, chatLista: 1, chatResumo: 1, chatPainel: 1 } };
+var CC = { m: {}, ler: { inicio: 1, provas: 1, membros: 1, financeiro: 1, prodLista: 1, presenca: 1, fichaResumo: 1, fichaSaude: 1, saudeAlertas: 1, limiaresLista: 1, finProvas: 1 }, neutro: { login: 1, esqueci: 1, logout: 1, abriu: 1, chatLista: 1, chatResumo: 1, chatPainel: 1 } };
 function call(action, payload, quieto) {
   var ck = null;
   if (CC.ler[action]) {
@@ -1043,17 +1043,81 @@ function frItemHtml(x) {
   }
   return '<div class="hist"><div class="meta">' + q + ' · mensagem' + (x.origem ? ' (' + esc(x.origem) + ')' : '') + (x.quem ? ' · ' + esc(x.quem) : '') + (x.tipo ? ' · ' + esc(x.tipo) : '') + '</div><div class="txt" style="white-space:pre-wrap">' + esc(x.texto) + '</div></div>';
 }
+function frBarras(rot, series, fmt, tit) {
+  var n = rot.length, W = 320, H = 170, L = 8, R = 8, T = 18, B = 24, tot = [];
+  for (var i = 0; i < n; i++) { var t = 0; series.forEach(function (sr) { t += sr.v[i] || 0; }); tot.push(t); }
+  var mx = Math.max.apply(null, tot) * 1.15 || 1, bw = (W - L - R) / n;
+  function Y(v) { return T + (mx - v) * (H - T - B) / mx; }
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + esc(tit) + '" style="display:block;overflow:visible"><line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="currentColor" opacity=".25"/>';
+  for (var k = 0; k < n; k++) {
+    var acc = 0, x0 = L + k * bw + bw * 0.18, w = bw * 0.64;
+    series.forEach(function (sr) { var v = sr.v[k] || 0; if (v <= 0) return; var y1 = Y(acc + v), y0 = Y(acc); s += '<rect x="' + x0.toFixed(1) + '" y="' + y1.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + Math.max(0, y0 - y1).toFixed(1) + '" style="fill:' + sr.cor + '"/>'; acc += v; });
+    s += '<text x="' + (x0 + w / 2).toFixed(1) + '" y="' + (Y(tot[k]) - 4).toFixed(1) + '" font-size="10" font-weight="700" text-anchor="middle" fill="currentColor">' + fmt(tot[k]) + '</text><text x="' + (x0 + w / 2).toFixed(1) + '" y="' + (H - 8) + '" font-size="9" text-anchor="middle" fill="currentColor" opacity=".7">' + esc(rot[k]) + '</text>';
+  }
+  return s + '</svg>';
+}
+function frPace(rot, v) {
+  var n = rot.length, W = 320, H = 150, L = 14, R = 14, T = 18, B = 24, ok = v.filter(function (x) { return x > 0; });
+  if (!ok.length) return '<div class="muted small">Sem ritmo de corrida nestas semanas.</div>';
+  var mn = Math.min.apply(null, ok), mx = Math.max.apply(null, ok), pad = (mx - mn) * 0.3 || 10; mn -= pad; mx += pad;
+  var X = function (i) { return L + (n < 2 ? 0 : i * (W - L - R) / (n - 1)); }, Y = function (x) { return T + (x - mn) * (H - T - B) / (mx - mn); };
+  var pf = function (x) { var m = Math.floor(x / 60), r = Math.round(x % 60); return m + ':' + (r < 10 ? '0' : '') + r; };
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="Ritmo médio por semana" style="display:block;overflow:visible"><line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="currentColor" opacity=".25"/>', p = '', ant = false;
+  v.forEach(function (x, i) { if (!(x > 0)) { ant = false; return; } p += (ant ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x).toFixed(1) + ' '; ant = true; });
+  s += '<path d="' + p + '" fill="none" style="stroke:#3ddc84" stroke-width="2.4" stroke-linejoin="round"/>';
+  v.forEach(function (x, i) { if (x > 0) s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(x).toFixed(1) + '" r="3" style="fill:#3ddc84"/><text x="' + X(i).toFixed(1) + '" y="' + (Y(x) - 8).toFixed(1) + '" font-size="10" font-weight="700" text-anchor="middle" style="fill:#3ddc84">' + pf(x) + '</text>'; s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 8) + '" font-size="9" text-anchor="middle" fill="currentColor" opacity=".7">' + esc(rot[i]) + '</text>'; });
+  return s + '</svg>';
+}
+function frTreino(sem) {
+  var w = paEl('div', ''), box = function (t, sub, svg) { var k = paEl('div', ''); k.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px'; k.innerHTML = '<div style="font-size:.78rem;font-weight:700">' + t + '</div>' + (sub ? '<div class="small muted">' + sub + '</div>' : '') + svg; return k; };
+  if (!sem || !sem.length) { w.appendChild(paEl('div', 'muted small', 'Ainda não há o resumo de treino das últimas semanas deste atleta (tempo, quilômetros e ritmo). Ele é preenchido pela leitura diária do TrainingPeaks.')); return w; }
+  var rot = sem.map(function (x) { return x.s.slice(8, 10) + '/' + x.s.slice(5, 7); }), sum = function (k) { var t = 0; sem.forEach(function (x) { t += x[k] || 0; }); return t; };
+  var tri = (sum('bh') + sum('nh')) > 0.5;
+  var h1 = function (v) { return (Math.round(v * 10) / 10).toString().replace('.', ',') + ' h'; }, k1 = function (v) { return Math.round(v) + ' km'; };
+  var g = paEl('div', ''); g.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:6px';
+  if (!tri) {
+    g.appendChild(box('Tempo correndo por semana', '', frBarras(rot, [{ v: sem.map(function (x) { return x.ch; }), cor: '#3ddc84' }], h1, 'Tempo correndo')));
+    g.appendChild(box('Quilômetros por semana', '', frBarras(rot, [{ v: sem.map(function (x) { return x.ck; }), cor: 'var(--cyan)' }], k1, 'Quilômetros')));
+    g.appendChild(box('Ritmo médio de corrida por semana (min/km)', '', frPace(rot, sem.map(function (x) { return x.cp; }))));
+  } else {
+    var sr = [{ v: sem.map(function (x) { return x.ch; }), cor: '#3ddc84', nome: 'Corrida' }, { v: sem.map(function (x) { return x.bh; }), cor: '#ff8a3d', nome: 'Bike' }, { v: sem.map(function (x) { return x.nh; }), cor: '#6ea8ff', nome: 'Natação' }, { v: sem.map(function (x) { return x.oh; }), cor: '#9aa0a6', nome: 'Outros' }];
+    g.appendChild(box('Horas de treino por semana', '<span style="color:#3ddc84">■</span> corrida <span style="color:#ff8a3d">■</span> bike <span style="color:#6ea8ff">■</span> natação <span style="color:#9aa0a6">■</span> outros', frBarras(rot, sr, h1, 'Horas por semana')));
+    if (sum('ck') > 0) g.appendChild(box('Ritmo médio de corrida por semana (min/km)', '', frPace(rot, sem.map(function (x) { return x.cp; }))));
+  }
+  w.appendChild(g);
+  var pf = function (x) { return x > 0 ? Math.floor(x / 60) + ':' + ('0' + Math.round(x % 60)).slice(-2) : '–'; }, f1 = function (x) { return x ? (Math.round(x * 10) / 10).toString().replace('.', ',') : '–'; };
+  var t = '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:.78rem"><tr><th align="left">Semana</th><th>Corrida km</th><th>Ritmo</th>' + (tri ? '<th>Bike km</th><th>Natação m</th>' : '<th>Horas</th>') + '</tr>';
+  sem.slice().reverse().forEach(function (x) { t += '<tr style="border-top:1px solid var(--line,#ccc)"><td>' + esc(x.s.slice(8, 10) + '/' + x.s.slice(5, 7)) + '</td><td align="center">' + f1(x.ck) + '</td><td align="center">' + pf(x.cp) + '</td>' + (tri ? '<td align="center">' + f1(x.bk) + '</td><td align="center">' + (x.nm ? Math.round(x.nm) : '–') + '</td>' : '<td align="center">' + f1(x.ch) + '</td>') + '</tr>'; });
+  var tb = paEl('div', ''); tb.innerHTML = t + '</table></div>'; w.appendChild(tb);
+  return w;
+}
+function frSaude() {
+  var el = $('fsau'); if (!el) return;
+  var mostra = function (r) {
+    var e = $('fsau'); if (!e) return;
+    e.innerHTML = '<div class="eyebrow">O que ele andou fazendo</div>';
+    var t1 = paEl('div', 'small'); t1.style.cssText = 'font-weight:700;margin:6px 0 2px'; t1.textContent = 'Treino das últimas 6 semanas'; e.appendChild(t1); e.appendChild(frTreino(r && r.sem));
+    var t2 = paEl('div', 'small'); t2.style.cssText = 'font-weight:700;margin:14px 0 2px'; t2.textContent = 'Recuperação e carga'; e.appendChild(t2);
+    if (!r || !r.tem) { e.appendChild(paEl('div', 'muted small', 'Ainda não há leitura de saúde deste atleta (HRV, FC de repouso, Body Battery, sono e carga).')); return; }
+    e.appendChild(paEl('div', 'small muted', 'Leitura de ' + r.data.slice(8, 10) + '/' + r.data.slice(5, 7) + '. Os gráficos mostram a média de 7 dias, o valor do dia e a base de 4 semanas.'));
+    e.appendChild(saTendBloco({ serie: r.serie, carga: r.carga, leitura: r.leitura }));
+  };
+  if (FR.sau && FR.sau.id === FR.id) { mostra(FR.sau.r); return; }
+  call('fichaSaude', { id: FR.id }).then(function (r) { FR.sau = { id: FR.id, r: r }; mostra(r); })
+    .catch(function (er) { var e = $('fsau'); if (e) e.innerHTML = '<div class="eyebrow">O que ele andou fazendo</div><div class="muted small">Não consegui carregar: ' + esc(er.message) + '</div>'; });
+}
 function frDesenha() {
   var box = $('fres'); if (!box || !FR.d) return;
   var ev = frEventos().filter(function (x) { return FR.filtro === 'tudo' || x.t === FR.filtro; });
   var btn = function (ativo, txt, js) { return '<button type="button" class="btn btn-sm' + (ativo ? '' : ' btn-line') + '" onclick="' + js + '">' + txt + '</button>'; };
-  box.innerHTML = frAtencao() + '<div class="card hot"><div class="eyebrow">Resumo detalhado</div>' +
+  box.innerHTML = frAtencao() + '<div class="card" id="fsau"><div class="eyebrow">O que ele andou fazendo · recuperação e carga</div><div class="muted small">Carregando…</div></div>' + '<div class="card hot"><div class="eyebrow">Resumo detalhado</div>' +
     '<div class="row" style="margin:6px 0">' + btn(FR.modo === 'sem', 'Por semana', "FR.modo='sem';frDesenha()") + btn(FR.modo === 'mes', 'Por mês', "FR.modo='mes';frDesenha()") + '</div>' +
     frResumoHtml() + '</div>' +
     '<div class="card"><div class="eyebrow">Linha do tempo do atleta</div><div class="row" style="margin:6px 0;flex-wrap:wrap">' +
     FR_TIPOS.map(function (t) { return btn(FR.filtro === t[0], t[1], "FR.filtro='" + t[0] + "';frDesenha()"); }).join('') + '</div>' +
     (ev.length ? ev.slice(0, 60).map(frItemHtml).join('') + (ev.length > 60 ? '<div class="muted small">Mostrando os 60 mais recentes de ' + ev.length + '.</div>' : '') : '<div class="muted small">Nada registrado neste filtro.</div>') +
     '<p class="small muted">Todos os professores veem este histórico. Para enviar mensagens, use as abas de cada assunto' + (FR.d.adm ? '' : '; os números e textos de saúde só o head coach vê') + '.</p></div>';
+  frSaude();
 }
 
 var ATL_CAMPOS = [['Nome', 'Nome'], ['E-mail', 'E-mail'], ['Telefone', 'Telefone'], ['Nascimento', 'Nascimento (dd/mm/aaaa)'], ['Instagram', 'Instagram'], ['Contato emergência', 'Contato de emergência (nome)'], ['Telefone emergência', 'Telefone de emergência'], ['Federação', 'Federação'], ['Limitação física', 'Limitação física'], ['Alergia/doença', 'Alergia / doença'], ['Obs. saúde', 'Observações de saúde'], ['Último exame', 'Último exame físico'], ['Objetivo', 'Objetivo'], ['Camisa', 'Camisa']];
