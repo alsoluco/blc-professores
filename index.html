@@ -1069,6 +1069,14 @@ function frLinha(rot, v, fmt, cor, tit, vazio) {
 }
 function frPf(x) { var m = Math.floor(x / 60), r = Math.round(x % 60); if (r === 60) { m++; r = 0; } return m + ':' + (r < 10 ? '0' : '') + r; }
 function frPace(rot, v) { return frLinha(rot, v, frPf, '#3ddc84', 'Ritmo médio por semana', 'Sem ritmo de corrida nestas semanas.'); }
+function frAcwr(sem, k, i) {
+  var ant = sem.slice(Math.max(0, i - 4), i);
+  if (ant.length < 3) return '';
+  var m = ant.reduce(function (a, x) { return a + (x[k] || 0); }, 0) / ant.length;
+  if (!(m > 0)) return '';
+  var v = (sem[i][k] || 0) / m, cor = v > 1.5 ? '#ff5a5a' : v > 1.3 ? '#ff8a3d' : v >= 0.8 ? '#3ddc84' : '#6ea8ff';
+  return ' <span style="font-size:.72rem;font-weight:700;color:' + cor + '" title="ACWR: carga da semana dividida pela média das semanas anteriores">' + (Math.round(v * 100) / 100).toFixed(2).replace('.', ',') + (i === sem.length - 1 ? '*' : '') + '</span>';
+}
 function frCombo(rot, defs) {
   var n = rot.length, W = 340, H = 220, L = 30, R = 38, T = 16, B = 26, all = [], series = [];
   defs.forEach(function (d) { var ok = d.v.filter(function (x) { return x != null && x > 0; }); if (!ok.length) return; var m = ok.reduce(function (a, b) { return a + b; }, 0) / ok.length; var idx = d.v.map(function (x) { return (x != null && x > 0) ? x / m * 100 : null; }); idx.forEach(function (x) { if (x != null) all.push(x); }); series.push({ d: d, idx: idx }); });
@@ -1102,9 +1110,9 @@ function frExpert(r, e) {
   var box = function (t, sub, svg) { var k = paEl('div', ''); k.style.cssText = 'border:1px solid var(--line,#ccc);border-radius:10px;padding:8px'; k.innerHTML = '<div style="font-size:.78rem;font-weight:700">' + t + '</div>' + (sub ? '<div class="small muted">' + sub + '</div>' : '') + svg; return k; };
   var th = function (t) { return '<th style="padding:3px 4px">' + t + '</th>'; }, td = function (t) { return '<td align="center" style="padding:3px 4px">' + t + '</td>'; };
   var t = '<div style="overflow-x:auto;margin-top:6px"><table style="width:100%;border-collapse:collapse;font-size:.78rem;white-space:nowrap"><tr><th align="left" style="padding:3px 4px">Semana (seg.)</th>' + th('Corrida km') + th('Ritmo') + th('Horas') + th('TSS') + th('HRV') + th('FC rep.') + th('Sono (h)') + th('Body batt.') + '</tr>';
-  var vsAnt = function (i) { if (i < 1 || !(sem[i - 1].ch > 0)) return ''; var p = Math.round((sem[i].ch - sem[i - 1].ch) / sem[i - 1].ch * 100); return ' <span style="font-size:.72rem;font-weight:700;color:' + (p > 0 ? '#3ddc84' : p < 0 ? '#ff8a3d' : 'inherit') + '">' + (p > 0 ? '+' : '') + p + '%' + (i === sem.length - 1 ? '*' : '') + '</span>'; };
+  var vsAnt = function (i) { return frAcwr(sem, 'ch', i); };
   sem.map(function (x, i) { return { x: x, i: i }; }).reverse().forEach(function (q) { var x = q.x; t += '<tr style="border-top:1px solid var(--line,#ccc)"><td style="padding:3px 4px">' + esc(x.s.slice(8, 10) + '/' + x.s.slice(5, 7)) + '</td>' + td(x.ck ? c1(x.ck, 1) : '–') + td(x.cp > 0 ? frPf(x.cp) : '–') + td((x.ch ? c1(x.ch, 1) : '–') + vsAnt(q.i)) + td(x.tss == null ? '–' : i0(x.tss)) + td(x.hrv == null ? '–' : c1(x.hrv, 0)) + td(x.fc == null ? '–' : c1(x.fc, 0)) + td(x.sono == null ? '–' : c1(x.sono, 1)) + td(x.bb == null ? '–' : c1(x.bb, 0)) + '</tr>'; });
-  var tb = paEl('div', ''); tb.innerHTML = t + '</table></div><div class="small muted" style="margin-top:4px">HRV, FC de repouso, sono e Body Battery são a média dos dias da semana com dado. A semana atual conta só até hoje. A porcentagem ao lado das horas compara com a semana anterior (* = semana ainda em andamento, por isso tende a ficar menor). Se o atleta usa Garmin e também Whoop ou Oura, só valem os dados do Whoop/Oura.</div>'; e.appendChild(tb);
+  var tb = paEl('div', ''); tb.innerHTML = t + '</table></div><div class="small muted" style="margin-top:4px">HRV, FC de repouso, sono e Body Battery são a média dos dias da semana com dado. A semana atual conta só até hoje. O número ao lado das horas é o ACWR: horas da semana ÷ média das 4 semanas anteriores (precisa de pelo menos 3 semanas anteriores). Verde = 0,80 a 1,30 (faixa ideal), laranja = 1,30 a 1,50, vermelho = acima de 1,50, azul = abaixo de 0,80. * = semana em andamento (tende a ficar menor). Se o atleta usa Garmin e também Whoop ou Oura, só valem os dados do Whoop/Oura.</div>'; e.appendChild(tb);
   var g = paEl('div', ''); g.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:10px';
   var vz = function (k) { return sem.map(function (x) { return x[k]; }); }, pos = function (k) { return sem.some(function (x) { return x[k] != null && x[k] > 0; }); };
   g.appendChild(box('1. Ritmo médio de corrida por semana (min/km)', '', frPace(rot, vz('cp'))));
@@ -1145,11 +1153,11 @@ function frTreino(sem) {
   }
   w.appendChild(g);
   var pf = function (x) { return x > 0 ? Math.floor(x / 60) + ':' + ('0' + Math.round(x % 60)).slice(-2) : '–'; }, f1 = function (x) { return x ? (Math.round(x * 10) / 10).toString().replace('.', ',') : '–'; };
-  var vs = function (k, i) { if (i < 1 || !(sem[i - 1][k] > 0)) return ''; var p = Math.round((sem[i][k] - sem[i - 1][k]) / sem[i - 1][k] * 100); return ' <span style="font-size:.72rem;font-weight:700;color:' + (p > 0 ? '#3ddc84' : p < 0 ? '#ff8a3d' : 'inherit') + '">' + (p > 0 ? '+' : '') + p + '%' + (i === sem.length - 1 ? '*' : '') + '</span>'; };
+  var vs = function (k, i) { return frAcwr(sem, k, i); };
   var cel = function (t) { return '<td align="center" style="padding:3px 4px;white-space:nowrap">' + t + '</td>'; }, cab = function (t) { return '<th style="padding:3px 4px;white-space:nowrap">' + t + '</th>'; };
   var t = '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:.78rem"><tr><th align="left" style="padding:3px 4px">Semana</th>' + (tri ? cab('Corrida h') + cab('Corrida km') + cab('Ritmo') + cab('Bike h') + cab('Bike km') + cab('Natação h') + cab('Natação m') : cab('Corrida km') + cab('Ritmo') + cab('Horas')) + '</tr>';
   sem.map(function (x, i) { return { x: x, i: i }; }).reverse().forEach(function (q) { var x = q.x, i = q.i; t += '<tr style="border-top:1px solid var(--line,#ccc)"><td style="padding:3px 4px">' + esc(x.s.slice(8, 10) + '/' + x.s.slice(5, 7)) + '</td>' + (tri ? cel(f1(x.ch) + vs('ch', i)) + cel(f1(x.ck)) + cel(pf(x.cp)) + cel(f1(x.bh) + vs('bh', i)) + cel(f1(x.bk)) + cel(f1(x.nh) + vs('nh', i)) + cel(x.nm ? Math.round(x.nm) : '–') : cel(f1(x.ck)) + cel(pf(x.cp)) + cel(f1(x.ch) + vs('ch', i))) + '</tr>'; });
-  t += '</table></div><div class="small muted" style="margin-top:4px">A porcentagem ao lado das horas compara com a semana anterior, na mesma modalidade (* = semana em andamento, tende a ficar menor).</div>';
+  t += '</table></div><div class="small muted" style="margin-top:4px">O número ao lado das horas é o ACWR da modalidade: horas da semana ÷ média das 4 semanas anteriores (precisa de pelo menos 3 semanas anteriores). Verde = 0,80 a 1,30, laranja = 1,30 a 1,50, vermelho = acima de 1,50, azul = abaixo de 0,80. * = semana em andamento.</div>';
   var tb = paEl('div', ''); tb.innerHTML = t; w.appendChild(tb);
   return w;
 }
