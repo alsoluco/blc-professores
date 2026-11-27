@@ -870,6 +870,7 @@ function desenhaAtleta(r) {
   app(head(userBar()) +
     '<button class="back" onclick="atletas()">← Outro atleta</button>' +
     '<div><div class="eyebrow">' + (f['Idade'] ? esc(f['Idade']) + ' anos' : 'Atleta') + (f['Status'] === 'Inativo' ? ' · Inativo' : '') + '</div><h2>' + esc(f['Nome']) + '</h2></div>' +
+    '<div id="fres"></div>' +
 
     '<div class="card cy"><div class="eyebrow cy">Contato de emergência</div>' +
     (sem ? '<div class="muted">Sem contato de emergência cadastrado.</div>' :
@@ -909,6 +910,7 @@ function desenhaAtleta(r) {
     (S.perfil === 'Admin' ? '<button class="btn btn-sm" onclick="statusAtleta(\'' + esc(f['ID']) + '\',' + (f['Status'] === 'Inativo') + ')">' + (f['Status'] === 'Inativo' ? 'Reativar atleta' : 'Marcar atleta como inativo') + '</button>' : '') +
     '<footer>BLC Assessoria Esportiva · Rio de Janeiro</footer>');
 
+  frCarrega(f['ID']);
   S.fm = {}; ligaChips('fchips', S.fm);
   ligaArroba('tx'); micInit('tx');
   $('pr').onchange = function () { $('pc').className = 'chk' + ($('pr').checked ? ' on' : ''); };
@@ -921,6 +923,95 @@ function desenhaAtleta(r) {
     p.then(function () { abrir(f['ID']); }).catch(function (er) { $('msg').innerHTML = '<div class="err">' + esc(er.message) + '</div>'; $('bs').disabled = false; $('bs').textContent = 'Enviar'; });
   };
   observaVistos();
+}
+
+
+/* ---------- resumo e histórico unificado na ficha ---------- */
+var FR = { modo: 'sem', filtro: 'tudo', d: null, id: '' };
+var FR_TIPOS = [['tudo', 'Tudo'], ['msg', 'Mensagens'], ['lim', 'Limiares'], ['pre', 'Presença'], ['sau', 'Saúde']];
+function frCarrega(id) {
+  FR.id = id; FR.d = null;
+  var box = $('fres'); if (!box) return;
+  box.innerHTML = '<div class="card"><div class="eyebrow">Resumo do atleta</div><div class="muted small">Carregando…</div></div>';
+  call('fichaResumo', { id: id }).then(function (r) { if (FR.id !== id) return; FR.d = r; frDesenha(); })
+    .catch(function (e) { var b = $('fres'); if (b) b.innerHTML = '<div class="card"><div class="eyebrow">Resumo do atleta</div><div class="muted small">Não consegui carregar o resumo: ' + esc(e.message) + '</div></div>'; });
+}
+function frData(s) { var m = /^(\d{4})-(\d\d)-(\d\d)/.exec(s || ''); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; }
+function frIso(d) { return d.toISOString().slice(0, 10); }
+function frBr(iso) { return iso.slice(8, 10) + '/' + iso.slice(5, 7); }
+function frIni(iso) { var d = frData(iso); if (!d) return ''; if (FR.modo === 'mes') { d.setUTCDate(1); } else { d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); } return frIso(d); }
+function frRot(ini) { if (FR.modo === 'mes') { var n = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']; return n[+ini.slice(5, 7) - 1] + '/' + ini.slice(2, 4); } return 'Sem ' + frBr(ini); }
+function frProx(ini) { var d = frData(ini); if (FR.modo === 'mes') d.setUTCMonth(d.getUTCMonth() + 1); else d.setUTCDate(d.getUTCDate() + 7); return frIso(d); }
+function frMsgs() {
+  var out = [], tl = (S.ficha && S.ficha.linha) || [], ano = new Date().getFullYear();
+  tl.forEach(function (h) {
+    var m = /(\d\d)\/(\d\d)(?:\/(\d{4}))?[ ,·]*(\d\d:\d\d)?/.exec(h.quando || ''); if (!m) return;
+    out.push({ t: 'msg', origem: 'Ficha', d: (m[3] || ano) + '-' + m[2] + '-' + m[1], h: m[4] || '', quem: h.professor || '', tipo: h.tipo || '', texto: h.texto || '' });
+  });
+  return out;
+}
+function frEventos() {
+  var d = FR.d, ev = d.ev.concat(frMsgs());
+  // presença: um resumo por semana/mês
+  var pb = {};
+  d.pres.forEach(function (x) { var k = frIni(x[0]); (pb[k] = pb[k] || {})[x[0]] = x; });
+  Object.keys(pb).forEach(function (k) {
+    var dias = Object.keys(pb[k]).sort(), ultimo = dias[dias.length - 1], lagoa = dias.filter(function (z) { return pb[k][z][1] === 'LR'; }).length;
+    ev.push({ t: 'pre', d: ultimo, h: '', resumo: (FR.modo === 'mes' ? 'Mês de ' : 'Semana de ') + frRot(k).replace('Sem ', '') + ': ' + dias.length + ' dia' + (dias.length > 1 ? 's' : '') + ' de treino presencial' + (lagoa ? ' (' + lagoa + ' na Lagoa)' : '') });
+  });
+  // saúde: início de cada sequência de alerta
+  var sd = d.saude.slice().sort(function (a, b) { return a.d < b.d ? -1 : 1; }), ant = null;
+  sd.forEach(function (x) {
+    var alerta = x.tipo && x.tipo !== 'Recuperado' && x.tipo !== 'Normal';
+    var dia = frData(x.d), contig = ant && ant.alerta && (dia - frData(ant.d)) <= 2 * 86400000;
+    if (alerta && !contig) ev.push({ t: 'sau', alertaIni: true, d: x.d, h: '', tipo: x.tipo, hrv: x.hrv, fc: x.fc, bb: x.bb });
+    if (!alerta && ant && ant.alerta) ev.push({ t: 'sau', alertaFim: true, d: x.d, h: '' });
+    ant = { d: x.d, alerta: alerta };
+  });
+  ev.sort(function (a, b) { var ka = a.d + ' ' + (a.h || ''), kb = b.d + ' ' + (b.h || ''); return ka < kb ? 1 : ka > kb ? -1 : 0; });
+  return ev;
+}
+function frResumoHtml() {
+  var d = FR.d, ev = d.ev.concat(frMsgs()), B = {}, n = FR.modo === 'mes' ? 6 : 8, hoje = frIso(new Date()), ini = frIni(hoje), ks = [];
+  var k = ini;
+  for (var i = 0; i < n; i++) { ks.unshift(k); var dd = frData(k); if (FR.modo === 'mes') dd.setUTCMonth(dd.getUTCMonth() - 1); else dd.setUTCDate(dd.getUTCDate() - 7); k = frIso(dd); }
+  ks.forEach(function (x) { B[x] = { pre: {}, lagoa: 0, lim: 0, msg: 0, sh: [], sf: [], sb: [], alerta: 0, dias: 0 }; });
+  d.pres.forEach(function (x) { var b = B[frIni(x[0])]; if (b && !b.pre[x[0]]) { b.pre[x[0]] = 1; b.dias++; if (x[1] === 'LR') b.lagoa++; } });
+  ev.forEach(function (x) { var b = B[frIni(x.d)]; if (!b) return; if (x.t === 'lim') b.lim++; if (x.t === 'msg' || x.t === 'sau' || (x.t === 'lim' && x.envio === 'Enviado')) b.msg++; });
+  d.saude.forEach(function (x) {
+    var b = B[frIni(x.d)]; if (!b) return; b.dias2 = (b.dias2 || 0) + 1;
+    if (x.tipo && x.tipo !== 'Recuperado' && x.tipo !== 'Normal') b.alerta++;
+    if (d.adm) { if (x.hrv != null) b.sh.push(x.hrv); if (x.fc != null) b.sf.push(x.fc); if (x.bb != null) b.sb.push(x.bb); }
+  });
+  var med = function (a) { if (!a.length) return '–'; var t = 0; a.forEach(function (v) { t += v; }); return (Math.round(t / a.length * 10) / 10).toString().replace('.', ','); };
+  var linhas = ks.slice().reverse().map(function (x) {
+    var b = B[x], sa = d.adm ? 'HRV ' + med(b.sh) + ' · FC rep ' + med(b.sf) + ' · BB ' + med(b.sb) + (b.alerta ? ' · ' + b.alerta + ' dia(s) em alerta' : '') : (b.dias2 ? (b.alerta ? 'Teve alerta de saúde' : 'Sem alerta') : '–');
+    return '<div class="hist"><div class="meta"><b>' + esc(frRot(x)) + '</b></div><div class="txt small">Presença: ' + b.dias + ' dia' + (b.dias === 1 ? '' : 's') + (b.lagoa ? ' (' + b.lagoa + ' Lagoa)' : '') + '<br>Limiares: ' + (b.lim ? b.lim + ' mudança(s)' : 'nenhuma') + ' · Mensagens: ' + b.msg + '<br>Saúde: ' + esc(sa) + '</div></div>';
+  }).join('');
+  return linhas;
+}
+function frItemHtml(x) {
+  var q = esc(frBr(x.d) + '/' + x.d.slice(0, 4)) + (x.h ? ' ' + esc(x.h) : '');
+  if (x.t === 'lim') return '<div class="hist"><div class="meta">' + q + ' · limiar</div><div class="txt">' + esc(x.rot) + ': de ' + esc(x.antes) + ' para ' + esc(x.depois) + '<br>Mensagem de zonas: ' + (x.envio === 'Enviado' ? 'enviada' + (x.quem ? ' por ' + esc(x.quem) : '') + (x.envQuando ? ' em ' + esc(x.envQuando) : '') : x.envio === 'Ignorado' ? 'ignorada' + (x.quem ? ' por ' + esc(x.quem) : '') : 'não enviada') + '</div>' + (x.texto ? '<details><summary class="small muted">Ver texto enviado</summary><div class="txt" style="white-space:pre-wrap">' + esc(x.texto) + '</div></details>' : '') + '</div>';
+  if (x.t === 'pre') return '<div class="hist"><div class="meta">' + q + ' · presença</div><div class="txt">' + esc(x.resumo) + '</div></div>';
+  if (x.t === 'sau') {
+    if (x.alertaIni) return '<div class="hist"><div class="meta">' + q + ' · saúde</div><div class="txt">Entrou em alerta de saúde' + (FR.d.adm ? ' (' + esc(x.tipo) + ')' + (x.hrv != null ? ' · HRV ' + esc(String(x.hrv)) : '') + (x.fc != null ? ' · FC rep ' + esc(String(x.fc)) : '') + (x.bb != null ? ' · BB ' + esc(String(x.bb)) : '') : '') + '</div></div>';
+    if (x.alertaFim) return '<div class="hist"><div class="meta">' + q + ' · saúde</div><div class="txt">Saiu do alerta de saúde</div></div>';
+    return '<div class="hist"><div class="meta">' + q + ' · saúde · ' + esc(x.quem) + '</div><div class="txt">Mensagem de saúde ' + esc((x.tipo || 'enviada').toLowerCase()) + (FR.d.adm ? '' : ' (texto só para o head coach)') + '</div>' + (x.texto ? '<details><summary class="small muted">Ver mensagem</summary><div class="txt" style="white-space:pre-wrap">' + esc(x.texto) + '</div></details>' : '') + '</div>';
+  }
+  return '<div class="hist"><div class="meta">' + q + ' · mensagem' + (x.origem ? ' (' + esc(x.origem) + ')' : '') + (x.quem ? ' · ' + esc(x.quem) : '') + (x.tipo ? ' · ' + esc(x.tipo) : '') + '</div><div class="txt" style="white-space:pre-wrap">' + esc(x.texto) + '</div></div>';
+}
+function frDesenha() {
+  var box = $('fres'); if (!box || !FR.d) return;
+  var ev = frEventos().filter(function (x) { return FR.filtro === 'tudo' || x.t === FR.filtro; });
+  var btn = function (ativo, txt, js) { return '<button type="button" class="btn btn-sm' + (ativo ? '' : ' btn-line') + '" onclick="' + js + '">' + txt + '</button>'; };
+  box.innerHTML = '<div class="card hot"><div class="eyebrow">Resumo do atleta</div>' +
+    '<div class="row" style="margin:6px 0">' + btn(FR.modo === 'sem', 'Por semana', "FR.modo='sem';frDesenha()") + btn(FR.modo === 'mes', 'Por mês', "FR.modo='mes';frDesenha()") + '</div>' +
+    frResumoHtml() + '</div>' +
+    '<div class="card"><div class="eyebrow">Linha do tempo do atleta</div><div class="row" style="margin:6px 0;flex-wrap:wrap">' +
+    FR_TIPOS.map(function (t) { return btn(FR.filtro === t[0], t[1], "FR.filtro='" + t[0] + "';frDesenha()"); }).join('') + '</div>' +
+    (ev.length ? ev.slice(0, 60).map(frItemHtml).join('') + (ev.length > 60 ? '<div class="muted small">Mostrando os 60 mais recentes de ' + ev.length + '.</div>' : '') : '<div class="muted small">Nada registrado neste filtro.</div>') +
+    '<p class="small muted">Todos os professores veem este histórico. Para enviar mensagens, use as abas de cada assunto' + (FR.d.adm ? '' : '; os números e textos de saúde só o head coach vê') + '.</p></div>';
 }
 
 var ATL_CAMPOS = [['Nome', 'Nome'], ['E-mail', 'E-mail'], ['Telefone', 'Telefone'], ['Nascimento', 'Nascimento (dd/mm/aaaa)'], ['Instagram', 'Instagram'], ['Contato emergência', 'Contato de emergência (nome)'], ['Telefone emergência', 'Telefone de emergência'], ['Federação', 'Federação'], ['Limitação física', 'Limitação física'], ['Alergia/doença', 'Alergia / doença'], ['Obs. saúde', 'Observações de saúde'], ['Último exame', 'Último exame físico'], ['Objetivo', 'Objetivo'], ['Camisa', 'Camisa']];
