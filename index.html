@@ -1145,9 +1145,12 @@ function frTreino(sem) {
   }
   w.appendChild(g);
   var pf = function (x) { return x > 0 ? Math.floor(x / 60) + ':' + ('0' + Math.round(x % 60)).slice(-2) : '–'; }, f1 = function (x) { return x ? (Math.round(x * 10) / 10).toString().replace('.', ',') : '–'; };
-  var t = '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:.78rem"><tr><th align="left">Semana</th><th>Corrida km</th><th>Ritmo</th>' + (tri ? '<th>Bike km</th><th>Natação m</th>' : '<th>Horas</th>') + '</tr>';
-  sem.slice().reverse().forEach(function (x) { t += '<tr style="border-top:1px solid var(--line,#ccc)"><td>' + esc(x.s.slice(8, 10) + '/' + x.s.slice(5, 7)) + '</td><td align="center">' + f1(x.ck) + '</td><td align="center">' + pf(x.cp) + '</td>' + (tri ? '<td align="center">' + f1(x.bk) + '</td><td align="center">' + (x.nm ? Math.round(x.nm) : '–') + '</td>' : '<td align="center">' + f1(x.ch) + '</td>') + '</tr>'; });
-  var tb = paEl('div', ''); tb.innerHTML = t + '</table></div>'; w.appendChild(tb);
+  var vs = function (k, i) { if (i < 1 || !(sem[i - 1][k] > 0)) return ''; var p = Math.round((sem[i][k] - sem[i - 1][k]) / sem[i - 1][k] * 100); return ' <span style="font-size:.72rem;font-weight:700;color:' + (p > 0 ? '#3ddc84' : p < 0 ? '#ff8a3d' : 'inherit') + '">' + (p > 0 ? '+' : '') + p + '%' + (i === sem.length - 1 ? '*' : '') + '</span>'; };
+  var cel = function (t) { return '<td align="center" style="padding:3px 4px;white-space:nowrap">' + t + '</td>'; }, cab = function (t) { return '<th style="padding:3px 4px;white-space:nowrap">' + t + '</th>'; };
+  var t = '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse;font-size:.78rem"><tr><th align="left" style="padding:3px 4px">Semana</th>' + (tri ? cab('Corrida h') + cab('Corrida km') + cab('Ritmo') + cab('Bike h') + cab('Bike km') + cab('Natação h') + cab('Natação m') : cab('Corrida km') + cab('Ritmo') + cab('Horas')) + '</tr>';
+  sem.map(function (x, i) { return { x: x, i: i }; }).reverse().forEach(function (q) { var x = q.x, i = q.i; t += '<tr style="border-top:1px solid var(--line,#ccc)"><td style="padding:3px 4px">' + esc(x.s.slice(8, 10) + '/' + x.s.slice(5, 7)) + '</td>' + (tri ? cel(f1(x.ch) + vs('ch', i)) + cel(f1(x.ck)) + cel(pf(x.cp)) + cel(f1(x.bh) + vs('bh', i)) + cel(f1(x.bk)) + cel(f1(x.nh) + vs('nh', i)) + cel(x.nm ? Math.round(x.nm) : '–') : cel(f1(x.ck)) + cel(pf(x.cp)) + cel(f1(x.ch) + vs('ch', i))) + '</tr>'; });
+  t += '</table></div><div class="small muted" style="margin-top:4px">A porcentagem ao lado das horas compara com a semana anterior, na mesma modalidade (* = semana em andamento, tende a ficar menor).</div>';
+  var tb = paEl('div', ''); tb.innerHTML = t; w.appendChild(tb);
   return w;
 }
 function frSaude() {
