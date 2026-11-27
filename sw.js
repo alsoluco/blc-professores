@@ -1,5 +1,5 @@
 /* BLC · Professores: cache simples do "casco" do app. Os dados vêm sempre da rede. */
-var V = 'blc-v125';
+var V = 'blc-v126';
 var CASCO = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(V).then(function (c) { return c.addAll(CASCO); }).then(function () { return self.skipWaiting(); })); });
 self.addEventListener('activate', function (e) {
@@ -8,9 +8,14 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   var r = e.request;
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
-  e.respondWith(fetch(r, { cache: 'no-store' }).then(function (resp) {
-    var cp = resp.clone(); caches.open(V).then(function (c) { c.put(r, cp); }); return resp;
-  }).catch(function () { return caches.match(r).then(function (m) { return m || caches.match('index.html'); }); }));
+  /* abre na hora com a cópia guardada e atualiza em segundo plano (vale na próxima abertura) */
+  e.respondWith(caches.open(V).then(function (c) {
+    return c.match(r).then(function (m) {
+      var rede = fetch(r, { cache: 'no-store' }).then(function (resp) { if (resp && resp.ok) c.put(r, resp.clone()); return resp; });
+      if (m) { rede.catch(function () {}); return m; }
+      return rede.catch(function () { return caches.match('index.html'); });
+    });
+  }));
 });
 
 /* Avisos (push): mostra a notificacao e atualiza o numero no icone do app. */

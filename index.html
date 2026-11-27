@@ -403,7 +403,7 @@ function ldAtualiza() {
 function carrega(msg) { LD.force = true; LD.msg = msg || ''; ldAtualiza(); }
 function carregaFim() { LD.force = false; ldAtualiza(); }
 function ldFim() { LD.n--; if (LD.n <= 0) { LD.n = 0; clearTimeout(LD.t); LD.vis = false; ldAtualiza(); } }
-var CC = { m: {}, ler: { inicio: 1, provas: 1, membros: 1, financeiro: 1, prodLista: 1, presenca: 1, saudeAlertas: 1, limiaresLista: 1, finProvas: 1 }, neutro: { login: 1, esqueci: 1, logout: 1, abriu: 1, chatLista: 1, chatResumo: 1, chatPainel: 1 } };
+var CC = { m: {}, ler: { inicio: 1, provas: 1, membros: 1, financeiro: 1, prodLista: 1, presenca: 1, fichaResumo: 1, saudeAlertas: 1, limiaresLista: 1, finProvas: 1 }, neutro: { login: 1, esqueci: 1, logout: 1, abriu: 1, chatLista: 1, chatResumo: 1, chatPainel: 1 } };
 function call(action, payload, quieto) {
   var ck = null;
   if (CC.ler[action]) {
@@ -509,13 +509,13 @@ function mural() {
   S.aba2 = 'msg'; S.atual = null; S.fix = {}; S.vi = {}; S.limite = 40; S.sigMural = '';
   app(head(userBar()) + '<div class="spin">Carregando mensagens…</div>');
   S.telaMural = true;
-  pushSilencioso();
   carregaMural(true);
 }
 function carregaMural(primeira) {
   call('mural', null, !primeira).then(function (r) {
     if (!S.telaMural) return;
     S.mural = r; S.membros = r.membros;
+    if (primeira) { setTimeout(pushSilencioso, 1500); abriuAviso(); }
     badgeIcone(r.paraMimTotal || 0);
     var sig = r.total + ':' + r.paraMimTotal + ':' + r.itens.map(function (m) { return m.id + m.vistoPor.length + (m.resolvido ? 'r' : ''); }).join(',');
     if (!primeira && (S.rp || sig === S.sigMural)) { desenhaNav(true); return; }
@@ -4135,12 +4135,13 @@ function resetProf(email) {
   });
 }
 
+var ABRIU_T = 0;
+function abriuAviso() { if (!S.token || Date.now() - ABRIU_T < 300000) return; ABRIU_T = Date.now(); call('abriu').catch(function () {}); }
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState !== 'visible' || !S.token) return;
-  call('abriu').catch(function () {});
-  if (S.telaMural) carregaMural(false);
+  if (S.telaMural) carregaMural(false); abriuAviso();
 });
-if (S.token) { call('abriu').catch(function () {}); inicio(); } else telaLogin();
+if (S.token) inicio(); else telaLogin();
 if ('serviceWorker' in navigator) {
   var teveSW = !!navigator.serviceWorker.controller, jaRecarregou = false;
   navigator.serviceWorker.addEventListener('controllerchange', function () { if (teveSW && !jaRecarregou) { jaRecarregou = true; location.reload(); } });
